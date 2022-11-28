@@ -1,17 +1,12 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["referentialIntegrity"]
 }
 
 datasource db {
-  provider = "sqlite"
-  // NOTE: When using postgresql, mysql or sqlserver, uncomment the @db.Text annotations in model Account below
-  // Further reading:
-  // https://next-auth.js.org/adapters/prisma#create-the-prisma-schema
-  // https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference#string
-  url      = env("DATABASE_URL")
+  provider             = "mysql"
+  url                  = env("DATABASE_URL")
+  referentialIntegrity = "prisma"
 }
 
 model Example {
@@ -20,9 +15,42 @@ model Example {
   updatedAt DateTime @updatedAt
 }
 
+model HighlightPool {
+  id         String      @id @default(cuid())
+  name       String?
+  ownerId    String
+  owner      Profile     @relation(fields: [ownerId], references: [id])
+  mods       Profile[]   @relation("Mods")
+  public     Boolean     @default(false)
+  highlights Highlight[]
+  followers  Profile[]   @relation("FollowedPools")
+}
+
+model Profile {
+  id            String          @id @default(cuid())
+  accountId     String          @unique
+  account       Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  public        Boolean         @default(false)
+  following     Profile[]       @relation("ProfileFollows")
+  followedBy    Profile[]       @relation("ProfileFollows")
+  pools         HighlightPool[] @relation("FollowedPools")
+  modPools      HighlightPool[] @relation("Mods")
+  highlights    Highlight[]     @relation("AddedHighlights")
+  HighlightPool HighlightPool[]
+}
+
+model Highlight {
+  id        String        @id @default(cuid())
+  link      String
+  createdAt DateTime      @default(now())
+  poolId    String
+  pool      HighlightPool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  addedBy   Profile[]     @relation("AddedHighlights")
+}
+
 // Necessary for Next auth
 model Account {
-  id                String  @id @default(cuid())
+  id                String   @id @default(cuid())
   userId            String
   type              String
   provider          String
@@ -34,7 +62,8 @@ model Account {
   scope             String?
   id_token          String? // @db.Text
   session_state     String?
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Profile           Profile?
 
   @@unique([provider, providerAccountId])
 }
