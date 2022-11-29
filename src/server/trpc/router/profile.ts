@@ -86,7 +86,20 @@ export const profileRouter = router({
         highlightId: z.string().cuid(),
       })
     )
-    .query(({ ctx, input }) => {}),
+    .mutation(({ ctx, input }) => {
+      return ctx.prisma.profile.update({
+        where: {
+          userId: input.userId,
+        },
+        data: {
+          upvotes: {
+            connect: {
+              id: input.highlightId,
+            },
+          },
+        },
+      });
+    }),
 
   addPool: protectedProcedure
     .input(
