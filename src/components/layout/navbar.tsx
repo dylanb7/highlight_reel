@@ -1,0 +1,93 @@
+import React, { useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
+import NextLink from "next/link";
+import { useRouter } from "next/router";
+import SignInComponent from "./sign-in";
+
+const MobileNav = ({
+  open,
+  setOpen,
+}: {
+  open: boolean;
+  setOpen: Dispatch<SetStateAction<boolean>>;
+}) => {
+  const router = useRouter();
+
+  return (
+    <div
+      className={`absolute top-0 left-0 z-10 h-screen w-screen transform bg-neutral-300 ${
+        open ? "-translate-x-0" : "-translate-x-full"
+      } drop-shadow-md filter transition-transform duration-300 ease-in-out `}
+    >
+      <div className="mt-4 ml-4 flex flex-col">
+        <SignInComponent />
+      </div>
+    </div>
+  );
+};
+
+export const NavBar = () => {
+  const [open, setOpen] = useState(false);
+  return (
+    <nav className="flex h-16 w-screen items-center px-4 py-4 shadow-md">
+      <MobileNav open={open} setOpen={setOpen} />
+      <p className="justify-start text-2xl font-bold text-slate-900">
+        Highlight<span className="text-indigo-500">Reel</span>
+      </p>
+      <div className="flex w-full items-center justify-end md:pr-10">
+        <div
+          className="relative z-50 flex h-5 w-6 flex-col items-center justify-between md:hidden"
+          onClick={() => {
+            setOpen(!open);
+          }}
+        >
+          {/* hamburger button */}
+          <span
+            className={`h-1 w-full transform rounded-lg bg-slate-900 transition duration-300 ease-in-out ${
+              open ? "translate-y-2 rotate-45" : ""
+            }`}
+          />
+          <span
+            className={`h-1 w-full rounded-lg bg-slate-900 transition-all duration-300 ease-in-out ${
+              open ? "w-0" : "w-full"
+            }`}
+          />
+          <span
+            className={`h-1 w-full transform rounded-lg bg-slate-900 transition duration-300 ease-in-out ${
+              open ? "-translate-y-2 -rotate-45" : ""
+            }`}
+          />
+        </div>
+
+        <div className="hidden md:flex">
+          <SignInComponent />
+        </div>
+      </div>
+    </nav>
+  );
+};
+
+const NavLink = ({
+  to,
+  children,
+}: {
+  to: string;
+  children: React.ReactNode;
+}) => {
+  const router = useRouter();
+
+  return (
+    <a
+      href={to}
+      className={`relative px-4 transition duration-300 ease-in-out ${
+        router.asPath === to
+          ? "text-purple-500"
+          : "stroke  hover:text-purple-300"
+      }`}
+    >
+      {children}
+    </a>
+  );
+};
+
+export default NavBar;

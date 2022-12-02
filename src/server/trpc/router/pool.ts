@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { TypeOf, z } from "zod";
 
 import { router, protectedProcedure, publicProcedure } from "../trpc";
 
@@ -47,32 +47,25 @@ export const poolRouter = router({
   getPublicPoolsPaginated: publicProcedure
     .input(
       z.object({
-        cursor: z.string().cuid().nullable(),
+        cursor: z.string().cuid().nullish(),
         amount: z.number(),
       })
     )
-    .query(({ ctx, input }) => {
-      if (!input.cursor) {
-        return ctx.prisma.highlightPool.findMany({
-          take: input.amount,
-          where: {
-            public: true,
-          },
-          orderBy: {
-            followers: {
-              _count: "desc",
-            },
-          },
-        });
-      }
-      return ctx.prisma.highlightPool.findMany({
-        take: input.amount,
-        skip: 1,
-        cursor: {
-          id: input.cursor,
-        },
+    .query(async ({ ctx, input }) => {
+      const { cursor, amount } = input;
+      const pools = await ctx.prisma.highlightPool.findMany({
+        take: amount + 1,
+        cursor: cursor ? { id: cursor } : undefined,
         where: {
           public: true,
+        },
+        include: {
+          _count: {
+            select: {
+              highlights: true,
+              followers: true,
+            },
+          },
         },
         orderBy: {
           followers: {
@@ -80,6 +73,15 @@ export const poolRouter = router({
           },
         },
       });
+      let nextCursor: typeof cursor | undefined = undefined;
+      if (pools.length > input.amount && pools.length > 0) {
+        const extra = pools.pop();
+        nextCursor = extra!.id;
+      }
+      return {
+        pools,
+        nextCursor,
+      };
     }),
 
   getPoolHighlights: publicProcedure
@@ -133,7 +135,6 @@ export const poolRouter = router({
     .input(
       z.object({
         poolId: z.string().cuid(),
-        userId: z.string().cuid(),
         cursor: z.string().cuid().nullable(),
         amount: z.number(),
       })

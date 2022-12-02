@@ -110,26 +110,23 @@ export const profileRouter = router({
       })
     )
     .mutation(({ ctx, input }) => {
-      if (input.public) {
-        return ctx.prisma.profile.update({
-          where: { userId: input.userId },
-          data: {
-            pools: {
-              connect: {
-                id: input.poolId,
-              },
-            },
-          },
-        });
-      }
       return ctx.prisma.profile.update({
         where: { userId: input.userId },
         data: {
-          poolRequests: {
-            connect: {
-              id: input.poolId,
-            },
-          },
+          pools: input.public
+            ? {
+                connect: {
+                  id: input.poolId,
+                },
+              }
+            : undefined,
+          poolRequests: !input.public
+            ? {
+                connect: {
+                  id: input.userId,
+                },
+              }
+            : undefined,
         },
       });
     }),
