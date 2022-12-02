@@ -28,7 +28,7 @@ const HomePage: NextPage = () => {
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-8">
           {pools.map((value) => (
-            <PoolComponent pool={value} />
+            <PoolComponent key={value.id} pool={value} />
           ))}
         </div>
         {hasNextPage && (
