@@ -3,10 +3,348 @@ import { z } from "zod";
 import { router, protectedProcedure } from "../trpc";
 
 export const userRouter = router({
-  userProfile: protectedProcedure.input(z.string()).query(({ ctx, input }) => {
-    return ctx.prisma.user.findUnique({
-      where: { id: input },
-      select: { profile: true },
-    });
-  }),
+  fromId: protectedProcedure
+    .input(z.string().cuid())
+    .query(({ ctx, input }) => {
+      return ctx.prisma.user.findUnique({
+        where: {
+          id: input,
+        },
+      });
+    }),
+
+  finishProfile: protectedProcedure
+    .input(
+      z.object({
+        username: z.string().min(3).max(25),
+        public: z.boolean(),
+        userId: z.string().cuid(),
+      })
+    )
+    .mutation(({ ctx, input }) => {
+      return ctx.prisma.user.update({
+        where: {
+          id: input.userId,
+        },
+        data: {
+          public: input.public,
+          username: input.username,
+        },
+      });
+    }),
+
+  toggleHighlight: protectedProcedure
+    .input(
+      z.object({
+        highlightId: z.string().cuid(),
+        userId: z.string().cuid(),
+        add: z.boolean(),
+      })
+    )
+    .mutation(({ ctx, input }) => {
+      if (input.add) {
+        return ctx.prisma.user.update({
+          where: { id: input.userId },
+          data: {
+            highlights: {
+              connect: {
+                id: input.highlightId,
+              },
+            },
+          },
+        });
+      }
+      return ctx.prisma.user.update({
+        where: { id: input.userId },
+        data: {
+          highlights: {
+            disconnect: {
+              id: input.highlightId,
+            },
+          },
+        },
+      });
+    }),
+
+  getAllHighlights: protectedProcedure
+    .input(z.string().cuid())
+    .query(({ ctx, input }) => {
+      return ctx.prisma.user.findFirst({
+        where: { id: input },
+        select: {
+          highlights: {
+            orderBy: {
+              createdAt: "asc",
+            },
+          },
+        },
+      });
+    }),
+
+  upvoteHighlight: protectedProcedure
+    .input(
+      z.object({
+        userId: z.string().cuid(),
+        highlightId: z.string().cuid(),
+        liked: z.boolean().nullish(),
+      })
+    )
+    .mutation(({ ctx, input }) => {
+      return ctx.prisma.user.update({
+        where: {
+          id: input.userId,
+        },
+        data: {
+          upvotes: {
+            connect: !input.liked
+              ? {
+                  id: input.highlightId,
+                }
+              : undefined,
+            disconnect: input.liked
+              ? {
+                  id: input.highlightId,
+                }
+              : undefined,
+          },
+        },
+      });
+    }),
+
+  addPool: protectedProcedure
+    .input(
+      z.object({
+        poolId: z.string().cuid(),
+        userId: z.string().cuid(),
+        public: z.boolean(),
+      })
+    )
+    .mutation(({ ctx, input }) => {
+      return ctx.prisma.user.update({
+        where: { id: input.userId },
+        data: {
+          pools: input.public
+            ? {
+                connect: {
+                  id: input.poolId,
+                },
+              }
+            : undefined,
+          poolRequests: !input.public
+            ? {
+                connect: {
+                  id: input.userId,
+                },
+              }
+            : undefined,
+        },
+      });
+    }),
+
+  removePool: protectedProcedure
+    .input(
+      z.object({
+        poolId: z.string().cuid(),
+        userId: z.string().cuid(),
+      })
+    )
+    .mutation(({ ctx, input }) => {
+      return ctx.prisma.user.update({
+        where: { id: input.userId },
+        data: {
+          pools: {
+            disconnect: {
+              id: input.poolId,
+            },
+          },
+        },
+      });
+    }),
+
+  getAllPools: protectedProcedure
+    .input(z.string().cuid())
+    .query(({ ctx, input }) => {
+      return ctx.prisma.user.findUnique({
+        where: { id: input },
+        select: {
+          pools: {
+            orderBy: {
+              followers: {
+                _count: "asc",
+              },
+            },
+            include: {
+              _count: {
+                select: {
+                  highlights: true,
+                  followers: true,
+                },
+              },
+              followers: {
+                where: {
+                  id: input,
+                },
+              },
+            },
+          },
+        },
+      });
+    }),
+
+  getOwnedPools: protectedProcedure
+    .input(z.string().cuid())
+    .query(({ ctx, input }) => {
+      return ctx.prisma.user.findUnique({
+        where: {
+          id: input,
+        },
+        select: {
+          ownedPools: true,
+        },
+      });
+    }),
+
+  getModPools: protectedProcedure
+    .input(z.string().cuid())
+    .query(({ ctx, input }) => {
+      return ctx.prisma.user.findUnique({
+        where: {
+          id: input,
+        },
+        select: {
+          modPools: true,
+        },
+      });
+    }),
+
+  getFollowers: protectedProcedure
+    .input(z.string().cuid())
+    .query(({ ctx, input }) => {
+      return ctx.prisma.user.findUnique({
+        where: {
+          id: input,
+        },
+        select: {
+          followedBy: true,
+        },
+      });
+    }),
+
+  getFollowing: protectedProcedure
+    .input(z.string().cuid())
+    .query(({ ctx, input }) => {
+      return ctx.prisma.user.findUnique({
+        where: {
+          id: input,
+        },
+        select: {
+          following: true,
+        },
+      });
+    }),
+
+  getPending: protectedProcedure
+    .input(z.string().cuid())
+    .query(({ ctx, input }) => {
+      return ctx.prisma.user.findUnique({
+        where: {
+          id: input,
+        },
+        select: {
+          pending: true,
+        },
+      });
+    }),
+
+  followUser: protectedProcedure
+    .input(
+      z.object({
+        userId: z.string().cuid(),
+        followId: z.string().cuid(),
+        public: z.boolean(),
+      })
+    )
+    .mutation(({ ctx, input }) => {
+      if (input.public) {
+        return ctx.prisma.user.update({
+          where: { id: input.userId },
+          data: {
+            following: {
+              connect: {
+                id: input.followId,
+              },
+            },
+          },
+        });
+      }
+
+      return ctx.prisma.user.update({
+        where: { id: input.userId },
+        data: {
+          sentFollows: {
+            connect: {
+              id: input.followId,
+            },
+          },
+        },
+      });
+    }),
+
+  unfollowUser: protectedProcedure
+    .input(
+      z.object({
+        userId: z.string().cuid(),
+        followId: z.string().cuid(),
+      })
+    )
+    .mutation(({ ctx, input }) => {
+      return ctx.prisma.user.update({
+        where: { id: input.userId },
+        data: {
+          following: {
+            disconnect: {
+              id: input.followId,
+            },
+          },
+        },
+      });
+    }),
+
+  userFollowAction: protectedProcedure
+    .input(
+      z.object({
+        userId: z.string().cuid(),
+        followId: z.string().cuid(),
+        accepts: z.boolean(),
+      })
+    )
+    .mutation(({ ctx, input }) => {
+      if (input.accepts) {
+        return ctx.prisma.user.update({
+          where: { id: input.userId },
+          data: {
+            pending: {
+              disconnect: {
+                id: input.followId,
+              },
+            },
+            followedBy: {
+              connect: {
+                id: input.followId,
+              },
+            },
+          },
+        });
+      }
+      return ctx.prisma.user.update({
+        where: { id: input.userId },
+        data: {
+          pending: {
+            disconnect: {
+              id: input.followId,
+            },
+          },
+        },
+      });
+    }),
 });

@@ -1,4 +1,5 @@
-import { TypeOf, z } from "zod";
+import { Highlight } from "@prisma/client";
+import { z } from "zod";
 
 import { router, protectedProcedure, publicProcedure } from "../trpc";
 
@@ -31,6 +32,32 @@ export const poolRouter = router({
       });
     }),
 
+  poolSearch: publicProcedure
+    .input(
+      z.object({
+        searchTerm: z.string(),
+        id: z.string().cuid().nullish(),
+      })
+    )
+    .query(({ ctx, input }) => {
+      return ctx.prisma.highlightPool.findMany({
+        where: {
+          name: {
+            contains: input.searchTerm,
+          },
+        },
+        include: {
+          followers: input.id
+            ? {
+                where: {
+                  id: input.id,
+                },
+              }
+            : undefined,
+        },
+      });
+    }),
+
   getAllPublicPools: publicProcedure.query(({ ctx }) => {
     return ctx.prisma.highlightPool.findMany({
       where: {
@@ -49,6 +76,8 @@ export const poolRouter = router({
       z.object({
         cursor: z.string().cuid().nullish(),
         amount: z.number(),
+        userId: z.string().cuid().nullish(),
+        dicover: z.boolean().nullish(),
       })
     )
     .query(async ({ ctx, input }) => {
@@ -58,6 +87,13 @@ export const poolRouter = router({
         cursor: cursor ? { id: cursor } : undefined,
         where: {
           public: true,
+          followers: input.dicover
+            ? {
+                none: {
+                  id: input.userId ?? undefined,
+                },
+              }
+            : undefined,
         },
         include: {
           _count: {
@@ -66,6 +102,13 @@ export const poolRouter = router({
               followers: true,
             },
           },
+          followers: input.userId
+            ? {
+                where: {
+                  id: input.userId,
+                },
+              }
+            : undefined,
         },
         orderBy: {
           followers: {
@@ -93,26 +136,17 @@ export const poolRouter = router({
       })
     )
     .query(({ ctx, input }) => {
-      if (input.public) {
-        return ctx.prisma.highlightPool.findFirst({
-          where: { id: input.poolId, public: true },
-          select: {
-            highlights: {
-              orderBy: {
-                createdAt: "asc",
-              },
-            },
-          },
-        });
-      }
       return ctx.prisma.highlightPool.findFirst({
         where: {
           id: input.poolId,
-          followers: {
-            some: {
-              userId: input.userId,
-            },
-          },
+          followers: !input.public
+            ? {
+                some: {
+                  id: input.userId,
+                },
+              }
+            : undefined,
+          public: input.public ? true : undefined,
         },
         select: {
           highlights: {
@@ -131,104 +165,30 @@ export const poolRouter = router({
       });
     }),
 
-  getPoolHighlightsPaginatedPublic: publicProcedure
-    .input(
-      z.object({
-        poolId: z.string().cuid(),
-        cursor: z.string().cuid().nullable(),
-        amount: z.number(),
-      })
-    )
-    .query(({ ctx, input }) => {
-      if (!input.cursor) {
-        return ctx.prisma.highlightPool.findFirst({
-          where: { id: input.poolId, public: true },
-          select: {
-            highlights: {
-              orderBy: {
-                createdAt: "asc",
-              },
-              include: {
-                _count: {
-                  select: {
-                    upvotes: true,
-                  },
-                },
-              },
-              take: input.amount,
-            },
-          },
-        });
-      }
-      return ctx.prisma.highlightPool.findFirst({
-        where: { id: input.poolId, public: true },
-        select: {
-          highlights: {
-            orderBy: {
-              createdAt: "asc",
-            },
-            include: {
-              _count: {
-                select: {
-                  upvotes: true,
-                },
-              },
-            },
-            cursor: {
-              id: input.cursor,
-            },
-            take: input.amount,
-            skip: 1,
-          },
-        },
-      });
-    }),
-
-  getPoolHighlightsPaginatedPrivate: publicProcedure
+  getPoolHighlightsPaginated: publicProcedure
     .input(
       z.object({
         poolId: z.string().cuid(),
         userId: z.string().cuid(),
-        cursor: z.string().cuid().nullable(),
+        public: z.boolean(),
+        cursor: z.string().cuid().nullish(),
         amount: z.number(),
       })
     )
-    .query(({ ctx, input }) => {
-      if (!input.cursor) {
-        return ctx.prisma.highlightPool.findFirst({
-          where: {
-            id: input.poolId,
-            followers: {
-              some: {
-                userId: input.userId,
-              },
-            },
-          },
-          select: {
-            highlights: {
-              orderBy: {
-                createdAt: "asc",
-              },
-              include: {
-                _count: {
-                  select: {
-                    upvotes: true,
-                  },
-                },
-              },
-              take: input.amount,
-            },
-          },
-        });
-      }
-      return ctx.prisma.highlightPool.findFirst({
+    .query(async ({ ctx, input }) => {
+      const ret: {
+        highlights: (Highlight & { _count: { upvotes: number } })[];
+      } | null = await ctx.prisma.highlightPool.findFirst({
         where: {
           id: input.poolId,
-          followers: {
-            some: {
-              userId: input.userId,
-            },
-          },
+          followers: !input.public
+            ? {
+                some: {
+                  id: input.userId,
+                },
+              }
+            : undefined,
+          public: input.public ? true : undefined,
         },
         select: {
           highlights: {
@@ -242,14 +202,27 @@ export const poolRouter = router({
                 },
               },
             },
-            cursor: {
-              id: input.cursor,
-            },
-            take: input.amount,
-            skip: 1,
+            take: input.amount + 1,
+            cursor: input.cursor
+              ? {
+                  id: input.cursor,
+                }
+              : undefined,
           },
         },
       });
+
+      if (!ret) return [];
+      const lights = ret.highlights;
+      let nextCursor: typeof input.cursor | undefined = undefined;
+      if (lights.length > input.amount && lights.length > 0) {
+        const extra = lights.pop();
+        nextCursor = extra!.id;
+      }
+      return {
+        lights,
+        nextCursor,
+      };
     }),
 });
 

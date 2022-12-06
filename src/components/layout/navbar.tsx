@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
-import NextLink from "next/link";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import SignInComponent from "./sign-in";
+import PoolSearchComponent from "./pool-search-bar";
 
 const MobileNav = ({
   open,
@@ -31,10 +32,18 @@ export const NavBar = () => {
   return (
     <nav className="flex h-16 w-screen items-center px-4 py-4 shadow-md">
       <MobileNav open={open} setOpen={setOpen} />
-      <p className="justify-start text-2xl font-bold text-slate-900">
-        Highlight<span className="text-indigo-500">Reel</span>
-      </p>
-      <div className="flex w-full items-center justify-end md:pr-10">
+      <Link href={"/"}>
+        <p className="text-slate-90 hidden justify-start text-2xl font-bold sm:flex">
+          Highlight<span className="text-indigo-500">Reel</span>
+        </p>
+      </Link>
+      <Link href={"/"}>
+        <p className="text-slate-90 flex justify-start text-2xl font-bold sm:hidden">
+          H<span className="text-indigo-500">R</span>
+        </p>
+      </Link>
+      <PoolSearchComponent />
+      <div className="flex grow items-center justify-end">
         <div
           className="relative z-50 flex h-5 w-6 flex-col items-center justify-between md:hidden"
           onClick={() => {
@@ -59,7 +68,7 @@ export const NavBar = () => {
           />
         </div>
 
-        <div className="hidden md:flex">
+        <div className="hidden justify-end md:flex">
           <SignInComponent />
         </div>
       </div>
