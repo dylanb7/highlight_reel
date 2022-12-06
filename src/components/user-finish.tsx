@@ -45,15 +45,15 @@ export const UserFinish: React.FC = () => {
     try {
       profileSchema.parse(submitObj);
     } catch (e) {
-      var didSet = false;
+      let err = false;
       JSON.parse((e as ZodError).message, (key, value) => {
         if (key == "message") {
           setError(value);
-          didSet = true;
+          err = true;
           return;
         }
       });
-      if (!didSet) {
+      if (!err) {
         setError("Invalid Input");
       }
       return;
