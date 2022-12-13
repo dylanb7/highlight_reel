@@ -5,6 +5,7 @@ import { useState } from "react";
 import SignInComponent from "./layout/sign-in";
 import { trpc } from "../utils/trpc";
 import { HighlightPool } from "@prisma/client";
+import { LoadingSpinner } from "./loading";
 
 const ButtonStyle = (
   follows: boolean,
@@ -100,7 +101,7 @@ const AuthedNoData: React.FC<{ pool: HighlightPool }> = ({ pool }) => {
   });
 
   if (!session || !session.user || !userState)
-    return ButtonStyle(false, false, () => {});
+    return <LoadingSpinner loadingType={""} />;
 
   return ButtonStyle(userState.follows, userState.requested, () => {
     if (userState.follows) {
