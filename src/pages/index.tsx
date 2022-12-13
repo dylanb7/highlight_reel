@@ -2,7 +2,7 @@ import { GetServerSidePropsContext, type NextPage } from "next";
 
 import { trpc } from "../utils/trpc";
 import { LoadingSpinner } from "../components/loading";
-import { PoolComponent } from "../components/highlight-pool";
+import { PoolComponent } from "../components/highlight-pool-card";
 import { UserFinish } from "../components/user-finish";
 import { useSession } from "next-auth/react";
 import React, { useState } from "react";

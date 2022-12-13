@@ -7,7 +7,40 @@ export const poolRouter = router({
   getPoolById: protectedProcedure
     .input(z.string().cuid())
     .query(({ ctx, input }) => {
-      return ctx.prisma.highlightPool.findFirst({ where: { id: input } });
+      return ctx.prisma.highlightPool.findUnique({ where: { id: input } });
+    }),
+
+  userState: publicProcedure
+    .input(
+      z.object({
+        poolId: z.string().cuid(),
+        userId: z.string().cuid().nullish(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      if (!input.userId) return { follows: false, requested: false };
+      const followerState = await ctx.prisma.highlightPool.findUnique({
+        where: { id: input.poolId },
+        select: {
+          followers: {
+            where: {
+              id: input.userId,
+            },
+          },
+          pending: {
+            where: {
+              id: input.userId,
+            },
+          },
+        },
+      });
+      if (followerState) {
+        if (followerState.followers.length > 0)
+          return { follows: true, requested: false };
+        if (followerState.pending.length > 0)
+          return { follows: false, requested: true };
+      }
+      return { follows: false, requested: false };
     }),
 
   createPool: protectedProcedure
@@ -109,6 +142,13 @@ export const poolRouter = router({
                 },
               }
             : undefined,
+          pending: input.userId
+            ? {
+                where: {
+                  id: input.userId,
+                },
+              }
+            : undefined,
         },
         orderBy: {
           followers: {
@@ -169,26 +209,28 @@ export const poolRouter = router({
     .input(
       z.object({
         poolId: z.string().cuid(),
-        userId: z.string().cuid(),
-        public: z.boolean(),
+        userId: z.string().cuid().nullish(),
+        isPublic: z.boolean(),
         cursor: z.string().cuid().nullish(),
         amount: z.number(),
       })
     )
     .query(async ({ ctx, input }) => {
+      const { poolId, userId, isPublic, cursor, amount } = input;
       const ret: {
         highlights: (Highlight & { _count: { upvotes: number } })[];
       } | null = await ctx.prisma.highlightPool.findFirst({
         where: {
           id: input.poolId,
-          followers: !input.public
-            ? {
-                some: {
-                  id: input.userId,
-                },
-              }
-            : undefined,
-          public: input.public ? true : undefined,
+          followers:
+            !isPublic && userId
+              ? {
+                  some: {
+                    id: userId,
+                  },
+                }
+              : undefined,
+          public: isPublic ? true : undefined,
         },
         select: {
           highlights: {
@@ -202,20 +244,19 @@ export const poolRouter = router({
                 },
               },
             },
-            take: input.amount + 1,
-            cursor: input.cursor
+            take: amount + 1,
+            cursor: cursor
               ? {
-                  id: input.cursor,
+                  id: cursor,
                 }
               : undefined,
           },
         },
       });
 
-      if (!ret) return [];
-      const lights = ret.highlights;
-      let nextCursor: typeof input.cursor | undefined = undefined;
-      if (lights.length > input.amount && lights.length > 0) {
+      const lights = ret?.highlights ?? [];
+      let nextCursor: typeof cursor | undefined = undefined;
+      if (lights.length > amount && lights.length > 0) {
         const extra = lights.pop();
         nextCursor = extra!.id;
       }

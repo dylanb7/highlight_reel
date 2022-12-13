@@ -16,7 +16,7 @@ const MobileNav = ({
 
   return (
     <div
-      className={`absolute top-0 left-0 z-10 h-screen w-screen transform bg-neutral-300 ${
+      className={`absolute top-0 left-0 z-10 h-screen w-screen transform bg-gray-200 dark:bg-slate-900 ${
         open ? "-translate-x-0" : "-translate-x-full"
       } drop-shadow-md filter transition-transform duration-300 ease-in-out `}
     >
@@ -30,15 +30,15 @@ const MobileNav = ({
 export const NavBar = () => {
   const [open, setOpen] = useState(false);
   return (
-    <nav className="flex h-16 w-screen items-center px-4 py-4 shadow-md">
+    <nav className="z-50 flex h-16 w-screen items-center bg-white px-4 py-4 shadow-sm dark:bg-slate-900">
       <MobileNav open={open} setOpen={setOpen} />
       <Link href={"/"}>
-        <p className="text-slate-90 hidden justify-start text-2xl font-bold sm:flex">
+        <p className="hidden justify-start text-2xl font-bold text-slate-900 dark:text-white sm:flex">
           Highlight<span className="text-indigo-500">Reel</span>
         </p>
       </Link>
       <Link href={"/"}>
-        <p className="text-slate-90 flex justify-start text-2xl font-bold sm:hidden">
+        <p className="flex justify-start text-2xl font-bold text-slate-900 dark:text-white sm:hidden">
           H<span className="text-indigo-500">R</span>
         </p>
       </Link>
@@ -52,17 +52,17 @@ export const NavBar = () => {
         >
           {/* hamburger button */}
           <span
-            className={`h-1 w-full transform rounded-lg bg-slate-900 transition duration-300 ease-in-out ${
+            className={`h-1 w-full transform rounded-lg bg-slate-900 transition duration-300 ease-in-out dark:bg-white ${
               open ? "translate-y-2 rotate-45" : ""
             }`}
           />
           <span
-            className={`h-1 w-full rounded-lg bg-slate-900 transition-all duration-300 ease-in-out ${
+            className={`h-1 w-full rounded-lg bg-slate-900 transition-all duration-300 ease-in-out dark:bg-white ${
               open ? "w-0" : "w-full"
             }`}
           />
           <span
-            className={`h-1 w-full transform rounded-lg bg-slate-900 transition duration-300 ease-in-out ${
+            className={`h-1 w-full transform rounded-lg bg-slate-900 transition duration-300 ease-in-out dark:bg-white ${
               open ? "-translate-y-2 -rotate-45" : ""
             }`}
           />

@@ -116,27 +116,48 @@ export const userRouter = router({
       z.object({
         poolId: z.string().cuid(),
         userId: z.string().cuid(),
-        public: z.boolean(),
+        isPublic: z.boolean(),
+      })
+    )
+    .mutation(({ ctx, input }) => {
+      const { poolId, userId, isPublic } = input;
+      return ctx.prisma.user.update({
+        where: { id: userId },
+        data: {
+          pools: isPublic
+            ? {
+                connect: {
+                  id: poolId,
+                },
+              }
+            : undefined,
+          poolRequests: !isPublic
+            ? {
+                connect: {
+                  id: poolId,
+                },
+              }
+            : undefined,
+        },
+      });
+    }),
+
+  removePoolRequest: protectedProcedure
+    .input(
+      z.object({
+        poolId: z.string().cuid(),
+        userId: z.string().cuid(),
       })
     )
     .mutation(({ ctx, input }) => {
       return ctx.prisma.user.update({
         where: { id: input.userId },
         data: {
-          pools: input.public
-            ? {
-                connect: {
-                  id: input.poolId,
-                },
-              }
-            : undefined,
-          poolRequests: !input.public
-            ? {
-                connect: {
-                  id: input.userId,
-                },
-              }
-            : undefined,
+          poolRequests: {
+            disconnect: {
+              id: input.poolId,
+            },
+          },
         },
       });
     }),
@@ -181,6 +202,11 @@ export const userRouter = router({
                 },
               },
               followers: {
+                where: {
+                  id: input,
+                },
+              },
+              pending: {
                 where: {
                   id: input,
                 },
