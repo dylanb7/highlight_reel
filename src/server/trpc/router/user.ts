@@ -10,6 +10,14 @@ export const userRouter = router({
         where: {
           id: input,
         },
+        include: {
+          _count: {
+            select: {
+              following: true,
+              followedBy: true,
+            },
+          },
+        },
       });
     }),
 
@@ -90,18 +98,19 @@ export const userRouter = router({
       })
     )
     .mutation(({ ctx, input }) => {
+      const { liked } = input;
       return ctx.prisma.user.update({
         where: {
           id: input.userId,
         },
         data: {
           upvotes: {
-            connect: !input.liked
+            connect: !liked
               ? {
                   id: input.highlightId,
                 }
               : undefined,
-            disconnect: input.liked
+            disconnect: liked
               ? {
                   id: input.highlightId,
                 }
@@ -176,41 +185,6 @@ export const userRouter = router({
           pools: {
             disconnect: {
               id: input.poolId,
-            },
-          },
-        },
-      });
-    }),
-
-  getAllPools: protectedProcedure
-    .input(z.string().cuid())
-    .query(({ ctx, input }) => {
-      return ctx.prisma.user.findUnique({
-        where: { id: input },
-        select: {
-          pools: {
-            orderBy: {
-              followers: {
-                _count: "asc",
-              },
-            },
-            include: {
-              _count: {
-                select: {
-                  highlights: true,
-                  followers: true,
-                },
-              },
-              followers: {
-                where: {
-                  id: input,
-                },
-              },
-              pending: {
-                where: {
-                  id: input,
-                },
-              },
             },
           },
         },

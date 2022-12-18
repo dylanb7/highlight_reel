@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import SignInComponent from "./sign-in";
+import SignInComponent from "../sign-in";
 import PoolSearchComponent from "./pool-search-bar";
 
 const MobileNav = ({
@@ -18,7 +18,7 @@ const MobileNav = ({
     <div
       className={`absolute top-0 left-0 z-10 h-screen w-screen transform bg-gray-200 dark:bg-slate-900 ${
         open ? "-translate-x-0" : "-translate-x-full"
-      } drop-shadow-md filter transition-transform duration-300 ease-in-out `}
+      } drop-shadow-md filter transition-transform duration-300 ease-in-out`}
     >
       <div className="mt-4 ml-4 flex flex-col">
         <SignInComponent />
@@ -30,7 +30,7 @@ const MobileNav = ({
 export const NavBar = () => {
   const [open, setOpen] = useState(false);
   return (
-    <nav className="z-50 flex h-16 w-screen items-center bg-white px-4 py-4 shadow-sm dark:bg-slate-900">
+    <nav className="z-50 flex h-16 w-screen items-center bg-white px-4 py-4 shadow-sm dark:bg-slate-900 dark:shadow-slate-500">
       <MobileNav open={open} setOpen={setOpen} />
       <Link href={"/"}>
         <p className="hidden justify-start text-2xl font-bold text-slate-900 dark:text-white sm:flex">

@@ -22,9 +22,9 @@ const FetchResults: React.FC<{ searchTerm: string; setClosed: () => void }> = ({
   });
 
   return (
-    <div className="mt-2 flex flex-col justify-items-stretch overflow-y-scroll">
-      <ScrollArea.Root className="max-h-64">
-        <ScrollArea.Viewport className="inset-0">
+    <ScrollArea.Root className="overflow-hidden">
+      <ScrollArea.Viewport className="h-full max-h-72 w-full ">
+        <div className="mt-2 flex flex-col justify-items-stretch">
           {isLoading && <LoadingSpinner loadingType={"Searching..."} />}
           {results && results.length > 0 ? (
             <>
@@ -37,13 +37,16 @@ const FetchResults: React.FC<{ searchTerm: string; setClosed: () => void }> = ({
               No Reels match name
             </p>
           )}
-        </ScrollArea.Viewport>
-        <ScrollArea.Scrollbar orientation="vertical" className="w-2">
-          <ScrollArea.Thumb />
-        </ScrollArea.Scrollbar>
-        <ScrollArea.Corner />
-      </ScrollArea.Root>
-    </div>
+        </div>
+      </ScrollArea.Viewport>
+      <ScrollArea.Scrollbar
+        orientation="vertical"
+        className="flex w-2 rounded-full bg-slate-300 hover:bg-slate-400"
+      >
+        <ScrollArea.Thumb className="relative flex-1 rounded-full bg-slate-900" />
+      </ScrollArea.Scrollbar>
+      <ScrollArea.Corner />
+    </ScrollArea.Root>
   );
 };
 

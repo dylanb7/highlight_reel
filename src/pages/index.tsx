@@ -7,8 +7,11 @@ import { UserFinish } from "../components/user-finish";
 import { useSession } from "next-auth/react";
 import React, { useState } from "react";
 import { getServerAuthSession } from "../server/common/get-server-auth-session";
-import { TabSelect } from "../components/tab-select";
-import { date } from "zod";
+import {
+  PoolScroll,
+  ProfileData,
+  ProfileHighlights,
+} from "../components/profile-components";
 
 const UnauthedContent = () => {
   const loadAmount = 1;
@@ -87,37 +90,14 @@ const DiscoverFeed: React.FC = () => {
   );
 };
 
-const ReelsFeed: React.FC = () => {
-  const { data: session } = useSession();
-
-  const { data: reels, isLoading } = trpc.user.getAllPools.useQuery(
-    session!.user!.id
-  );
-
-  return (
-    <div className="grid grid-flow-row items-center justify-center gap-4">
-      {isLoading && <LoadingSpinner loadingType={"Loading your reels"} />}
-      {reels &&
-        reels.pools.map((reel) => <PoolComponent key={reel.id} pool={reel} />)}
-      {reels && reels.pools.length == 0 && (
-        <p className="text font-semibold text-slate-900">No Reels Followed</p>
-      )}
-    </div>
-  );
-};
-
 const AuthedContent = () => {
   const { data: session } = useSession();
 
-  const { data: profile } = trpc.user.fromId.useQuery(session!.user!.id);
+  const { data: profile, isLoading } = trpc.user.fromId.useQuery(
+    session!.user!.id
+  );
 
-  const tabs = ["REELS", "HIGHLIGHTS", "PROFILE"];
-
-  const reelTabs = ["FOLLOWING", "DISCOVER"];
-
-  const [openTab, setOpenTab] = useState("REELS");
-
-  const [reelTab, setReelTab] = useState("FOLLOWING");
+  if (isLoading) return <LoadingSpinner loadingType={""} />;
 
   if (!profile) {
     return <p>Invalid Config</p>;
@@ -129,38 +109,13 @@ const AuthedContent = () => {
 
   return (
     <>
-      <p className="my-4 text-center text-3xl font-bold text-slate-900">
-        {profile.username}
-      </p>
-      <div className="mx-4">
-        <TabSelect
-          initial={tabs[0]!}
-          tabs={tabs}
-          small={false}
-          onChange={(tab: string) => {
-            setOpenTab(tab);
-          }}
-        >
-          {openTab == tabs[0] && (
-            <div className="mx-10">
-              <TabSelect
-                initial={reelTabs[0]!}
-                tabs={reelTabs}
-                small={false}
-                onChange={(tab: string) => {
-                  setReelTab(tab);
-                }}
-              >
-                {reelTab == reelTabs[0] && <ReelsFeed />}
-                {reelTab == reelTabs[1] && <DiscoverFeed />}
-              </TabSelect>
-            </div>
-          )}
-          {openTab == tabs[1] && (
-            <p className="text-slate-900">Highlight Reels</p>
-          )}
-        </TabSelect>
+      <div className="flex flex-col justify-start pt-2">
+        <ProfileData user={profile} />
+        <PoolScroll id={profile.id} refId={session?.user?.id} />
+        <ProfileHighlights id={profile.id} refId={session?.user?.id} />
       </div>
+
+      <footer></footer>
     </>
   );
 };

@@ -1,8 +1,7 @@
 import { useSession } from "next-auth/react";
 import * as Popover from "@radix-ui/react-popover";
-import { date } from "zod";
 import { useState } from "react";
-import SignInComponent from "./layout/sign-in";
+import SignInComponent from "./sign-in";
 import { trpc } from "../utils/trpc";
 import { HighlightPool } from "@prisma/client";
 import { LoadingSpinner } from "./loading";
@@ -10,15 +9,18 @@ import { LoadingSpinner } from "./loading";
 const ButtonStyle = (
   follows: boolean,
   pending: boolean,
+  disabled: boolean,
   onClick: () => void
 ) => (
   <button
     onClick={onClick}
+    disabled={disabled}
     className={
-      "w-32 rounded-lg px-3 py-2 font-semibold no-underline transition " +
+      "rounded-lg px-3 py-1 text-sm font-semibold no-underline transition " +
       (pending
         ? "bg-gray-500 text-white hover:bg-gray-700"
-        : "bg-indigo-500 text-white hover:bg-indigo-700")
+        : "bg-indigo-500 text-white hover:bg-indigo-700") +
+      "disabled:opacity-50"
     }
   >
     {follows ? "Unfollow" : pending ? "Requested" : "Follow"}
@@ -36,42 +38,38 @@ const AuthedButton: React.FC<{
 
   const util = trpc.useContext();
 
-  const success = () => {
-    util.pool.getPublicPoolsPaginated.invalidate();
-    util.user.getAllPools.invalidate();
-  };
+  const { mutate: add, isLoading: adding } = trpc.user.addPool.useMutation({});
 
-  const { mutate: add } = trpc.user.addPool.useMutation({
-    onSuccess: success,
-  });
+  const { mutate: unrequest, isLoading: unrequesting } =
+    trpc.user.removePoolRequest.useMutation({});
 
-  const { mutate: unrequest } = trpc.user.removePoolRequest.useMutation({
-    onSuccess: success,
-  });
+  const { mutate: remove, isLoading: removing } =
+    trpc.user.removePool.useMutation({});
 
-  const { mutate: remove } = trpc.user.removePool.useMutation({
-    onSuccess: success,
-  });
-
-  return ButtonStyle(followData.following, followData.pending, () => {
-    if (followData.following) {
-      remove({
-        userId: session!.user!.id,
-        poolId: pool.id,
-      });
-    } else if (followData.pending) {
-      unrequest({
-        userId: session!.user!.id,
-        poolId: pool.id,
-      });
-    } else {
-      add({
-        userId: session!.user!.id,
-        poolId: pool.id,
-        isPublic: pool.public,
-      });
+  return ButtonStyle(
+    followData.following,
+    followData.pending,
+    adding || unrequesting || removing,
+    () => {
+      if (followData.following) {
+        remove({
+          userId: session!.user!.id,
+          poolId: pool.id,
+        });
+      } else if (followData.pending) {
+        unrequest({
+          userId: session!.user!.id,
+          poolId: pool.id,
+        });
+      } else {
+        add({
+          userId: session!.user!.id,
+          poolId: pool.id,
+          isPublic: pool.public,
+        });
+      }
     }
-  });
+  );
 };
 
 const AuthedNoData: React.FC<{ pool: HighlightPool }> = ({ pool }) => {
@@ -84,44 +82,93 @@ const AuthedNoData: React.FC<{ pool: HighlightPool }> = ({ pool }) => {
 
   const util = trpc.useContext();
 
-  const success = () => {
+  const settled = () => {
     util.pool.userState.invalidate();
   };
 
-  const { mutate: add } = trpc.user.addPool.useMutation({
-    onSuccess: success,
+  const mutate = async (
+    state: { userId?: string | null | undefined; poolId: string },
+    newData:
+      | {
+          follows: boolean;
+          requested: boolean;
+        }
+      | undefined
+  ) => {
+    await util.pool.userState.cancel(state);
+
+    const prev = util.pool.userState.getData(state);
+
+    util.pool.userState.setData(state, (_) => newData);
+
+    return { prev };
+  };
+
+  const { mutate: add, isLoading: adding } = trpc.user.addPool.useMutation({
+    onMutate(variables) {
+      return mutate(variables, {
+        follows: pool.public ? true : false,
+        requested: pool.public ? false : true,
+      });
+    },
+    onError(_, variables, context) {
+      util.pool.userState.setData(variables, context?.prev);
+    },
+    onSettled: settled,
   });
 
-  const { mutate: unrequest } = trpc.user.removePoolRequest.useMutation({
-    onSuccess: success,
-  });
+  const { mutate: unrequest, isLoading: unrequesting } =
+    trpc.user.removePoolRequest.useMutation({
+      onMutate(variables) {
+        return mutate(variables, {
+          follows: false,
+          requested: false,
+        });
+      },
+      onError(_, variables, context) {
+        util.pool.userState.setData(variables, context?.prev);
+      },
+      onSettled: settled,
+    });
 
-  const { mutate: remove } = trpc.user.removePool.useMutation({
-    onSuccess: success,
-  });
+  const { mutate: remove, isLoading: removing } =
+    trpc.user.removePool.useMutation({
+      onMutate(variables) {
+        return mutate(variables, { follows: false, requested: false });
+      },
+      onError(_, variables, context) {
+        util.pool.userState.setData(variables, context?.prev);
+      },
+      onSettled: settled,
+    });
 
   if (!session || !session.user || !userState)
     return <LoadingSpinner loadingType={""} />;
 
-  return ButtonStyle(userState.follows, userState.requested, () => {
-    if (userState.follows) {
-      remove({
-        userId: session!.user!.id,
-        poolId: pool.id,
-      });
-    } else if (userState.requested) {
-      unrequest({
-        userId: session!.user!.id,
-        poolId: pool.id,
-      });
-    } else {
-      add({
-        userId: session!.user!.id,
-        poolId: pool.id,
-        isPublic: pool.public,
-      });
+  return ButtonStyle(
+    userState.follows,
+    userState.requested,
+    adding || unrequesting || removing,
+    () => {
+      if (userState.follows) {
+        remove({
+          userId: session!.user!.id,
+          poolId: pool.id,
+        });
+      } else if (userState.requested) {
+        unrequest({
+          userId: session!.user!.id,
+          poolId: pool.id,
+        });
+      } else {
+        add({
+          userId: session!.user!.id,
+          poolId: pool.id,
+          isPublic: pool.public,
+        });
+      }
     }
-  });
+  );
 };
 
 export const PoolFollowButton: React.FC<{
@@ -146,7 +193,7 @@ export const PoolFollowButton: React.FC<{
   return (
     <Popover.Root open={open}>
       <Popover.Trigger>
-        {ButtonStyle(false, false, () => {
+        {ButtonStyle(false, false, false, () => {
           setOpen((value) => !value);
         })}
       </Popover.Trigger>
@@ -154,13 +201,13 @@ export const PoolFollowButton: React.FC<{
         onInteractOutside={() => {
           setOpen(false);
         }}
-        className="w-fit max-w-xs rounded-lg bg-white p-1 shadow-lg radix-side-bottom:animate-slide-down sm:w-screen sm:max-w-sm"
+        className="w-fit max-w-xs rounded-lg bg-white p-1 shadow-lg radix-side-bottom:animate-slide-down"
       >
-        <div className="flex flex-col items-center justify-center gap-2">
-          <p className="font-semibold text-slate-900">
+        <div className="m-1 flex flex-col items-center justify-center gap-2">
+          <p className="text-sm font-semibold text-slate-900">
             Must be signed in to follow
           </p>
-          <SignInComponent />
+          <SignInComponent isHead={false} />
         </div>
       </Popover.Content>
     </Popover.Root>

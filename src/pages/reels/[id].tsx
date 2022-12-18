@@ -1,13 +1,16 @@
 import { Highlight, HighlightPool } from "@prisma/client";
 import { GetStaticProps } from "next";
-import * as Separator from "@radix-ui/react-separator";
 import { useSession } from "next-auth/react";
 import React from "react";
 import { prisma } from "../../server/db/client";
-import SignInComponent from "../../components/layout/sign-in";
+import SignInComponent from "../../components/sign-in";
 import { trpc } from "../../utils/trpc";
 import { PoolFollowButton } from "../../components/follow-pool";
 import { LoadingSpinner } from "../../components/loading";
+import {
+  PoolData,
+  PoolMessageCard,
+} from "../../components/highlight-pool-card";
 
 const PoolView = (props: {
   pool: HighlightPool & {
@@ -23,8 +26,8 @@ const PoolView = (props: {
 
   if (!pool) {
     return (
-      <PoolMessageCard>
-        <p className="font-semibold text-slate-900">
+      <PoolMessageCard isCenter={true}>
+        <p className="font-semibold text-slate-900 dark:text-white">
           The reel you are looking for is unavailible
         </p>
       </PoolMessageCard>
@@ -34,7 +37,9 @@ const PoolView = (props: {
 
   return (
     <div className="m-4 flex flex-col items-center justify-center">
-      <PoolData pool={pool} />
+      <PoolMessageCard isCenter={true}>
+        <PoolData pool={pool} />
+      </PoolMessageCard>
       <div className="mt-4">
         <HighlightFeed
           userId={session?.user?.id ?? null}
@@ -63,10 +68,10 @@ const PrivatePool: React.FC<{
 
   if (!session || !session.user) {
     return (
-      <PoolMessageCard>
+      <PoolMessageCard isCenter={true}>
         <div className="flex flex-col">
           <PoolData pool={pool} />
-          <p className="mt-5 font-semibold text-slate-900">
+          <p className="mt-5 font-semibold text-slate-900 dark:text-white">
             This <span className="font-semibold text-indigo-500">Reel</span> is
             private. Sign in to follow.
           </p>
@@ -80,22 +85,13 @@ const PrivatePool: React.FC<{
 
   if (!follows || !follows.follows) {
     return (
-      <PoolMessageCard>
+      <PoolMessageCard isCenter={true}>
         <div className="flex flex-col">
           <PoolData pool={pool} />
-          <p className="mt-5 font-semibold text-slate-900">
+          <p className="mt-5 text-center font-semibold text-slate-900 dark:text-white">
             This <span className="font-semibold text-indigo-500">Reel</span> is
-            private. You can request.
+            private. You can request to follow it.
           </p>
-          <div className="mt-2 flex items-center justify-center">
-            <PoolFollowButton
-              pool={pool}
-              followData={{
-                following: false,
-                pending: follows?.requested ?? false,
-              }}
-            />
-          </div>
         </div>
       </PoolMessageCard>
     );
@@ -125,57 +121,6 @@ const HighlightFeed: React.FC<{
   if (isLoading) return <LoadingSpinner loadingType={"Loading Highlights"} />;
 
   return <></>;
-};
-
-const PoolMessageCard: React.FC<React.PropsWithChildren> = ({ children }) => {
-  return (
-    <div className="mt-8 flex h-full items-center justify-center">
-      <div className="m-4 flex w-fit items-center justify-center place-self-center rounded-lg p-4 shadow-lg">
-        {children}
-      </div>
-    </div>
-  );
-};
-
-const PoolData: React.FC<{
-  pool: HighlightPool & {
-    _count: {
-      highlights: number;
-      followers: number;
-    };
-  };
-}> = ({ pool }) => {
-  return (
-    <div className="justify-left">
-      <p className="text-2xl font-semibold text-slate-900">{pool.name}</p>
-      <Separator.Root
-        orientation="horizontal"
-        decorative
-        className="my-1 h-px bg-slate-900"
-      />
-      <div className="flex flex-row justify-between">
-        <p className="text-xs font-semibold text-slate-900">
-          Highlights: {pool._count.highlights}
-        </p>
-        <Separator.Root
-          orientation="vertical"
-          decorative
-          className="mx-1 w-px bg-slate-900"
-        />
-        <p className="text-xs font-semibold text-slate-900">
-          Followers: {pool._count.followers}
-        </p>
-        <Separator.Root
-          orientation="vertical"
-          decorative
-          className="mx-1 w-px bg-slate-900"
-        />
-        <p className="text-xs font-semibold text-slate-900">
-          Created: {pool.createdAt.toLocaleDateString()}
-        </p>
-      </div>
-    </div>
-  );
 };
 
 export const getStaticProps: GetStaticProps = async ({ params }) => {

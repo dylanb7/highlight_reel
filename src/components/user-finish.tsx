@@ -71,13 +71,13 @@ export const UserFinish: React.FC = () => {
   }
 
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-4 p-4">
+    <div className="flex flex-col items-center justify-center gap-4 px-4 pt-12">
       <div className="flex w-full max-w-sm flex-col gap-0">
-        <p className="block p-4 text-center text-2xl font-bold text-slate-900">
+        <p className="block p-4 text-center text-2xl font-bold text-slate-900 dark:text-white">
           Finish your profile to start interacting with{" "}
           <span className="text-indigo-500">Reels</span>
         </p>
-        <span className="h-1 w-full rounded-lg bg-slate-900" />
+        <span className="h-1 w-full rounded-lg bg-slate-900 dark:bg-white" />
       </div>
       <div className="w-full max-w-md">
         <Formik
@@ -89,18 +89,18 @@ export const UserFinish: React.FC = () => {
           {(props) => (
             <Form
               onSubmit={props.handleSubmit}
-              className="mb-4 rounded-lg bg-white px-8 pt-6 pb-8 shadow-lg"
+              className="mb-4 rounded-lg bg-white px-8 pt-6 pb-8 shadow-lg dark:bg-slate-900"
             >
-              <label className="block p-2 text-center text-2xl font-bold text-slate-900">
+              <label className="block p-2 text-center text-2xl font-bold text-slate-900 dark:text-white">
                 Profile Info
               </label>
               {error && (
-                <p className="p-2 text-center font-bold text-red-600">
+                <p className="p-2 text-center font-bold text-red-500">
                   {error}
                 </p>
               )}
               {success && (
-                <p className="p-2 text-center font-bold text-slate-900">
+                <p className="p-2 text-center font-bold text-slate-900 dark:text-white">
                   Account Created!
                 </p>
               )}

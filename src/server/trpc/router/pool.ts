@@ -46,7 +46,7 @@ export const poolRouter = router({
   createPool: protectedProcedure
     .input(
       z.object({
-        poolName: z.string(),
+        poolName: z.string().min(2).max(25),
         public: z.boolean(),
         ownerId: z.string().cuid(),
       })
@@ -91,18 +91,42 @@ export const poolRouter = router({
       });
     }),
 
-  getAllPublicPools: publicProcedure.query(({ ctx }) => {
-    return ctx.prisma.highlightPool.findMany({
-      where: {
-        public: true,
-      },
-      orderBy: {
-        followers: {
-          _count: "asc",
+  getAllPoolsFollowRef: protectedProcedure
+    .input(
+      z.object({ id: z.string().cuid(), ref: z.string().cuid().nullish() })
+    )
+    .query(({ ctx, input }) => {
+      return ctx.prisma.user.findUnique({
+        where: { id: input.id },
+        select: {
+          pools: {
+            orderBy: {
+              followers: {
+                _count: "asc",
+              },
+            },
+            include: {
+              _count: {
+                select: {
+                  highlights: true,
+                  followers: true,
+                },
+              },
+              followers: {
+                where: {
+                  id: input.ref ?? undefined,
+                },
+              },
+              pending: {
+                where: {
+                  id: input.ref ?? undefined,
+                },
+              },
+            },
+          },
         },
-      },
-    });
-  }),
+      });
+    }),
 
   getPublicPoolsPaginated: publicProcedure
     .input(
@@ -165,44 +189,6 @@ export const poolRouter = router({
         pools,
         nextCursor,
       };
-    }),
-
-  getPoolHighlights: publicProcedure
-    .input(
-      z.object({
-        poolId: z.string().cuid(),
-        userId: z.string().cuid(),
-        public: z.boolean(),
-      })
-    )
-    .query(({ ctx, input }) => {
-      return ctx.prisma.highlightPool.findFirst({
-        where: {
-          id: input.poolId,
-          followers: !input.public
-            ? {
-                some: {
-                  id: input.userId,
-                },
-              }
-            : undefined,
-          public: input.public ? true : undefined,
-        },
-        select: {
-          highlights: {
-            orderBy: {
-              createdAt: "asc",
-            },
-            include: {
-              _count: {
-                select: {
-                  upvotes: true,
-                },
-              },
-            },
-          },
-        },
-      });
     }),
 
   getPoolHighlightsPaginated: publicProcedure
