@@ -30,7 +30,7 @@ const MobileNav = ({
 export const NavBar = () => {
   const [open, setOpen] = useState(false);
   return (
-    <nav className="z-50 flex h-16 w-screen items-center bg-white px-4 py-4 shadow-sm dark:bg-slate-900 dark:shadow-slate-500">
+    <nav className="sticky top-0 z-50 flex h-16 items-center bg-white p-4 shadow-sm dark:bg-slate-900 dark:shadow-slate-500">
       <MobileNav open={open} setOpen={setOpen} />
       <Link href={"/"}>
         <p className="hidden justify-start text-2xl font-bold text-slate-900 dark:text-white sm:flex">

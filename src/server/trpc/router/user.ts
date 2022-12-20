@@ -41,6 +41,64 @@ export const userRouter = router({
       });
     }),
 
+  profileQuery: protectedProcedure
+    .input(z.string().cuid())
+    .query(({ ctx, input }) => {
+      return ctx.prisma.user.findUnique({
+        where: {
+          id: input,
+        },
+        include: {
+          _count: {
+            select: {
+              following: true,
+              followedBy: true,
+            },
+          },
+          modPools: {
+            include: {
+              _count: {
+                select: {
+                  followers: true,
+                  highlights: true,
+                },
+              },
+              followers: {
+                where: {
+                  id: input,
+                },
+              },
+              pending: {
+                where: {
+                  id: input,
+                },
+              },
+            },
+          },
+          ownedPools: {
+            include: {
+              _count: {
+                select: {
+                  followers: true,
+                  highlights: true,
+                },
+              },
+              followers: {
+                where: {
+                  id: input,
+                },
+              },
+              pending: {
+                where: {
+                  id: input,
+                },
+              },
+            },
+          },
+        },
+      });
+    }),
+
   toggleHighlight: protectedProcedure
     .input(
       z.object({

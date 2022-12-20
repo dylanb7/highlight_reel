@@ -7,7 +7,7 @@ import { useState } from "react";
 import { trpc } from "../utils/trpc";
 import { PoolComponent } from "./highlight-pool-card";
 
-export const PoolScroll: React.FC<{
+export const FollowedPoolScroll: React.FC<{
   id: string;
   refId?: string | undefined;
 }> = ({ id, refId }) => {
@@ -18,14 +18,35 @@ export const PoolScroll: React.FC<{
     ref: refId,
   });
 
+  return <PoolScroll pools={all?.pools} title={"Followed Reels"} />;
+};
+
+export const PoolScroll: React.FC<{
+  pools:
+    | (HighlightPool & {
+        pending: User[];
+        followers: User[];
+        _count: {
+          highlights: number;
+          followers: number;
+        };
+      })[]
+    | null
+    | undefined;
+  title: string;
+}> = ({ pools, title }) => {
+  const [open, setOpen] = useState(true);
+
+  const hasPools = pools && pools.length > 0;
+
   return (
     <Collapsible.Root open={open} onOpenChange={setOpen}>
-      <div className="mt-5 flex flex-col">
+      <div className="flex flex-col">
         <Collapsible.Trigger asChild>
-          {all && all.pools.length > 0 && (
-            <div className="ml-8 flex w-fit cursor-pointer flex-row items-center gap-2">
+          {hasPools && (
+            <div className="ml-8 flex w-fit cursor-pointer flex-row items-center gap-1">
               <p className="text-2xl font-semibold text-slate-900 dark:text-white">
-                Reels
+                {title}
               </p>
               {open ? (
                 <ChevronDownIcon className="h-5 w-5 text-slate-900 dark:text-white" />
@@ -38,12 +59,14 @@ export const PoolScroll: React.FC<{
         <Collapsible.Content className="h-fit radix-state-open:animate-slide-down">
           <ScrollArea.Root className="overflow-hidden">
             <ScrollArea.Viewport className="h-full w-full">
-              <div className="py2 my-3 flex flex-row gap-4 px-6">
-                {all &&
-                  all.pools.map((pool) => (
-                    <PoolComponent key={pool.id} pool={pool} />
-                  ))}
-              </div>
+              {hasPools && (
+                <div className="my-3 flex flex-row gap-4 px-6 pb-1">
+                  {pools &&
+                    pools.map((pool) => (
+                      <PoolComponent key={pool.id} pool={pool} />
+                    ))}
+                </div>
+              )}
             </ScrollArea.Viewport>
             <ScrollArea.Scrollbar
               orientation="horizontal"

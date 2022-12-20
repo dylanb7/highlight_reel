@@ -113,7 +113,7 @@ const PoolSearchComponent: React.FC = () => {
           align="start"
           side="bottom"
           avoidCollisions={false}
-          className="w-64 max-w-xs rounded-lg border-4 border-gray-200 bg-white p-1 shadow-lg radix-side-bottom:animate-slide-down sm:w-screen sm:max-w-sm"
+          className="z-50 w-64 max-w-xs rounded-lg border-4 border-gray-200 bg-white p-1 shadow-lg radix-side-bottom:animate-slide-down sm:w-screen sm:max-w-sm"
           onInteractOutside={setClosed}
         >
           <PopoverPrimitive.Arrow className="fill-gray-200" />

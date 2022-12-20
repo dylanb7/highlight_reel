@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import { prisma } from "../../server/db/client";
 
 import {
-  PoolScroll,
+  FollowedPoolScroll,
   ProfileData,
   ProfileHighlights,
 } from "../../components/profile-components";
@@ -28,7 +28,7 @@ const ProfileView = (props: {
   return (
     <div className="flex flex-col justify-start pt-2">
       <ProfileData user={user} />
-      <PoolScroll id={user.id} refId={session?.user?.id} />
+      <FollowedPoolScroll id={user.id} refId={session?.user?.id} />
       <ProfileHighlights id={user.id} refId={session?.user?.id} />
     </div>
   );
