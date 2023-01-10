@@ -1,7 +1,9 @@
-import { HighlightPool, User } from "@prisma/client";
 import * as Separator from "@radix-ui/react-separator";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { PoolFetchInfo, PoolInfo } from "../types/pool-out";
 import { PoolFollowButton } from "./follow-pool";
+import { ProfileList } from "./profile-scroll-components";
 
 export const PoolMessageCard: React.FC<
   React.PropsWithChildren<{ isCenter: boolean }>
@@ -20,24 +22,18 @@ export const PoolMessageCard: React.FC<
 };
 
 export const PoolData: React.FC<{
-  pool: HighlightPool & {
-    _count: {
-      highlights: number;
-      followers: number;
-    };
-  };
-  followData?: {
-    pending: boolean;
-    following: boolean;
-  } | null;
-}> = ({ pool, followData }) => {
+  pool: PoolInfo;
+  fetch: PoolFetchInfo;
+}> = ({ pool, fetch }) => {
+  const { data: session } = useSession();
+
   return (
     <div className="justify-left">
       <div className="flex flex-row justify-between">
         <h1 className="truncate text-2xl font-semibold text-slate-900 dark:text-white">
           {pool.name}
         </h1>
-        <PoolFollowButton pool={pool} followData={followData} />
+        <PoolFollowButton pool={pool} info={fetch} />
       </div>
       <Separator.Root
         orientation="horizontal"
@@ -46,16 +42,24 @@ export const PoolData: React.FC<{
       />
       <div className="flex flex-row justify-between">
         <p className="truncate text-xs font-semibold text-slate-900 dark:text-white">
-          Highlights: {pool._count.highlights}
+          Highlights: {pool.highlights}
         </p>
         <Separator.Root
           orientation="vertical"
           decorative
           className="mx-1 w-px bg-slate-900 dark:bg-white"
         />
-        <p className="truncate text-xs font-semibold text-slate-900 dark:text-white">
-          Followers: {pool._count.followers}
-        </p>
+        <ProfileList
+          text={"Followers: " + pool.followers}
+          header={"Pool Followers"}
+          fetch={{
+            poolFetch: {
+              poolId: pool.id,
+              refId: session?.user?.id,
+            },
+          }}
+        />
+
         <Separator.Root
           orientation="vertical"
           decorative
@@ -70,17 +74,18 @@ export const PoolData: React.FC<{
 };
 
 export const FetcherPoolComponent: React.FC<{
-  pool: HighlightPool & {
-    _count: {
-      highlights: number;
-      followers: number;
-    };
-  };
+  pool: PoolInfo;
 }> = ({ pool }) => {
   return (
     <PoolMessageCard isCenter={false}>
       <div className="flex flex-col gap-4 sm:gap-8">
-        <PoolData pool={pool} />
+        <PoolData
+          pool={pool}
+          fetch={{
+            profile: undefined,
+            discover: undefined,
+          }}
+        />
         <Link href={"/reels/" + encodeURIComponent(pool.id)}>
           <div className="items-center justify-center rounded-lg bg-indigo-500 py-1 text-sm font-semibold text-white no-underline transition hover:bg-indigo-700">
             <p className="text-center">View Reel</p>
@@ -92,25 +97,13 @@ export const FetcherPoolComponent: React.FC<{
 };
 
 export const PoolComponent: React.FC<{
-  pool: HighlightPool & {
-    pending: User[];
-    followers: User[];
-    _count: {
-      highlights: number;
-      followers: number;
-    };
-  };
-}> = ({ pool }) => {
+  pool: PoolInfo;
+  fetch: PoolFetchInfo;
+}> = ({ pool, fetch }) => {
   return (
     <PoolMessageCard isCenter={false}>
       <div className="flex flex-col gap-4 sm:gap-8">
-        <PoolData
-          pool={pool}
-          followData={{
-            following: pool.followers.length > 0,
-            pending: pool.pending.length > 0,
-          }}
-        />
+        <PoolData pool={pool} fetch={fetch} />
         <Link href={"/reels/" + encodeURIComponent(pool.id)}>
           <div className="items-center justify-center rounded-lg bg-indigo-500 py-1 text-sm font-semibold text-white no-underline transition hover:bg-indigo-700">
             <p className="text-center">View Reel</p>

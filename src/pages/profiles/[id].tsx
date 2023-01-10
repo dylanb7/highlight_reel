@@ -5,11 +5,9 @@ import { GetStaticProps } from "next";
 import { useSession } from "next-auth/react";
 import { prisma } from "../../server/db/client";
 
-import {
-  FollowedPoolScroll,
-  ProfileData,
-  ProfileHighlights,
-} from "../../components/profile-components";
+import { ProfileComponent } from "../../components/profile-components";
+import { trpc } from "../../utils/trpc";
+import { LoadingSpinner } from "../../components/loading";
 
 const ProfileView = (props: {
   user: User & {
@@ -23,15 +21,16 @@ const ProfileView = (props: {
 
   const { data: session } = useSession();
 
-  if (!user) return <h3>Profile not found</h3>;
+  const { data: profile, isLoading } = trpc.user.profileQuery.useQuery({
+    user: user.id,
+    ref: session?.user?.id ?? "",
+  });
 
-  return (
-    <div className="flex flex-col justify-start pt-2">
-      <ProfileData user={user} />
-      <FollowedPoolScroll id={user.id} refId={session?.user?.id} />
-      <ProfileHighlights id={user.id} refId={session?.user?.id} />
-    </div>
-  );
+  if (isLoading) return <LoadingSpinner loadingType={null} />;
+
+  if (!user || !profile) return <h3>Profile not found</h3>;
+
+  return <ProfileComponent profile={profile} />;
 };
 
 export const getStaticProps: GetStaticProps = async ({ params }) => {
@@ -44,14 +43,6 @@ export const getStaticProps: GetStaticProps = async ({ params }) => {
   const user = await prisma.user.findUnique({
     where: {
       id: params.id,
-    },
-    include: {
-      _count: {
-        select: {
-          followedBy: true,
-          following: true,
-        },
-      },
     },
   });
 

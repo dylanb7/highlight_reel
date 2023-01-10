@@ -1,5 +1,8 @@
 import { Highlight } from "@prisma/client";
+import { validateConfig } from "next/dist/server/config-shared";
 import { z } from "zod";
+import { PoolInfo } from "../../../types/pool-out";
+import { UserInfo } from "../../../types/user-out";
 
 import { router, protectedProcedure, publicProcedure } from "../trpc";
 
@@ -91,43 +94,6 @@ export const poolRouter = router({
       });
     }),
 
-  getAllPoolsFollowRef: protectedProcedure
-    .input(
-      z.object({ id: z.string().cuid(), ref: z.string().cuid().nullish() })
-    )
-    .query(({ ctx, input }) => {
-      return ctx.prisma.user.findUnique({
-        where: { id: input.id },
-        select: {
-          pools: {
-            orderBy: {
-              followers: {
-                _count: "asc",
-              },
-            },
-            include: {
-              _count: {
-                select: {
-                  highlights: true,
-                  followers: true,
-                },
-              },
-              followers: {
-                where: {
-                  id: input.ref ?? undefined,
-                },
-              },
-              pending: {
-                where: {
-                  id: input.ref ?? undefined,
-                },
-              },
-            },
-          },
-        },
-      });
-    }),
-
   getPublicPoolsPaginated: publicProcedure
     .input(
       z.object({
@@ -185,8 +151,21 @@ export const poolRouter = router({
         const extra = pools.pop();
         nextCursor = extra!.id;
       }
+
+      const info: PoolInfo[] = pools.map<PoolInfo>((pool) => {
+        return {
+          ...pool,
+          followInfo: {
+            follows: pool.followers.length > 0,
+            requested: pool.pending.length > 0,
+          },
+
+          followers: pool._count.followers,
+          highlights: pool._count.highlights,
+        };
+      });
       return {
-        pools,
+        info,
         nextCursor,
       };
     }),
@@ -207,7 +186,7 @@ export const poolRouter = router({
         highlights: (Highlight & { _count: { upvotes: number } })[];
       } | null = await ctx.prisma.highlightPool.findFirst({
         where: {
-          id: input.poolId,
+          id: poolId,
           followers:
             !isPublic && userId
               ? {
@@ -250,6 +229,49 @@ export const poolRouter = router({
         lights,
         nextCursor,
       };
+    }),
+
+  getPoolFollowers: publicProcedure
+    .input(
+      z.object({
+        poolId: z.string().cuid(),
+        refId: z.string().cuid().nullish(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const res = await ctx.prisma.highlightPool.findUnique({
+        where: {
+          id: input.poolId,
+        },
+        select: {
+          followers: {
+            include: {
+              followedBy: input.refId
+                ? {
+                    where: {
+                      id: input.refId,
+                    },
+                  }
+                : undefined,
+              pending: input.refId
+                ? {
+                    where: {
+                      id: input.refId,
+                    },
+                  }
+                : undefined,
+            },
+          },
+        },
+      });
+      if (!res) return [];
+      return res.followers.map<UserInfo>((val) => {
+        return {
+          ...val,
+          follows: val.followedBy.length > 0,
+          requested: val.pending.length > 0,
+        };
+      });
     }),
 });
 

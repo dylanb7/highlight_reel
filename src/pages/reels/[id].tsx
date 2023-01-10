@@ -5,12 +5,12 @@ import React from "react";
 import { prisma } from "../../server/db/client";
 import SignInComponent from "../../components/sign-in";
 import { trpc } from "../../utils/trpc";
-import { PoolFollowButton } from "../../components/follow-pool";
 import { LoadingSpinner } from "../../components/loading";
 import {
   PoolData,
   PoolMessageCard,
 } from "../../components/highlight-pool-card";
+import { PoolInfo } from "../../types/pool-out";
 
 const PoolView = (props: {
   pool: HighlightPool & {
@@ -21,6 +21,12 @@ const PoolView = (props: {
   };
 }) => {
   const { pool } = props;
+
+  const poolInfo: PoolInfo = {
+    ...pool,
+    followers: pool._count.followers,
+    highlights: pool._count.highlights,
+  };
 
   const { data: session } = useSession();
 
@@ -33,12 +39,18 @@ const PoolView = (props: {
       </PoolMessageCard>
     );
   }
-  if (!pool.public) return <PrivatePool pool={pool} />;
+  if (!pool.public) return <PrivatePool pool={poolInfo} />;
 
   return (
     <div className="m-4 flex flex-col items-center justify-center">
       <PoolMessageCard isCenter={true}>
-        <PoolData pool={pool} />
+        <PoolData
+          pool={poolInfo}
+          fetch={{
+            profile: undefined,
+            discover: undefined,
+          }}
+        />
       </PoolMessageCard>
       <div className="mt-4">
         <HighlightFeed
@@ -52,12 +64,7 @@ const PoolView = (props: {
 };
 
 const PrivatePool: React.FC<{
-  pool: HighlightPool & {
-    _count: {
-      highlights: number;
-      followers: number;
-    };
-  };
+  pool: PoolInfo;
 }> = ({ pool }) => {
   const { data: session } = useSession();
 
@@ -70,7 +77,13 @@ const PrivatePool: React.FC<{
     return (
       <PoolMessageCard isCenter={true}>
         <div className="flex flex-col">
-          <PoolData pool={pool} />
+          <PoolData
+            pool={pool}
+            fetch={{
+              profile: undefined,
+              discover: undefined,
+            }}
+          />
           <p className="mt-5 font-semibold text-slate-900 dark:text-white">
             This <span className="font-semibold text-indigo-500">Reel</span> is
             private. Sign in to follow.
@@ -87,7 +100,13 @@ const PrivatePool: React.FC<{
     return (
       <PoolMessageCard isCenter={true}>
         <div className="flex flex-col">
-          <PoolData pool={pool} />
+          <PoolData
+            pool={pool}
+            fetch={{
+              profile: undefined,
+              discover: undefined,
+            }}
+          />
           <p className="mt-5 text-center font-semibold text-slate-900 dark:text-white">
             This <span className="font-semibold text-indigo-500">Reel</span> is
             private. You can request to follow it.
@@ -133,14 +152,6 @@ export const getStaticProps: GetStaticProps = async ({ params }) => {
   const pool = await prisma.highlightPool.findUnique({
     where: {
       id: params.id,
-    },
-    include: {
-      _count: {
-        select: {
-          highlights: true,
-          followers: true,
-        },
-      },
     },
   });
 

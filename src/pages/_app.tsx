@@ -15,7 +15,9 @@ const MyApp: AppType<{ session: Session | null }> = ({
     <SessionProvider session={session}>
       <div className="h-screen w-screen bg-white dark:bg-slate-800">
         <NavBar />
-        <Component {...pageProps} />
+        <div className="relative top-16">
+          <Component {...pageProps} />
+        </div>
       </div>
     </SessionProvider>
   );

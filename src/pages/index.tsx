@@ -9,87 +9,74 @@ import React, { useState } from "react";
 import { getServerAuthSession } from "../server/common/get-server-auth-session";
 import * as Tab from "@radix-ui/react-tabs";
 import {
-  FollowedPoolScroll,
   PoolScroll,
+  ProfileComponent,
   ProfileData,
   ProfileHighlights,
 } from "../components/profile-components";
 import * as ScrollArea from "@radix-ui/react-scroll-area";
+import { PoolInfo } from "../types/pool-out";
 
 const UnauthedContent = () => {
-  const loadAmount = 5;
-
-  const { data, hasNextPage, fetchNextPage, isLoading } =
-    trpc.pool.getPublicPoolsPaginated.useInfiniteQuery(
-      {
-        amount: loadAmount,
-      },
-      { getNextPageParam: (lastPage) => lastPage.nextCursor }
-    );
-
-  if (isLoading) return <LoadingSpinner loadingType={"Loading Reels"} />;
-
-  const pools = data?.pages.flatMap((page) => page.pools) ?? [];
-
   return (
-    <>
-      <div className="flex flex-col items-center justify-center gap-12 px-4 py-16">
-        <p className="text-3xl font-bold text-slate-900">
-          {pools.length == 0 ? "No Reels" : "Public Reels"}
-        </p>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-8 lg:grid-cols-3">
-          {pools.map((value) => (
-            <PoolComponent key={value.id} pool={value} />
-          ))}
-        </div>
-        {hasNextPage && (
-          <button
-            className="mb-5 rounded-full bg-indigo-500 px-10 py-3 font-semibold text-white no-underline transition hover:bg-indigo-700 disabled:opacity-75"
-            onClick={() => fetchNextPage()}
-            disabled={isLoading || data === null}
-          >
-            Load More
-          </button>
-        )}
-      </div>
-    </>
+    <div className="pt-6">
+      <PoolsFeed discover={false} />
+    </div>
   );
 };
 
-const DiscoverFeed: React.FC = () => {
+const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
   const { data: session } = useSession();
+
+  const amount = 5;
 
   const { data, hasNextPage, fetchNextPage, isLoading } =
     trpc.pool.getPublicPoolsPaginated.useInfiniteQuery(
       {
-        amount: 5,
+        amount: amount,
         userId: session?.user?.id,
-        dicover: true,
+        dicover: discover,
       },
       { getNextPageParam: (lastPage) => lastPage.nextCursor }
     );
 
-  const pools = data?.pages.flatMap((page) => page.pools) ?? [];
+  const pools = data?.pages.flatMap((page) => page.info) ?? [];
 
   return (
-    <ScrollArea.Root className="overflow-hidden">
-      <p className="mb-4 text-center text-2xl font-semibold text-slate-900 dark:text-white">
-        Discover Reels
-      </p>
+    <ScrollArea.Root className="h-full w-full overflow-hidden">
       <ScrollArea.Viewport className="h-full w-full bg-white dark:bg-slate-800">
-        <div className="grid auto-cols-auto items-center justify-center gap-4 md:gap-8">
-          {isLoading && <LoadingSpinner loadingType={"Loading discover"} />}
-          {data &&
-            pools.map((reel) => <PoolComponent key={reel.id} pool={reel} />)}
-          {data && pools.length == 0 && (
-            <p className="text font-semibold text-slate-900">
-              No New Reels to Discover
-            </p>
-          )}
+        <div className="flex flex-col items-center justify-center">
+          <p className="mb-2 pt-4 text-center text-2xl font-semibold text-slate-900 dark:text-white">
+            {discover ? "Discover Reels" : "Public Reels"}
+          </p>
+          <div className="grid max-w-6xl grid-cols-1 items-center justify-center gap-4 py-4 sm:grid-cols-2 md:gap-8 lg:grid-cols-3">
+            {isLoading && <LoadingSpinner loadingType={"Loading discover"} />}
+            {data &&
+              pools.map((reel) => (
+                <PoolComponent
+                  key={reel.id}
+                  pool={reel}
+                  fetch={{
+                    profile: undefined,
+                    discover: {
+                      userId: session?.user?.id ?? undefined,
+                      amount: amount,
+                      cursor: data.pages[data.pages.length - 1]?.nextCursor,
+                      discover: discover,
+                    },
+                  }}
+                />
+              ))}
+            {data && pools.length == 0 && (
+              <p className="text font-semibold text-slate-900">
+                No New Reels to Discover
+              </p>
+            )}
+          </div>
           {hasNextPage && (
-            <div className="flex items-center justify-center">
+            <div className="mt-4 flex items-center justify-center">
               <button
-                className="w-fit rounded-lg bg-indigo-500 px-3 py-2 font-semibold text-white no-underline transition hover:bg-indigo-700 disabled:opacity-75"
+                className="mb-4 w-fit rounded-lg bg-indigo-500 px-3 py-2 font-semibold text-white no-underline transition hover:bg-indigo-700 disabled:opacity-75"
                 onClick={() => fetchNextPage()}
                 disabled={isLoading || data === null}
               >
@@ -97,7 +84,6 @@ const DiscoverFeed: React.FC = () => {
               </button>
             </div>
           )}
-          <div className="pb-64" />
         </div>
       </ScrollArea.Viewport>
       <ScrollArea.Scrollbar
@@ -114,9 +100,12 @@ const DiscoverFeed: React.FC = () => {
 const AuthedContent = () => {
   const { data: session } = useSession();
 
-  const { data: profile, isLoading } = trpc.user.profileQuery.useQuery(
-    session!.user!.id
-  );
+  const id = session!.user!.id;
+
+  const { data: profile, isLoading } = trpc.user.profileQuery.useQuery({
+    user: id,
+    ref: id,
+  });
 
   if (isLoading) return <LoadingSpinner loadingType={""} />;
 
@@ -130,26 +119,18 @@ const AuthedContent = () => {
 
   return (
     <Tab.Root className="flex flex-col" defaultValue="discover">
-      <div className="inline-block">
-        <Tab.Content value="discover" className="pt-10">
-          <DiscoverFeed />
+      <div className="mb-16">
+        <Tab.Content value="discover">
+          <PoolsFeed discover={true} />
         </Tab.Content>
-        <Tab.Content
-          value="profile"
-          className="flex flex-col justify-start pt-10"
-        >
-          <ProfileData user={profile} />
-          <div className="pb-4" />
-          <FollowedPoolScroll id={profile.id} refId={session?.user?.id} />
-          <PoolScroll pools={profile.ownedPools} title={"Owned Reels"} />
-          <PoolScroll pools={profile.modPools} title={"Mod Reels"} />
-          <ProfileHighlights id={profile.id} refId={session?.user?.id} />
+        <Tab.Content value="profile">
+          <ProfileComponent profile={profile} />
         </Tab.Content>
       </div>
 
-      <footer className="fixed inset-x-0 bottom-0 z-50 bg-gray-200 pb-3 dark:bg-slate-700">
-        <div className="mx-5 mt-3 sm:w-fit">
-          <Tab.List className="flex flex-row justify-around gap-8 rounded-lg bg-white p-3 shadow-lg dark:bg-slate-900 sm:justify-end">
+      <footer className="fixed inset-x-0 bottom-0 z-50 h-16 bg-gray-200 pb-3 dark:bg-slate-700">
+        <div className="mx-5 mt-3">
+          <Tab.List className="flex flex-row justify-around gap-8 rounded-lg bg-white p-2 shadow-lg dark:bg-slate-900">
             <Tab.Trigger
               value="discover"
               className="text-xl font-semibold radix-state-active:text-indigo-500 radix-state-inactive:text-slate-900 hover:radix-state-inactive:text-indigo-700 dark:radix-state-inactive:text-white dark:hover:radix-state-inactive:text-indigo-300"

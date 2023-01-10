@@ -1,6 +1,10 @@
+import { HighlightPool, User } from "@prisma/client";
+import { UserInfo } from "../../../types/user-out";
+
 import { z } from "zod";
 
 import { router, protectedProcedure } from "../trpc";
+import { PoolFromQuery, PoolInfo } from "../../../types/pool-out";
 
 export const userRouter = router({
   fromId: protectedProcedure
@@ -42,11 +46,18 @@ export const userRouter = router({
     }),
 
   profileQuery: protectedProcedure
-    .input(z.string().cuid())
-    .query(({ ctx, input }) => {
-      return ctx.prisma.user.findUnique({
+    .input(
+      z.object({
+        user: z.string().cuid(),
+        ref: z.string().cuid(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const { user, ref } = input;
+      const owns = user === ref;
+      const ret = await ctx.prisma.user.findUnique({
         where: {
-          id: input,
+          id: input.user,
         },
         include: {
           _count: {
@@ -55,7 +66,21 @@ export const userRouter = router({
               followedBy: true,
             },
           },
-          modPools: {
+          followedBy: !owns
+            ? {
+                where: {
+                  id: ref,
+                },
+              }
+            : undefined,
+          pending: !owns
+            ? {
+                where: {
+                  id: ref,
+                },
+              }
+            : undefined,
+          pools: {
             include: {
               _count: {
                 select: {
@@ -65,38 +90,82 @@ export const userRouter = router({
               },
               followers: {
                 where: {
-                  id: input,
+                  id: ref,
                 },
               },
               pending: {
                 where: {
-                  id: input,
+                  id: ref,
                 },
               },
             },
           },
-          ownedPools: {
-            include: {
-              _count: {
-                select: {
-                  followers: true,
-                  highlights: true,
+          modPools: owns
+            ? {
+                include: {
+                  _count: {
+                    select: {
+                      followers: true,
+                      highlights: true,
+                    },
+                  },
+                  followers: {
+                    where: {
+                      id: ref,
+                    },
+                  },
+                  pending: {
+                    where: {
+                      id: ref,
+                    },
+                  },
                 },
-              },
-              followers: {
-                where: {
-                  id: input,
+              }
+            : undefined,
+          ownedPools: owns
+            ? {
+                include: {
+                  _count: {
+                    select: {
+                      followers: true,
+                      highlights: true,
+                    },
+                  },
+                  followers: {
+                    where: {
+                      id: ref,
+                    },
+                  },
+                  pending: {
+                    where: {
+                      id: ref,
+                    },
+                  },
                 },
-              },
-              pending: {
-                where: {
-                  id: input,
-                },
-              },
-            },
-          },
+              }
+            : undefined,
         },
       });
+
+      if (!ret) return undefined;
+      return <
+        UserInfo & {
+          following: number;
+          followedBy: number;
+          pools: PoolInfo[];
+          modPools: PoolInfo[];
+          ownedPools: PoolInfo[];
+        }
+      >{
+        ...ret,
+        following: ret._count.following,
+        followedBy: ret._count.followedBy,
+        follows: ret.followedBy.length > 0,
+        requested: ret.pending.length > 0,
+        pools: ret.pools.map<PoolInfo>(PoolFromQuery),
+        modPools: ret.modPools.map<PoolInfo>(PoolFromQuery),
+        ownedPools: ret.ownedPools.map<PoolInfo>(PoolFromQuery),
+      };
     }),
 
   toggleHighlight: protectedProcedure
@@ -209,95 +278,121 @@ export const userRouter = router({
       });
     }),
 
-  removePoolRequest: protectedProcedure
-    .input(
-      z.object({
-        poolId: z.string().cuid(),
-        userId: z.string().cuid(),
-      })
-    )
-    .mutation(({ ctx, input }) => {
-      return ctx.prisma.user.update({
-        where: { id: input.userId },
-        data: {
-          poolRequests: {
-            disconnect: {
-              id: input.poolId,
-            },
-          },
-        },
-      });
-    }),
-
   removePool: protectedProcedure
     .input(
       z.object({
         poolId: z.string().cuid(),
         userId: z.string().cuid(),
+        requested: z.boolean(),
       })
     )
     .mutation(({ ctx, input }) => {
       return ctx.prisma.user.update({
         where: { id: input.userId },
         data: {
-          pools: {
-            disconnect: {
-              id: input.poolId,
-            },
-          },
-        },
-      });
-    }),
-
-  getOwnedPools: protectedProcedure
-    .input(z.string().cuid())
-    .query(({ ctx, input }) => {
-      return ctx.prisma.user.findUnique({
-        where: {
-          id: input,
-        },
-        select: {
-          ownedPools: true,
-        },
-      });
-    }),
-
-  getModPools: protectedProcedure
-    .input(z.string().cuid())
-    .query(({ ctx, input }) => {
-      return ctx.prisma.user.findUnique({
-        where: {
-          id: input,
-        },
-        select: {
-          modPools: true,
+          pools:
+            input.requested === false
+              ? {
+                  disconnect: {
+                    id: input.poolId,
+                  },
+                }
+              : undefined,
+          poolRequests: input.requested
+            ? {
+                disconnect: {
+                  id: input.poolId,
+                },
+              }
+            : undefined,
         },
       });
     }),
 
   getFollowers: protectedProcedure
-    .input(z.string().cuid())
-    .query(({ ctx, input }) => {
-      return ctx.prisma.user.findUnique({
+    .input(
+      z.object({
+        userId: z.string().cuid(),
+        refId: z.string().cuid().nullish(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const res = await ctx.prisma.user.findUnique({
         where: {
-          id: input,
+          id: input.userId,
         },
         select: {
-          followedBy: true,
+          followedBy: {
+            include: {
+              followedBy: input.refId
+                ? {
+                    where: {
+                      id: input.refId,
+                    },
+                  }
+                : undefined,
+              pending: input.refId
+                ? {
+                    where: {
+                      id: input.refId,
+                    },
+                  }
+                : undefined,
+            },
+          },
         },
+      });
+      if (!res) return [];
+
+      return res.followedBy.map<UserInfo>((val) => {
+        return {
+          ...val,
+          follows: val.followedBy.length > 0,
+          requested: val.pending.length > 0,
+        };
       });
     }),
 
   getFollowing: protectedProcedure
-    .input(z.string().cuid())
-    .query(({ ctx, input }) => {
-      return ctx.prisma.user.findUnique({
+    .input(
+      z.object({
+        userId: z.string().cuid(),
+        refId: z.string().cuid().nullish(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const res = await ctx.prisma.user.findUnique({
         where: {
-          id: input,
+          id: input.userId,
         },
         select: {
-          following: true,
+          following: {
+            include: {
+              followedBy: input.refId
+                ? {
+                    where: {
+                      id: input.refId,
+                    },
+                  }
+                : undefined,
+              pending: input.refId
+                ? {
+                    where: {
+                      id: input.refId,
+                    },
+                  }
+                : undefined,
+            },
+          },
         },
+      });
+      if (!res) return [];
+      return res.following.map<UserInfo>((val) => {
+        return {
+          ...val,
+          follows: val.followedBy.length > 0,
+          requested: val.pending.length > 0,
+        };
       });
     }),
 
@@ -353,17 +448,28 @@ export const userRouter = router({
       z.object({
         userId: z.string().cuid(),
         followId: z.string().cuid(),
+        requested: z.boolean(),
       })
     )
     .mutation(({ ctx, input }) => {
       return ctx.prisma.user.update({
         where: { id: input.userId },
         data: {
-          following: {
-            disconnect: {
-              id: input.followId,
-            },
-          },
+          following:
+            input.requested === false
+              ? {
+                  disconnect: {
+                    id: input.followId,
+                  },
+                }
+              : undefined,
+          sentFollows: input.requested
+            ? {
+                disconnect: {
+                  id: input.followId,
+                },
+              }
+            : undefined,
         },
       });
     }),
