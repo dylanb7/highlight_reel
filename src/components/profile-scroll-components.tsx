@@ -53,7 +53,12 @@ const UserRows: React.FC<{
   return (
     <div className="flex h-full w-full flex-col gap-2">
       {users.map((user) => (
-        <ProfileRow profile={user} info={info} dismiss={dismiss} />
+        <ProfileRow
+          key={user.id}
+          profile={user}
+          info={info}
+          dismiss={dismiss}
+        />
       ))}
     </div>
   );

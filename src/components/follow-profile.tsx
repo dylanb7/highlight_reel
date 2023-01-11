@@ -132,7 +132,7 @@ const ProfileFollowingFollow: React.FC<{
     if (prev) {
       const changed = prev.findIndex((obj) => obj.id === profile.id);
       if (changed >= 0) {
-        let newVals = prev;
+        const newVals = prev;
         newVals[changed] = {
           ...profile,
           follows: unfollow || variables?.public === false ? false : true,
@@ -219,7 +219,7 @@ const ProfileFollowersFollow: React.FC<{
     if (prev) {
       const changed = prev.findIndex((obj) => obj.id === profile.id);
       if (changed >= 0) {
-        let newVals = prev;
+        const newVals = prev;
         newVals[changed] = {
           ...profile,
           follows: unfollow || variables?.public === false ? false : true,
@@ -306,7 +306,7 @@ const PoolProfileFollow: React.FC<{
     if (prev) {
       const changed = prev.findIndex((obj) => obj.id === profile.id);
       if (changed >= 0) {
-        let newVals = prev;
+        const newVals = prev;
         newVals[changed] = {
           ...profile,
           follows: unfollow || variables?.public === false ? false : true,

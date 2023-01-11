@@ -3,10 +3,9 @@ import * as Popover from "@radix-ui/react-popover";
 import { useState } from "react";
 import SignInComponent from "./sign-in";
 import { trpc } from "../utils/trpc";
-import { HighlightPool, User } from "@prisma/client";
+import { HighlightPool } from "@prisma/client";
 import { LoadingSpinner } from "./loading";
 import { PoolFetchInfo, PoolInfo } from "../types/pool-out";
-import { PHASE_EXPORT } from "next/dist/shared/lib/constants";
 
 const ButtonStyle = (
   follows: boolean,
@@ -47,7 +46,7 @@ const ProfilePoolButton: React.FC<{
     const prev = util.user.profileQuery.getData(queryKey);
     const kind = fetch.profile!.kind;
     if (prev) {
-      let poolData =
+      const poolData =
         kind === "mod"
           ? prev.modPools
           : kind === "owned"
@@ -140,7 +139,7 @@ const DiscoverPoolButton: React.FC<{
     await util.pool.getPublicPoolsPaginated.cancel(queryKey);
     const prev = util.pool.getPublicPoolsPaginated.getInfiniteData(queryKey);
     if (prev) {
-      var pools = prev.pages.flatMap((page) => page.info);
+      const pools = prev.pages.flatMap((page) => page.info);
       const index = pools.findIndex((obj) => obj.id === pool.id);
       if (index >= 0) {
         pools[index] = {
