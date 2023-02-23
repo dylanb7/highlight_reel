@@ -6,6 +6,7 @@ import { trpc } from "../utils/trpc";
 
 import "../styles/globals.css";
 import NavBar from "../components/layout/navbar";
+import PageWrap from "../components/layout/page-wrap";
 
 const MyApp: AppType<{ session: Session | null }> = ({
   Component,
@@ -13,12 +14,9 @@ const MyApp: AppType<{ session: Session | null }> = ({
 }) => {
   return (
     <SessionProvider session={session}>
-      <div className="h-screen w-screen bg-white dark:bg-slate-800">
-        <NavBar />
-        <div className="relative top-16">
-          <Component {...pageProps} />
-        </div>
-      </div>
+      <PageWrap>
+        <Component {...pageProps} />
+      </PageWrap>
     </SessionProvider>
   );
 };

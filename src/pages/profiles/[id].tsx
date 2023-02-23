@@ -9,14 +9,7 @@ import { ProfileComponent } from "../../components/profile-components";
 import { trpc } from "../../utils/trpc";
 import { LoadingSpinner } from "../../components/loading";
 
-const ProfileView = (props: {
-  user: User & {
-    _count: {
-      followedBy: number;
-      following: number;
-    };
-  };
-}) => {
+const ProfileView = (props: { user: User }) => {
   const { user } = props;
 
   const { data: session } = useSession();
@@ -27,6 +20,13 @@ const ProfileView = (props: {
   });
 
   if (isLoading) return <LoadingSpinner loadingType={null} />;
+
+  if (!session || !session.user)
+    return (
+      <div className="items-center justify-center text-center text-slate-900 dark:text-white">
+        Must be signed in to view profile
+      </div>
+    );
 
   if (!user || !profile) return <h3>Profile not found</h3>;
 

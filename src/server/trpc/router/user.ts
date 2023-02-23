@@ -4,7 +4,7 @@ import { UserInfo } from "../../../types/user-out";
 import { z } from "zod";
 
 import { router, protectedProcedure } from "../trpc";
-import { PoolFromQuery, PoolInfo } from "../../../types/pool-out";
+import { poolFromQuery, PoolInfo } from "../../../types/pool-out";
 
 export const userRouter = router({
   fromId: protectedProcedure
@@ -162,16 +162,16 @@ export const userRouter = router({
         followedBy: ret._count.followedBy,
         follows: ret.followedBy.length > 0,
         requested: ret.pending.length > 0,
-        pools: ret.pools.map<PoolInfo>(PoolFromQuery),
-        modPools: ret.modPools.map<PoolInfo>(PoolFromQuery),
-        ownedPools: ret.ownedPools.map<PoolInfo>(PoolFromQuery),
+        pools: ret.pools.map(poolFromQuery),
+        modPools: ret.modPools?.map(poolFromQuery) ?? [],
+        ownedPools: ret.ownedPools?.map(poolFromQuery) ?? [],
       };
     }),
 
   toggleHighlight: protectedProcedure
     .input(
       z.object({
-        highlightId: z.string().cuid(),
+        highlightId: z.string(),
         userId: z.string().cuid(),
         add: z.boolean(),
       })
@@ -209,7 +209,7 @@ export const userRouter = router({
         select: {
           highlights: {
             orderBy: {
-              createdAt: "asc",
+              timestampUTC: "asc",
             },
           },
         },
@@ -220,7 +220,7 @@ export const userRouter = router({
     .input(
       z.object({
         userId: z.string().cuid(),
-        highlightId: z.string().cuid(),
+        highlightId: z.string(),
         liked: z.boolean().nullish(),
       })
     )

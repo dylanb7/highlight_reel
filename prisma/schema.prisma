@@ -23,13 +23,19 @@ model HighlightPool {
 }
 
 model Highlight {
-  id        String        @id @default(cuid())
-  link      String
-  createdAt DateTime      @default(now())
-  poolId    String
-  pool      HighlightPool @relation(fields: [poolId], references: [id], onDelete: Cascade)
-  upvotes   User[]        @relation("Upvotes")
-  addedBy   User[]        @relation("AddedHighlights")
+  id                     String         @id @default(cuid())
+  s3bucket               String?        @db.VarChar(255)
+  s3region               String?        @db.VarChar(255)
+  raspberryPiId          String?        @db.VarChar(255)
+  wristbandId            String?        @db.VarChar(255)
+  timestampUTC           BigInt?
+  duration               Float?         @db.Float
+  aspectRatioNumerator   Int?           @db.SmallInt
+  aspectRatioDenominator Int?           @db.SmallInt
+  poolId                 String?
+  pool                   HighlightPool? @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  upvotes                User[]         @relation("Upvotes")
+  addedBy                User[]         @relation("AddedHighlights")
 }
 
 // Necessary for Next auth

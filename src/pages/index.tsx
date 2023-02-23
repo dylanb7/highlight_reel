@@ -16,6 +16,8 @@ import {
 } from "../components/profile-components";
 import * as ScrollArea from "@radix-ui/react-scroll-area";
 import { PoolInfo } from "../types/pool-out";
+import PageWrap from "../components/layout/page-wrap";
+import { useRouter } from "next/router";
 
 const UnauthedContent = () => {
   return (
@@ -118,7 +120,7 @@ const AuthedContent = () => {
   }
 
   return (
-    <Tab.Root className="flex flex-col" defaultValue="discover">
+    <Tab.Root className="flex flex-col" defaultValue={"discover"}>
       <div className="mb-16">
         <Tab.Content value="discover">
           <PoolsFeed discover={true} />

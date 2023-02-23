@@ -87,7 +87,7 @@ const PoolSearchComponent: React.FC = () => {
       <PopoverPrimitive.Root open={searching}>
         <PopoverPrimitive.Anchor className="w-full">
           <input
-            className="w-full appearance-none rounded-lg border-2 border-gray-200 bg-gray-200 p-2 leading-tight text-gray-700 focus:border-indigo-500 focus:bg-white focus:outline-none"
+            className="w-full appearance-none rounded-lg border-2 border-gray-200 bg-white p-2 leading-tight text-gray-700 focus:border-indigo-500 focus:outline-none"
             placeholder="Reel Name..."
             value={search}
             disabled={searching}

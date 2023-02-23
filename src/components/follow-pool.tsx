@@ -308,11 +308,10 @@ export const PoolFollowButton: React.FC<{
 
   return (
     <Popover.Root open={open}>
-      <Popover.Trigger>
-        {ButtonStyle(false, false, false, () => {
-          setOpen((value) => !value);
-        })}
-      </Popover.Trigger>
+      {ButtonStyle(false, false, false, () => {
+        setOpen((value) => !value);
+      })}
+
       <Popover.Content
         onInteractOutside={() => {
           setOpen(false);

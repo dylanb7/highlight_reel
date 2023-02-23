@@ -29,15 +29,17 @@ export type PoolFetchInfo = {
   discover?: DiscoverPoolFetch;
 };
 
-export const PoolFromQuery = (
-  data: HighlightPool & {
-    _count: {
-      highlights: number;
-      followers: number;
-    };
-    pending: User[];
-    followers: User[];
-  }
+type PoolQueryData = HighlightPool & {
+  _count: {
+    highlights: number;
+    followers: number;
+  };
+  pending: User[];
+  followers: User[];
+};
+
+export const poolFromQuery: (data: PoolQueryData) => PoolInfo = (
+  data: PoolQueryData
 ) => {
   return <PoolInfo>{
     ...data,

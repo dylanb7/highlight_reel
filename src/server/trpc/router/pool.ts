@@ -1,6 +1,10 @@
-import { Highlight } from "@prisma/client";
+import { Highlight, User } from "@prisma/client";
 import { validateConfig } from "next/dist/server/config-shared";
 import { z } from "zod";
+import {
+  fetchS3Highlight,
+  HighlightFetchInfo,
+} from "../../../types/highlight-out";
 import { PoolInfo } from "../../../types/pool-out";
 import { UserInfo } from "../../../types/user-out";
 
@@ -183,7 +187,13 @@ export const poolRouter = router({
     .query(async ({ ctx, input }) => {
       const { poolId, userId, isPublic, cursor, amount } = input;
       const ret: {
-        highlights: (Highlight & { _count: { upvotes: number } })[];
+        highlights: (Highlight & {
+          _count: {
+            upvotes: number;
+          };
+          upvotes: User[];
+          addedBy: User[];
+        })[];
       } | null = await ctx.prisma.highlightPool.findFirst({
         where: {
           id: poolId,
@@ -200,7 +210,7 @@ export const poolRouter = router({
         select: {
           highlights: {
             orderBy: {
-              createdAt: "asc",
+              timestampUTC: "asc",
             },
             include: {
               _count: {
@@ -208,7 +218,22 @@ export const poolRouter = router({
                   upvotes: true,
                 },
               },
+              upvotes: userId
+                ? {
+                    where: {
+                      id: userId,
+                    },
+                  }
+                : undefined,
+              addedBy: userId
+                ? {
+                    where: {
+                      id: userId,
+                    },
+                  }
+                : undefined,
             },
+
             take: amount + 1,
             cursor: cursor
               ? {
@@ -219,14 +244,33 @@ export const poolRouter = router({
         },
       });
 
-      const lights = ret?.highlights ?? [];
+      const rawHighlights = ret?.highlights ?? [];
+
       let nextCursor: typeof cursor | undefined = undefined;
-      if (lights.length > amount && lights.length > 0) {
-        const extra = lights.pop();
+
+      if (rawHighlights.length > amount && rawHighlights.length > 0) {
+        const extra = rawHighlights.pop();
         nextCursor = extra!.id;
       }
+
+      let highlights: HighlightFetchInfo[] = [];
+
+      for (const rawHighlight of rawHighlights) {
+        const url = await fetchS3Highlight({
+          s3bucket: rawHighlight.s3bucket ?? "",
+          id: rawHighlight.id,
+        });
+        highlights.push({
+          ...rawHighlight,
+          upvotes: rawHighlight._count.upvotes,
+          bookmarked: rawHighlight.addedBy.length > 0,
+          upvoted: rawHighlight.upvotes.length > 0,
+          url: url,
+        });
+      }
+
       return {
-        lights,
+        lights: highlights,
         nextCursor,
       };
     }),

@@ -11,6 +11,7 @@ import {
   PoolMessageCard,
 } from "../../components/highlight-pool-card";
 import { PoolInfo } from "../../types/pool-out";
+import { HighlightView } from "../../components/highlight";
 
 const PoolView = (props: {
   pool: HighlightPool & {
@@ -116,7 +117,26 @@ const PrivatePool: React.FC<{
     );
   }
 
-  return <></>;
+  return (
+    <div className="m-4 flex flex-col items-center justify-center">
+      <PoolMessageCard isCenter={true}>
+        <PoolData
+          pool={pool}
+          fetch={{
+            profile: undefined,
+            discover: undefined,
+          }}
+        />
+      </PoolMessageCard>
+      <div className="mt-4">
+        <HighlightFeed
+          userId={session?.user?.id ?? null}
+          poolId={pool.id}
+          isPublic={pool.public}
+        />
+      </div>
+    </div>
+  );
 };
 
 const HighlightFeed: React.FC<{
@@ -124,7 +144,7 @@ const HighlightFeed: React.FC<{
   poolId: string;
   isPublic: boolean;
 }> = ({ userId, poolId, isPublic }) => {
-  const loadAmount = 4;
+  const loadAmount = 2;
 
   const { data, hasNextPage, fetchNextPage, isLoading } =
     trpc.pool.getPoolHighlightsPaginated.useInfiniteQuery(
@@ -139,7 +159,16 @@ const HighlightFeed: React.FC<{
 
   if (isLoading) return <LoadingSpinner loadingType={"Loading Highlights"} />;
 
-  return <></>;
+  const highlights = data?.pages.flatMap((page) => page.lights) ?? [];
+
+  return (
+    <>
+      <p></p>
+      {highlights?.map((highlight) => (
+        <HighlightView highlight={highlight} key={highlight.id} />
+      ))}
+    </>
+  );
 };
 
 export const getStaticProps: GetStaticProps = async ({ params }) => {
@@ -152,6 +181,14 @@ export const getStaticProps: GetStaticProps = async ({ params }) => {
   const pool = await prisma.highlightPool.findUnique({
     where: {
       id: params.id,
+    },
+    include: {
+      _count: {
+        select: {
+          highlights: true,
+          followers: true,
+        },
+      },
     },
   });
 
