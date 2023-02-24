@@ -31,12 +31,28 @@ export const HighlightView: React.FC<{
         utils.pool.getPoolHighlightsPaginated.invalidate();
       },
     });
+
+  const aspect =
+    highlight.aspectRatioNumerator && highlight.aspectRatioDenominator
+      ? highlight.aspectRatioNumerator.toString() +
+        "/" +
+        highlight.aspectRatioDenominator.toString()
+      : "16/9";
   return (
-    <div className="m-4 overflow-clip rounded-lg bg-white shadow-lg dark:bg-slate-900">
-      <ReactPlayer url={highlight.url} loop={true} playing={true} />
+    <div className="m-4 max-w-lg overflow-clip rounded-lg bg-white shadow-lg dark:bg-slate-900">
+      <div className={"aspect-[" + aspect + "] w-full"}>
+        <ReactPlayer
+          url={highlight.url}
+          loop={true}
+          playing={true}
+          width={"100%"}
+          height={"100%"}
+        />
+      </div>
       <div className="flex h-12 w-full flex-row items-center justify-between px-4">
         <p className="text--slate-900 w-24 truncate text-sm dark:text-white">
-          {highlight.upvotes + " upvotes"}
+          {highlight.upvotes +
+            (highlight.upvotes == 1 ? " upvote" : " upvotes")}
         </p>
         <div className="flex h-full w-full flex-row items-center justify-end gap-4">
           <IconButton

@@ -308,9 +308,19 @@ export const PoolFollowButton: React.FC<{
 
   return (
     <Popover.Root open={open}>
-      {ButtonStyle(false, false, false, () => {
-        setOpen((value) => !value);
-      })}
+      <Popover.Trigger
+        onClick={() => {
+          setOpen(!open);
+        }}
+      >
+        <div
+          className={
+            "rounded-lg bg-indigo-500 px-3 py-1 text-sm font-semibold text-white no-underline opacity-80 transition hover:bg-indigo-700"
+          }
+        >
+          Follow
+        </div>
+      </Popover.Trigger>
 
       <Popover.Content
         onInteractOutside={() => {
