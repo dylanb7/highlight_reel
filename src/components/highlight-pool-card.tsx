@@ -1,7 +1,7 @@
 import * as Separator from "@radix-ui/react-separator";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { PoolFetchInfo, PoolInfo } from "../types/pool-out";
+import type { PoolFetchInfo, PoolInfo } from "../types/pool-out";
 import { PoolFollowButton } from "./follow-pool";
 import { ProfileList } from "./profile-scroll-components";
 

@@ -7,7 +7,7 @@ import * as ScrollArea from "@radix-ui/react-scroll-area";
 import { trpc } from "../../utils/trpc";
 import { MagnifyingGlassIcon, Cross2Icon } from "@radix-ui/react-icons";
 import { LoadingSpinner } from "../loading";
-import { HighlightPool, User } from "@prisma/client";
+import type { HighlightPool, User } from "@prisma/client";
 import Link from "next/link";
 
 const FetchResults: React.FC<{ searchTerm: string; setClosed: () => void }> = ({

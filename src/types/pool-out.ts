@@ -1,4 +1,4 @@
-import { HighlightPool, User } from "@prisma/client";
+import type { HighlightPool, User } from "@prisma/client";
 
 export type FollowInfo = {
   follows: boolean;

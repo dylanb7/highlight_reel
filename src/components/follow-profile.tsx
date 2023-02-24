@@ -1,7 +1,7 @@
 import * as Popover from "@radix-ui/react-popover";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
-import {
+import type {
   FetchInfo,
   PoolUserFetch,
   UserFetch,
@@ -62,7 +62,7 @@ const ProfileFollow: React.FC<{ profile: UserInfo; userId: string }> = ({
 
   const { mutate: follow, isLoading: following } =
     trpc.user.followUser.useMutation({
-      async onMutate(variables) {
+      async onMutate() {
         return await mutate(false);
       },
       onError(_, __, context) {
@@ -75,7 +75,7 @@ const ProfileFollow: React.FC<{ profile: UserInfo; userId: string }> = ({
 
   const { mutate: unfollow, isLoading: unfollowing } =
     trpc.user.unfollowUser.useMutation({
-      async onMutate(_) {
+      async onMutate() {
         return await mutate(true);
       },
       onError(_, __, context) {
@@ -161,7 +161,7 @@ const ProfileFollowingFollow: React.FC<{
 
   const { mutate: unfollow, isLoading: unfollowing } =
     trpc.user.unfollowUser.useMutation({
-      async onMutate(_) {
+      async onMutate() {
         return await mutate(true);
       },
       onError(_, __, context) {
@@ -248,7 +248,7 @@ const ProfileFollowersFollow: React.FC<{
 
   const { mutate: unfollow, isLoading: unfollowing } =
     trpc.user.unfollowUser.useMutation({
-      async onMutate(_) {
+      async onMutate() {
         return await mutate(true);
       },
       onError(_, __, context) {

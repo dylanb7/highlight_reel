@@ -1,5 +1,3 @@
-import clsx from "clsx";
-
 export const LoadingSpinner: React.FC<{
   loadingType: string | null;
 }> = ({ loadingType }) => {

@@ -1,19 +1,9 @@
 import React, { useState } from "react";
-import type { Dispatch, SetStateAction } from "react";
 import Link from "next/link";
-import { useRouter } from "next/router";
 import SignInComponent from "../sign-in";
 import PoolSearchComponent from "./pool-search-bar";
 
-const MobileNav = ({
-  open,
-  setOpen,
-}: {
-  open: boolean;
-  setOpen: Dispatch<SetStateAction<boolean>>;
-}) => {
-  const router = useRouter();
-
+const MobileNav = ({ open }: { open: boolean }) => {
   return (
     <div
       className={`absolute top-0 left-0 z-10 h-screen w-screen transform bg-gray-200 dark:bg-slate-900 ${
@@ -31,7 +21,7 @@ export const NavBar = () => {
   const [open, setOpen] = useState(false);
   return (
     <nav className="fixed inset-x-0 top-0 z-50 flex h-16 items-center bg-white p-4 shadow-sm dark:bg-slate-900 dark:shadow-slate-500">
-      <MobileNav open={open} setOpen={setOpen} />
+      <MobileNav open={open} />
       <Link href={"/"}>
         <p className="hidden justify-start text-2xl font-bold text-slate-900 dark:text-white sm:flex">
           Highlight<span className="text-indigo-500">Reel</span>
@@ -76,6 +66,7 @@ export const NavBar = () => {
   );
 };
 
+/*
 const NavLink = ({
   to,
   children,
@@ -100,3 +91,4 @@ const NavLink = ({
 };
 
 export default NavBar;
+*/

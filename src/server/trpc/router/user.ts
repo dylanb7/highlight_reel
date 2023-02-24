@@ -1,10 +1,9 @@
-import { HighlightPool, User } from "@prisma/client";
-import { UserInfo } from "../../../types/user-out";
+import type { UserInfo } from "../../../types/user-out";
 
 import { z } from "zod";
 
 import { router, protectedProcedure } from "../trpc";
-import { poolFromQuery, PoolInfo } from "../../../types/pool-out";
+import { poolFromQuery, type PoolInfo } from "../../../types/pool-out";
 
 export const userRouter = router({
   fromId: protectedProcedure

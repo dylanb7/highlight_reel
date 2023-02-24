@@ -1,11 +1,10 @@
-import { User } from "@prisma/client";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import * as ScrollArea from "@radix-ui/react-scroll-area";
 import * as Separator from "@radix-ui/react-separator";
 import Link from "next/link";
 import { useState } from "react";
-import {
+import type {
   FetchInfo,
   PoolUserFetch,
   UserFetch,

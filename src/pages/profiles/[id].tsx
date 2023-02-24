@@ -1,6 +1,6 @@
-import { HighlightPool, User } from "@prisma/client";
+import type { User } from "@prisma/client";
 
-import { GetStaticProps } from "next";
+import type { GetStaticProps } from "next";
 
 import { useSession } from "next-auth/react";
 import { prisma } from "../../server/db/client";

@@ -1,5 +1,5 @@
 import ReactPlayer from "react-player";
-import { HighlightFetchInfo } from "../types/highlight-out";
+import type { HighlightFetchInfo } from "../types/highlight-out";
 import {
   BookmarkIcon,
   BookmarkFilledIcon,
@@ -75,7 +75,12 @@ export const HighlightView: React.FC<{
               <BookmarkIcon className={twIcons} />
             )}
           </IconButton>
-          <IconButton onClick={() => {}}>
+          <IconButton
+            onClick={() => {
+              //TODO: add share functionality
+              return;
+            }}
+          >
             <Share2Icon className={twIcons} />
           </IconButton>
         </div>

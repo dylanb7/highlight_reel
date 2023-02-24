@@ -1,5 +1,4 @@
-import NavBar from "./navbar";
-import { Html, Head, Main, NextScript } from "next/document";
+import { NavBar } from "./navbar";
 
 const PageWrap: React.FC<React.PropsWithChildren> = ({ children }) => {
   return (

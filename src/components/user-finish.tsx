@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useState } from "react";
-import { z, ZodError } from "zod";
+import { z, type ZodError } from "zod";
 import { trpc } from "../utils/trpc";
 import { useSession } from "next-auth/react";
 import { Field, Form, Formik } from "formik";
@@ -28,7 +28,7 @@ export const UserFinish: React.FC = () => {
 
   const { mutate: finishProfile, isLoading } =
     trpc.user.finishProfile.useMutation({
-      onError(error, variables, context) {
+      onError(error) {
         setError(error.message);
       },
       onSuccess() {
@@ -82,7 +82,7 @@ export const UserFinish: React.FC = () => {
       <div className="w-full max-w-md">
         <Formik
           initialValues={{ username: "", status: "Private" }}
-          onSubmit={(values: { username: string; status: string }, actions) => {
+          onSubmit={(values: { username: string; status: string }) => {
             submitAction(values);
           }}
         >

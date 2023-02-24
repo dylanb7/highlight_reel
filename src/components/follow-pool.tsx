@@ -3,9 +3,9 @@ import * as Popover from "@radix-ui/react-popover";
 import { useState } from "react";
 import SignInComponent from "./sign-in";
 import { trpc } from "../utils/trpc";
-import { HighlightPool } from "@prisma/client";
+import type { HighlightPool } from "@prisma/client";
 import { LoadingSpinner } from "./loading";
-import { PoolFetchInfo, PoolInfo } from "../types/pool-out";
+import type { PoolFetchInfo, PoolInfo } from "../types/pool-out";
 
 const ButtonStyle = (
   follows: boolean,
@@ -37,14 +37,14 @@ const ProfilePoolButton: React.FC<{
   const util = trpc.useContext();
 
   const queryKey = {
-    user: fetch.profile!.userId,
-    ref: fetch.profile!.refId!,
+    user: fetch.profile?.userId ?? "",
+    ref: fetch.profile?.refId ?? "",
   };
 
   const mut = async (follow: boolean) => {
     await util.user.profileQuery.cancel(queryKey);
     const prev = util.user.profileQuery.getData(queryKey);
-    const kind = fetch.profile!.kind;
+    const kind = fetch.profile?.kind;
     if (prev) {
       const poolData =
         kind === "mod"
@@ -87,7 +87,7 @@ const ProfilePoolButton: React.FC<{
 
   const { mutate: remove, isLoading: removing } =
     trpc.user.removePool.useMutation({
-      async onMutate(_) {
+      async onMutate() {
         return await mut(false);
       },
       onError(_, __, context) {
@@ -99,19 +99,19 @@ const ProfilePoolButton: React.FC<{
     });
 
   return ButtonStyle(
-    pool.followInfo!.follows,
-    pool.followInfo!.requested,
+    pool.followInfo?.follows ?? false,
+    pool.followInfo?.requested ?? false,
     adding || removing,
     () => {
-      if (pool.followInfo!.follows) {
+      if (pool.followInfo && pool.followInfo!.follows) {
         remove({
-          userId: session!.user!.id,
+          userId: session?.user?.id ?? "",
           poolId: pool.id,
-          requested: pool.followInfo!.requested,
+          requested: pool.followInfo.requested,
         });
       } else {
         add({
-          userId: session!.user!.id,
+          userId: session?.user?.id ?? "",
           poolId: pool.id,
           isPublic: pool.public,
         });
@@ -129,10 +129,10 @@ const DiscoverPoolButton: React.FC<{
   const util = trpc.useContext();
 
   const queryKey = {
-    cursor: fetch.discover!.cursor,
-    userId: fetch.discover!.userId,
-    discover: fetch.discover!.discover,
-    amount: fetch.discover!.amount,
+    cursor: fetch.discover?.cursor,
+    userId: fetch.discover?.userId,
+    discover: fetch.discover?.discover,
+    amount: fetch.discover?.amount ?? 0,
   };
 
   const mut = async () => {
@@ -171,7 +171,7 @@ const DiscoverPoolButton: React.FC<{
 
   const { mutate: remove, isLoading: removing } =
     trpc.user.removePool.useMutation({
-      async onMutate(_) {
+      async onMutate() {
         return await mut();
       },
       onError(_, __, context) {
@@ -186,19 +186,19 @@ const DiscoverPoolButton: React.FC<{
     });
 
   return ButtonStyle(
-    pool.followInfo!.follows,
-    pool.followInfo!.requested,
+    pool.followInfo?.follows ?? false,
+    pool.followInfo?.requested ?? false,
     adding || removing,
     () => {
-      if (pool.followInfo!.follows) {
+      if (pool.followInfo && pool.followInfo!.follows) {
         remove({
-          userId: session!.user!.id,
+          userId: session?.user?.id ?? "",
           poolId: pool.id,
-          requested: pool.followInfo!.requested,
+          requested: pool.followInfo.requested,
         });
       } else {
         add({
-          userId: session!.user!.id,
+          userId: session?.user?.id ?? "",
           poolId: pool.id,
           isPublic: pool.public,
         });
@@ -234,7 +234,7 @@ const AuthedNoData: React.FC<{ pool: HighlightPool }> = ({ pool }) => {
 
     const prev = util.pool.userState.getData(state);
 
-    util.pool.userState.setData(state, (_) => newData);
+    util.pool.userState.setData(state, () => newData);
 
     return { prev };
   };
@@ -273,13 +273,13 @@ const AuthedNoData: React.FC<{ pool: HighlightPool }> = ({ pool }) => {
     () => {
       if (userState.follows) {
         remove({
-          userId: session!.user!.id,
+          userId: session?.user?.id ?? "",
           poolId: pool.id,
           requested: userState.requested,
         });
       } else {
         add({
-          userId: session!.user!.id,
+          userId: session?.user?.id ?? "",
           poolId: pool.id,
           isPublic: pool.public,
         });

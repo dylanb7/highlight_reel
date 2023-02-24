@@ -1,12 +1,12 @@
-import { Highlight, User } from "@prisma/client";
-import { validateConfig } from "next/dist/server/config-shared";
+import type { Highlight, User } from "@prisma/client";
+
 import { z } from "zod";
 import {
   fetchS3Highlight,
-  HighlightFetchInfo,
+  type HighlightFetchInfo,
 } from "../../../types/highlight-out";
-import { PoolInfo } from "../../../types/pool-out";
-import { UserInfo } from "../../../types/user-out";
+import type { PoolInfo } from "../../../types/pool-out";
+import type { UserInfo } from "../../../types/user-out";
 
 import { router, protectedProcedure, publicProcedure } from "../trpc";
 
@@ -153,7 +153,7 @@ export const poolRouter = router({
       let nextCursor: typeof cursor | undefined = undefined;
       if (pools.length > input.amount && pools.length > 0) {
         const extra = pools.pop();
-        nextCursor = extra!.id;
+        nextCursor = extra?.id;
       }
 
       const info: PoolInfo[] = pools.map<PoolInfo>((pool) => {
@@ -250,10 +250,10 @@ export const poolRouter = router({
 
       if (rawHighlights.length > amount && rawHighlights.length > 0) {
         const extra = rawHighlights.pop();
-        nextCursor = extra!.id;
+        nextCursor = extra?.id;
       }
 
-      let highlights: HighlightFetchInfo[] = [];
+      const highlights: HighlightFetchInfo[] = [];
 
       for (const rawHighlight of rawHighlights) {
         const url = await fetchS3Highlight({

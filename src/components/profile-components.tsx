@@ -1,17 +1,16 @@
 import * as Separator from "@radix-ui/react-separator";
 import * as ScrollArea from "@radix-ui/react-scroll-area";
 import { ChevronDownIcon, ChevronUpIcon } from "@radix-ui/react-icons";
-import { HighlightPool, User } from "@prisma/client";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { useState } from "react";
 import { PoolComponent } from "./highlight-pool-card";
 import { ProfileList } from "./profile-scroll-components";
-import { RouterOutputs, trpc } from "../utils/trpc";
+import type { RouterOutputs } from "../utils/trpc";
 import { useSession } from "next-auth/react";
 import { ProfileFollowButton } from "./follow-profile";
-import { PoolInfo, ProfilePoolFetch } from "../types/pool-out";
-import { LoadingSpinner } from "./loading";
-import { UserInfo } from "../types/user-out";
+import type { PoolInfo, ProfilePoolFetch } from "../types/pool-out";
+
+import type { UserInfo } from "../types/user-out";
 
 export const PoolScroll: React.FC<{
   pools: PoolInfo[];

@@ -1,23 +1,14 @@
-import { GetServerSidePropsContext, type NextPage } from "next";
-
+import type { GetServerSidePropsContext, NextPage } from "next";
 import { trpc } from "../utils/trpc";
 import { LoadingSpinner } from "../components/loading";
 import { PoolComponent } from "../components/highlight-pool-card";
 import { UserFinish } from "../components/user-finish";
 import { useSession } from "next-auth/react";
-import React, { useState } from "react";
+import React from "react";
 import { getServerAuthSession } from "../server/common/get-server-auth-session";
 import * as Tab from "@radix-ui/react-tabs";
-import {
-  PoolScroll,
-  ProfileComponent,
-  ProfileData,
-  ProfileHighlights,
-} from "../components/profile-components";
+import { ProfileComponent } from "../components/profile-components";
 import * as ScrollArea from "@radix-ui/react-scroll-area";
-import { PoolInfo } from "../types/pool-out";
-import PageWrap from "../components/layout/page-wrap";
-import { useRouter } from "next/router";
 
 const UnauthedContent = () => {
   return (
@@ -102,7 +93,7 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
 const AuthedContent = () => {
   const { data: session } = useSession();
 
-  const id = session!.user!.id;
+  const id = session?.user?.id ?? "";
 
   const { data: profile, isLoading } = trpc.user.profileQuery.useQuery({
     user: id,

@@ -1,5 +1,5 @@
-import { Highlight, HighlightPool } from "@prisma/client";
-import { GetStaticProps } from "next";
+import type { HighlightPool } from "@prisma/client";
+import type { GetStaticProps } from "next";
 import { useSession } from "next-auth/react";
 import React from "react";
 import { prisma } from "../../server/db/client";
@@ -10,7 +10,7 @@ import {
   PoolData,
   PoolMessageCard,
 } from "../../components/highlight-pool-card";
-import { PoolInfo } from "../../types/pool-out";
+import type { PoolInfo } from "../../types/pool-out";
 import { HighlightView } from "../../components/highlight";
 
 const PoolView = (props: {
