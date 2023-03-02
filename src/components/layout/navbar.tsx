@@ -6,7 +6,7 @@ import PoolSearchComponent from "./pool-search-bar";
 const MobileNav = ({ open }: { open: boolean }) => {
   return (
     <div
-      className={`absolute top-0 left-0 z-10 h-screen w-screen transform bg-gray-200 dark:bg-slate-900 ${
+      className={`absolute top-0 left-0 z-10 h-screen w-screen transform bg-gray-200 dark:bg-slate-800 ${
         open ? "-translate-x-0" : "-translate-x-full"
       } drop-shadow-md filter transition-transform duration-300 ease-in-out`}
     >
@@ -20,7 +20,7 @@ const MobileNav = ({ open }: { open: boolean }) => {
 export const NavBar = () => {
   const [open, setOpen] = useState(false);
   return (
-    <nav className="fixed inset-x-0 top-0 z-50 flex h-16 items-center bg-white p-4 shadow-sm dark:bg-slate-900 dark:shadow-slate-500">
+    <nav className="fixed inset-x-0 top-0 z-50 flex h-16 items-center border-b border-gray-300 bg-white p-4 shadow-sm dark:bg-slate-900">
       <MobileNav open={open} />
       <Link href={"/"}>
         <p className="hidden justify-start text-2xl font-bold text-slate-900 dark:text-white sm:flex">

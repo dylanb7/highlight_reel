@@ -19,8 +19,8 @@ const ButtonStyle = (
     className={
       "rounded-lg px-3 py-1 text-sm font-semibold no-underline transition " +
       (pending
-        ? "bg-gray-500 text-white hover:bg-gray-700"
-        : "bg-indigo-500 text-white hover:bg-indigo-700") +
+        ? "bg-gray-500 text-white hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700 "
+        : "bg-indigo-500 text-white hover:bg-indigo-600 hover:dark:bg-indigo-400") +
       "disabled:opacity-50"
     }
   >

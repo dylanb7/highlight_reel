@@ -25,8 +25,8 @@ const PoolView = (props: {
 
   const poolInfo: PoolInfo = {
     ...pool,
-    followers: pool._count.followers,
-    highlights: pool._count.highlights,
+    followerCount: pool._count.followers,
+    highlightCount: pool._count.highlights,
   };
 
   const { data: session } = useSession();
@@ -146,7 +146,7 @@ const HighlightFeed: React.FC<{
 }> = ({ userId, poolId, isPublic }) => {
   const loadAmount = 2;
 
-  const { data, hasNextPage, fetchNextPage, isLoading } =
+  const { data, isLoading } =
     trpc.pool.getPoolHighlightsPaginated.useInfiniteQuery(
       {
         amount: loadAmount,

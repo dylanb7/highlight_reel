@@ -149,7 +149,7 @@ export const ProfileList: React.FC<{
 
   return (
     <Dialog.Root onOpenChange={setOpen} open={open}>
-      <Dialog.Trigger className="cursor-pointer truncate text-xs font-semibold text-slate-900 dark:text-white">
+      <Dialog.Trigger className="cursor-pointer truncate text-xs font-semibold text-slate-500 hover:text-slate-900 dark:text-gray-400 hover:dark:text-white">
         {text}
       </Dialog.Trigger>
       <Dialog.Portal>

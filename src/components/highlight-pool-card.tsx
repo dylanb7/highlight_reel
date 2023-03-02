@@ -14,7 +14,7 @@ export const PoolMessageCard: React.FC<
         "flex items-center justify-center " + (isCenter ? "px-4 pt-10" : "")
       }
     >
-      <div className="flex h-fit w-fit items-center justify-center place-self-center rounded-lg bg-white p-4 shadow-md dark:bg-slate-900">
+      <div className="flex h-fit w-fit items-center justify-center place-self-center rounded-lg border border-gray-300 bg-white p-4 shadow-sm dark:border-gray-500 dark:bg-slate-900">
         {children}
       </div>
     </div>
@@ -38,19 +38,19 @@ export const PoolData: React.FC<{
       <Separator.Root
         orientation="horizontal"
         decorative
-        className="mt-1.5 mb-1 h-px bg-slate-900 dark:bg-white"
+        className="mt-1.5 mb-1 h-px bg-gray-300 dark:bg-gray-500"
       />
       <div className="flex flex-row justify-between">
-        <p className="truncate text-xs font-semibold text-slate-900 dark:text-white">
-          Highlights: {pool.highlights}
+        <p className="truncate text-xs font-semibold text-slate-500 dark:text-gray-400">
+          Highlights: {pool.highlightCount}
         </p>
         <Separator.Root
           orientation="vertical"
           decorative
-          className="mx-1 w-px bg-slate-900 dark:bg-white"
+          className="mx-1 w-px bg-gray-300 dark:bg-gray-500"
         />
         <ProfileList
-          text={"Followers: " + pool.followers}
+          text={"Followers: " + pool.followerCount}
           header={"Pool Followers"}
           fetch={{
             poolFetch: {
@@ -63,9 +63,9 @@ export const PoolData: React.FC<{
         <Separator.Root
           orientation="vertical"
           decorative
-          className="mx-1 w-px bg-slate-900 dark:bg-white"
+          className="mx-1 w-px bg-gray-300 dark:bg-gray-500"
         />
-        <p className="truncate text-xs font-semibold text-slate-900 dark:text-white">
+        <p className="truncate text-xs font-semibold text-slate-500 dark:text-gray-400">
           Created: {pool.createdAt.toLocaleDateString()}
         </p>
       </div>

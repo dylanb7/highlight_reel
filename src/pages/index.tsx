@@ -10,6 +10,9 @@ import * as Tab from "@radix-ui/react-tabs";
 import { ProfileComponent } from "../components/profile-components";
 import * as ScrollArea from "@radix-ui/react-scroll-area";
 
+import { PersonIcon, CameraIcon } from "@radix-ui/react-icons";
+import { useRouter } from "next/router";
+
 const UnauthedContent = () => {
   return (
     <div className="pt-6">
@@ -37,7 +40,7 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
 
   return (
     <ScrollArea.Root className="h-full w-full overflow-hidden">
-      <ScrollArea.Viewport className="h-full w-full bg-white dark:bg-slate-800">
+      <ScrollArea.Viewport className="h-full w-full">
         <div className="flex flex-col items-center justify-center">
           <p className="mb-2 pt-4 text-center text-2xl font-semibold text-slate-900 dark:text-white">
             {discover ? "Discover Reels" : "Public Reels"}
@@ -91,6 +94,26 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
 };
 
 const AuthedContent = () => {
+  const tabs = ["discover", "profile"];
+
+  const useTabsValue = (): [
+    TabsValue: number,
+    TabsOnChange: (newVal: number) => void
+  ] => {
+    const router = useRouter();
+
+    const QUERY_PARAM_TAB = "tab";
+
+    const currentTab = router.query[QUERY_PARAM_TAB] ?? 0;
+
+    return [
+      Number(currentTab),
+      (newValue: number) => {
+        router.push(`/?${QUERY_PARAM_TAB}=${newValue}`);
+      },
+    ];
+  };
+
   const { data: session } = useSession();
 
   const id = session?.user?.id ?? "";
@@ -99,6 +122,8 @@ const AuthedContent = () => {
     user: id,
     ref: id,
   });
+
+  const [value, onChange] = useTabsValue();
 
   if (isLoading) return <LoadingSpinner loadingType={""} />;
 
@@ -111,8 +136,14 @@ const AuthedContent = () => {
   }
 
   return (
-    <Tab.Root className="flex flex-col" defaultValue={"discover"}>
-      <div className="mb-16">
+    <Tab.Root
+      className="flex flex-col"
+      defaultValue={tabs[value]}
+      onValueChange={(value) => {
+        onChange(tabs.indexOf(value));
+      }}
+    >
+      <div className="mb-14">
         <Tab.Content value="discover">
           <PoolsFeed discover={true} />
         </Tab.Content>
@@ -121,19 +152,21 @@ const AuthedContent = () => {
         </Tab.Content>
       </div>
 
-      <footer className="fixed inset-x-0 bottom-0 z-50 h-16 bg-gray-200 pb-3 dark:bg-slate-700">
+      <footer className="border-grey-300 fixed inset-x-0 bottom-0 z-20 h-14 border-t bg-white pb-3 shadow-lg dark:border-white dark:bg-slate-900">
         <div className="mx-5 mt-3">
-          <Tab.List className="flex flex-row justify-around gap-8 rounded-lg bg-white p-2 shadow-lg dark:bg-slate-900">
+          <Tab.List className="flex flex-row items-center justify-around gap-8 ">
             <Tab.Trigger
               value="discover"
-              className="text-xl font-semibold radix-state-active:text-indigo-500 radix-state-inactive:text-slate-900 hover:radix-state-inactive:text-indigo-700 dark:radix-state-inactive:text-white dark:hover:radix-state-inactive:text-indigo-300"
+              className="flex flex-col items-center text-xs font-semibold radix-state-active:text-indigo-500 radix-state-inactive:text-slate-900 hover:radix-state-inactive:text-indigo-700 dark:radix-state-inactive:text-white dark:hover:radix-state-inactive:text-indigo-300"
             >
+              <CameraIcon className="h-6 w-6" />
               Discover
             </Tab.Trigger>
             <Tab.Trigger
               value="profile"
-              className="text-xl font-semibold radix-state-active:text-indigo-500 radix-state-inactive:text-slate-900 hover:radix-state-inactive:text-indigo-700 dark:radix-state-inactive:text-white dark:hover:radix-state-inactive:text-indigo-300"
+              className="flex flex-col items-center text-xs font-semibold radix-state-active:text-indigo-500 radix-state-inactive:text-slate-900 hover:radix-state-inactive:text-indigo-700 dark:radix-state-inactive:text-white dark:hover:radix-state-inactive:text-indigo-300"
             >
+              <PersonIcon className="h-6 w-6" />
               Profile
             </Tab.Trigger>
           </Tab.List>

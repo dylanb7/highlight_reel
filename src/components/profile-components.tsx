@@ -5,12 +5,11 @@ import * as Collapsible from "@radix-ui/react-collapsible";
 import { useState } from "react";
 import { PoolComponent } from "./highlight-pool-card";
 import { ProfileList } from "./profile-scroll-components";
-import type { RouterOutputs } from "../utils/trpc";
 import { useSession } from "next-auth/react";
 import { ProfileFollowButton } from "./follow-profile";
 import type { PoolInfo, ProfilePoolFetch } from "../types/pool-out";
 
-import type { UserInfo } from "../types/user-out";
+import type { ProfileInfo, UserInfo } from "../types/user-out";
 
 export const PoolScroll: React.FC<{
   pools: PoolInfo[];
@@ -100,7 +99,7 @@ export const ProfileData: React.FC<{
       <Separator.Root
         orientation="horizontal"
         decorative
-        className="my-1 h-px bg-slate-900 dark:bg-white"
+        className="my-1 h-px bg-gray-300 dark:bg-gray-500"
       />
       <div className="flex flex-row justify-start">
         <ProfileList
@@ -118,7 +117,7 @@ export const ProfileData: React.FC<{
         <Separator.Root
           orientation="vertical"
           decorative
-          className="mx-1 w-px bg-slate-900 dark:bg-white"
+          className="mx-1 w-px bg-gray-300 dark:bg-gray-500"
         />
         <ProfileList
           text={"Followers: " + user.followedBy}
@@ -150,17 +149,15 @@ export const ProfileHighlights: React.FC<{
 };
 
 export const ProfileComponent: React.FC<{
-  profile: RouterOutputs["user"]["profileQuery"];
+  profile: ProfileInfo;
 }> = ({ profile }) => {
   const { data: session } = useSession();
-
-  if (!profile) return <h3>Profile not found</h3>;
 
   const owner = profile.id === session?.user?.id;
 
   return (
     <div className="flex flex-col justify-start gap-1 pt-10">
-      <ProfileData user={profile} />
+      <ProfileData user={{ ...profile }} />
       <PoolScroll
         pools={profile.pools}
         title={"Followed Reels"}

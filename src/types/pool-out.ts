@@ -7,8 +7,8 @@ export type FollowInfo = {
 
 export type PoolInfo = HighlightPool & {
   followInfo?: FollowInfo;
-  followers: number;
-  highlights: number;
+  followerCount: number;
+  highlightCount: number;
 };
 
 export type ProfilePoolFetch = {
@@ -29,22 +29,20 @@ export type PoolFetchInfo = {
   discover?: DiscoverPoolFetch;
 };
 
-type PoolQueryData = HighlightPool & {
-  _count: {
-    highlights: number;
-    followers: number;
-  };
-  pending: User[];
-  followers: User[];
-};
-
-export const poolFromQuery: (data: PoolQueryData) => PoolInfo = (
-  data: PoolQueryData
-) => {
+export const poolFromQuery: (
+  data: HighlightPool & {
+    _count: {
+      highlights: number;
+      followers: number;
+    };
+    pending: User[];
+    followers: User[];
+  }
+) => PoolInfo = (data) => {
   return <PoolInfo>{
     ...data,
-    followers: data._count.followers,
-    highlights: data._count.highlights,
+    followerCount: data._count.followers,
+    highlightCount: data._count.highlights,
     followInfo: {
       follows: data.followers.length > 0,
       requested: data.pending.length > 0,

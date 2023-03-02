@@ -41,13 +41,7 @@ export const HighlightView: React.FC<{
   return (
     <div className="m-4 max-w-lg overflow-clip rounded-lg bg-white shadow-lg dark:bg-slate-900">
       <div className={"aspect-[" + aspect + "] w-full"}>
-        <ReactPlayer
-          url={highlight.url}
-          loop={true}
-          playing={true}
-          width={"100%"}
-          height={"100%"}
-        />
+        <Player url={highlight.url} />
       </div>
       <div className="flex h-12 w-full flex-row items-center justify-between px-4">
         <p className="text--slate-900 w-24 truncate text-sm dark:text-white">
@@ -102,5 +96,17 @@ export const HighlightView: React.FC<{
         </div>
       </div>
     </div>
+  );
+};
+
+const Player: React.FC<{ url: string }> = ({ url }) => {
+  return (
+    <ReactPlayer
+      url={url}
+      loop={true}
+      playing={true}
+      width={"100%"}
+      height={"100%"}
+    />
   );
 };

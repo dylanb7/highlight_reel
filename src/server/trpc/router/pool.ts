@@ -164,8 +164,8 @@ export const poolRouter = router({
             requested: pool.pending.length > 0,
           },
 
-          followers: pool._count.followers,
-          highlights: pool._count.highlights,
+          followerCount: pool._count.followers,
+          highlightCount: pool._count.highlights,
         };
       });
       return {

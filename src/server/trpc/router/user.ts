@@ -1,9 +1,9 @@
-import type { UserInfo } from "../../../types/user-out";
+import type { ProfileInfo, UserInfo } from "../../../types/user-out";
 
 import { z } from "zod";
 
 import { router, protectedProcedure } from "../trpc";
-import { poolFromQuery, type PoolInfo } from "../../../types/pool-out";
+import { poolFromQuery } from "../../../types/pool-out";
 
 export const userRouter = router({
   fromId: protectedProcedure
@@ -145,25 +145,16 @@ export const userRouter = router({
             : undefined,
         },
       });
-
       if (!ret) return undefined;
-      return <
-        UserInfo & {
-          following: number;
-          followedBy: number;
-          pools: PoolInfo[];
-          modPools: PoolInfo[];
-          ownedPools: PoolInfo[];
-        }
-      >{
+      return <ProfileInfo>{
         ...ret,
         following: ret._count.following,
         followedBy: ret._count.followedBy,
         follows: ret.followedBy.length > 0,
         requested: ret.pending.length > 0,
         pools: ret.pools.map(poolFromQuery),
-        modPools: ret.modPools?.map(poolFromQuery) ?? [],
-        ownedPools: ret.ownedPools?.map(poolFromQuery) ?? [],
+        modPools: ret.modPools ? ret.modPools.map(poolFromQuery) : [],
+        ownedPools: ret.ownedPools ? ret.ownedPools.map(poolFromQuery) : [],
       };
     }),
 
