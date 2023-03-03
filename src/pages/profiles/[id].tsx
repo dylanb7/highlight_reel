@@ -14,13 +14,6 @@ const ProfileView = (props: { user: User }) => {
 
   const { data: session } = useSession();
 
-  const { data: profile, isLoading } = trpc.user.profileQuery.useQuery({
-    user: user.id,
-    ref: session?.user?.id ?? "",
-  });
-
-  if (isLoading) return <LoadingSpinner loadingType={null} />;
-
   if (!session || !session.user)
     return (
       <div className="items-center justify-center text-center text-slate-900 dark:text-white">
@@ -28,7 +21,23 @@ const ProfileView = (props: { user: User }) => {
       </div>
     );
 
-  if (!user || !profile) return <h3>Profile not found</h3>;
+  return ProfileLayout(user.id, session.user.id);
+};
+
+const ProfileLayout = (id: string, refId: string) => {
+  const { data: profile, isLoading } = trpc.user.profileQuery.useQuery({
+    user: id,
+    ref: refId,
+  });
+
+  if (isLoading) return <LoadingSpinner loadingType={null} />;
+
+  if (!profile)
+    return (
+      <div className="flex items-center justify-center text-xl text-slate-900 dark:text-white">
+        Profile not found
+      </div>
+    );
 
   return <ProfileComponent profile={profile} />;
 };

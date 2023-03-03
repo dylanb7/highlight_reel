@@ -1,5 +1,5 @@
 import type { User } from "@prisma/client";
-import { PoolInfo } from "./pool-out";
+import type { PoolInfo } from "./pool-out";
 
 export type UserInfo = User & {
   follows: boolean;

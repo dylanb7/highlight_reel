@@ -3,6 +3,7 @@ import type { ProfileInfo, UserInfo } from "../../../types/user-out";
 import { z } from "zod";
 
 import { router, protectedProcedure } from "../trpc";
+import type { PoolInfo, PoolReturn } from "../../../types/pool-out";
 import { poolFromQuery } from "../../../types/pool-out";
 
 export const userRouter = router({
@@ -48,11 +49,12 @@ export const userRouter = router({
     .input(
       z.object({
         user: z.string().cuid(),
-        ref: z.string().cuid(),
+        ref: z.string().cuid().nullish(),
       })
     )
     .query(async ({ ctx, input }) => {
       const { user, ref } = input;
+      if (!ref) return undefined;
       const owns = user === ref;
       const ret = await ctx.prisma.user.findUnique({
         where: {
@@ -146,6 +148,24 @@ export const userRouter = router({
         },
       });
       if (!ret) return undefined;
+
+      const clean = (data: PoolReturn[]) => {
+        if (!data) return [];
+        return data.map<PoolInfo>((value) => {
+          return {
+            ...value,
+            highlightCount: value._count?.highlights ?? 0,
+            followerCount: value._count?.followers ?? 0,
+            followInfo: {
+              follows:
+                value.followers !== undefined && value.followers.length > 0,
+              requested:
+                value.pending !== undefined && value.pending.length > 0,
+            },
+          };
+        });
+      };
+
       return <ProfileInfo>{
         ...ret,
         following: ret._count.following,
@@ -153,8 +173,8 @@ export const userRouter = router({
         follows: ret.followedBy.length > 0,
         requested: ret.pending.length > 0,
         pools: ret.pools.map(poolFromQuery),
-        modPools: ret.modPools ? ret.modPools.map(poolFromQuery) : [],
-        ownedPools: ret.ownedPools ? ret.ownedPools.map(poolFromQuery) : [],
+        modPools: clean(ret.modPools),
+        ownedPools: clean(ret.ownedPools),
       };
     }),
 
