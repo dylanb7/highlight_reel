@@ -2,308 +2,45 @@ import { useSession } from "next-auth/react";
 import * as Popover from "@radix-ui/react-popover";
 import { useState } from "react";
 import SignInComponent from "./sign-in";
-import { trpc } from "../utils/trpc";
-import type { HighlightPool } from "@prisma/client";
-import { LoadingSpinner } from "./loading";
-import type { PoolFetchInfo, PoolInfo } from "../types/pool-out";
+import { usePoolButtonContext } from "./contexts/follow-pool-context";
 
-const ButtonStyle = (
-  follows: boolean,
-  pending: boolean,
-  disabled: boolean,
-  onClick: () => void
-) => (
-  <button
-    onClick={onClick}
-    disabled={disabled}
-    className={
-      "rounded-lg px-3 py-1 text-sm font-semibold no-underline transition " +
-      (pending
-        ? "bg-gray-500 text-white hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700 "
-        : "bg-indigo-500 text-white hover:bg-indigo-600 hover:dark:bg-indigo-400") +
-      "disabled:opacity-50"
-    }
-  >
-    {follows ? "Unfollow" : pending ? "Requested" : "Follow"}
-  </button>
-);
+const ButtonStyle: React.FC<{ poolId: string }> = ({ poolId }) => {
+  const { action, state } = usePoolButtonContext();
 
-const ProfilePoolButton: React.FC<{
-  pool: PoolInfo;
-  fetch: PoolFetchInfo;
-}> = ({ pool, fetch }) => {
-  const { data: session } = useSession();
+  const buttonState = state(poolId);
 
-  const util = trpc.useContext();
-
-  const queryKey = {
-    user: fetch.profile?.userId ?? "",
-    ref: fetch.profile?.refId ?? "",
-  };
-
-  const mut = async (follow: boolean) => {
-    await util.user.profileQuery.cancel(queryKey);
-    const prev = util.user.profileQuery.getData(queryKey);
-    const kind = fetch.profile?.kind;
-    if (prev) {
-      const poolData =
-        kind === "mod"
-          ? prev.modPools
-          : kind === "owned"
-          ? prev.ownedPools
-          : prev.pools;
-      const changed = poolData.findIndex((obj) => obj.id === pool.id);
-      if (changed >= 0) {
-        poolData[changed] = {
-          ...pool,
-          followInfo: {
-            follows: follow && pool.public ? true : false,
-            requested: follow && pool.public === false ? true : false,
-          },
-        };
-
-        util.user.profileQuery.setData(queryKey, {
-          ...prev,
-          pools: kind === "followed" ? poolData : prev.pools,
-          modPools: kind === "mod" ? poolData : prev.modPools,
-          ownedPools: kind === "owned" ? poolData : prev.ownedPools,
-        });
+  return (
+    <button
+      onClick={() => {
+        action(poolId);
+      }}
+      disabled={buttonState.disabled}
+      className={
+        "rounded-lg px-3 py-1 text-sm font-semibold no-underline transition " +
+        (buttonState.pending
+          ? "bg-gray-500 text-white hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700 "
+          : "bg-indigo-500 text-white hover:bg-indigo-600 hover:dark:bg-indigo-400") +
+        "disabled:opacity-50"
       }
-    }
-    return { prev };
-  };
-
-  const { mutate: add, isLoading: adding } = trpc.user.addPool.useMutation({
-    async onMutate() {
-      return await mut(true);
-    },
-    onError(_, __, context) {
-      util.user.profileQuery.setData(queryKey, context?.prev);
-    },
-    onSettled() {
-      util.user.profileQuery.invalidate(queryKey);
-    },
-  });
-
-  const { mutate: remove, isLoading: removing } =
-    trpc.user.removePool.useMutation({
-      async onMutate() {
-        return await mut(false);
-      },
-      onError(_, __, context) {
-        util.user.profileQuery.setData(queryKey, context?.prev);
-      },
-      onSettled() {
-        util.user.profileQuery.invalidate(queryKey);
-      },
-    });
-
-  return ButtonStyle(
-    pool.followInfo?.follows ?? false,
-    pool.followInfo?.requested ?? false,
-    adding || removing,
-    () => {
-      if (pool.followInfo && pool.followInfo!.follows) {
-        remove({
-          userId: session?.user?.id ?? "",
-          poolId: pool.id,
-          requested: pool.followInfo.requested,
-        });
-      } else {
-        add({
-          userId: session?.user?.id ?? "",
-          poolId: pool.id,
-          isPublic: pool.public,
-        });
-      }
-    }
-  );
-};
-
-const DiscoverPoolButton: React.FC<{
-  pool: PoolInfo;
-  fetch: PoolFetchInfo;
-}> = ({ pool, fetch }) => {
-  const { data: session } = useSession();
-
-  const util = trpc.useContext();
-
-  const queryKey = {
-    cursor: fetch.discover?.cursor,
-    userId: fetch.discover?.userId,
-    discover: fetch.discover?.discover,
-    amount: fetch.discover?.amount ?? 0,
-  };
-
-  const mut = async () => {
-    await util.pool.getPublicPoolsPaginated.cancel(queryKey);
-    const prev = util.pool.getPublicPoolsPaginated.getInfiniteData(queryKey);
-    if (prev) {
-      const pools = prev.pages.flatMap((page) => page.info);
-      const index = pools.findIndex((obj) => obj.id === pool.id);
-      if (index >= 0) {
-        pools[index] = {
-          ...pool,
-          followInfo: {
-            follows: true,
-            requested: true,
-          },
-        };
-      }
-    }
-    return { prev };
-  };
-
-  const { mutate: add, isLoading: adding } = trpc.user.addPool.useMutation({
-    async onMutate() {
-      return await mut();
-    },
-    onError(_, __, context) {
-      util.pool.getPublicPoolsPaginated.setInfiniteData(
-        queryKey,
-        context?.prev
-      );
-    },
-    onSettled() {
-      util.pool.getPublicPoolsPaginated.invalidate(queryKey);
-    },
-  });
-
-  const { mutate: remove, isLoading: removing } =
-    trpc.user.removePool.useMutation({
-      async onMutate() {
-        return await mut();
-      },
-      onError(_, __, context) {
-        util.pool.getPublicPoolsPaginated.setInfiniteData(
-          queryKey,
-          context?.prev
-        );
-      },
-      onSettled() {
-        util.pool.getPublicPoolsPaginated.invalidate(queryKey);
-      },
-    });
-
-  return ButtonStyle(
-    pool.followInfo?.follows ?? false,
-    pool.followInfo?.requested ?? false,
-    adding || removing,
-    () => {
-      if (pool.followInfo && pool.followInfo!.follows) {
-        remove({
-          userId: session?.user?.id ?? "",
-          poolId: pool.id,
-          requested: pool.followInfo.requested,
-        });
-      } else {
-        add({
-          userId: session?.user?.id ?? "",
-          poolId: pool.id,
-          isPublic: pool.public,
-        });
-      }
-    }
-  );
-};
-
-const AuthedNoData: React.FC<{ pool: HighlightPool }> = ({ pool }) => {
-  const { data: session } = useSession();
-
-  const { data: userState } = trpc.pool.userState.useQuery({
-    userId: session?.user?.id,
-    poolId: pool.id,
-  });
-
-  const util = trpc.useContext();
-
-  const settled = () => {
-    util.pool.userState.invalidate();
-  };
-
-  const mutate = async (
-    state: { userId?: string | null | undefined; poolId: string },
-    newData:
-      | {
-          follows: boolean;
-          requested: boolean;
-        }
-      | undefined
-  ) => {
-    await util.pool.userState.cancel(state);
-
-    const prev = util.pool.userState.getData(state);
-
-    util.pool.userState.setData(state, () => newData);
-
-    return { prev };
-  };
-
-  const { mutate: add, isLoading: adding } = trpc.user.addPool.useMutation({
-    onMutate(variables) {
-      return mutate(variables, {
-        follows: pool.public ? true : false,
-        requested: pool.public ? false : true,
-      });
-    },
-    onError(_, variables, context) {
-      util.pool.userState.setData(variables, context?.prev);
-    },
-    onSettled: settled,
-  });
-
-  const { mutate: remove, isLoading: removing } =
-    trpc.user.removePool.useMutation({
-      onMutate(variables) {
-        return mutate(variables, { follows: false, requested: false });
-      },
-      onError(_, variables, context) {
-        util.pool.userState.setData(variables, context?.prev);
-      },
-      onSettled: settled,
-    });
-
-  if (!session || !session.user || !userState)
-    return <LoadingSpinner loadingType={""} />;
-
-  return ButtonStyle(
-    userState.follows,
-    userState.requested,
-    adding || removing,
-    () => {
-      if (userState.follows) {
-        remove({
-          userId: session?.user?.id ?? "",
-          poolId: pool.id,
-          requested: userState.requested,
-        });
-      } else {
-        add({
-          userId: session?.user?.id ?? "",
-          poolId: pool.id,
-          isPublic: pool.public,
-        });
-      }
-    }
+    >
+      {buttonState.follows
+        ? "Unfollow"
+        : buttonState.pending
+        ? "Requested"
+        : "Follow"}
+    </button>
   );
 };
 
 export const PoolFollowButton: React.FC<{
-  pool: PoolInfo;
-  info: PoolFetchInfo;
-}> = ({ pool, info }) => {
+  poolId: string;
+}> = ({ poolId }) => {
   const { data: session } = useSession();
 
   const [open, setOpen] = useState(false);
 
   if (session && session.user) {
-    if (info.discover) {
-      return <DiscoverPoolButton pool={pool} fetch={info} />;
-    }
-    if (info.profile) {
-      return <ProfilePoolButton pool={pool} fetch={info} />;
-    }
-    return <AuthedNoData pool={pool} />;
+    return <ButtonStyle poolId={poolId} />;
   }
 
   return (

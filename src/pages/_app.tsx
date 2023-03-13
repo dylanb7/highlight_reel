@@ -6,17 +6,20 @@ import { trpc } from "../utils/trpc";
 
 import "../styles/globals.css";
 import PageWrap from "../components/layout/page-wrap";
+import { Provider } from "jotai";
 
 const MyApp: AppType<{ session: Session | null }> = ({
   Component,
   pageProps: { session, ...pageProps },
 }) => {
   return (
-    <SessionProvider session={session}>
-      <PageWrap>
-        <Component {...pageProps} />
-      </PageWrap>
-    </SessionProvider>
+    <Provider>
+      <SessionProvider session={session}>
+        <PageWrap>
+          <Component {...pageProps} />
+        </PageWrap>
+      </SessionProvider>
+    </Provider>
   );
 };
 

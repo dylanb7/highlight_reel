@@ -25,11 +25,11 @@ const FetchResults: React.FC<{
 
   return (
     <ScrollArea.Root
-      className={"max-h-72 overflow-hidden"}
+      className={"h-72 overflow-hidden pb-2"}
       style={{ width: width }}
     >
       <ScrollArea.Viewport className="h-full w-full">
-        <div className="mt-2 flex flex-col items-center justify-between pb-2">
+        <div className="flex flex-col items-center justify-between divide-y">
           {isLoading && <LoadingSpinner loadingType={"Searching..."} />}
           {results && results.length > 0 ? (
             <>
@@ -38,17 +38,21 @@ const FetchResults: React.FC<{
               ))}
             </>
           ) : (
-            <p className="text-md font-semibold text-slate-900">
-              No Reels match name
-            </p>
+            !isLoading && (
+              <div className="flex h-full w-full items-center justify-center">
+                <p className="text-md font-semibold text-slate-900">
+                  No Reels match that name
+                </p>
+              </div>
+            )
           )}
         </div>
       </ScrollArea.Viewport>
       <ScrollArea.Scrollbar
         orientation="vertical"
-        className="flex rounded-full bg-slate-300 p-1 hover:bg-slate-400"
+        className="mb-2 flex w-2 rounded-full bg-slate-300 hover:bg-slate-400"
       >
-        <ScrollArea.Thumb className="relative flex-1 rounded-full bg-slate-900" />
+        <ScrollArea.Thumb className="relative flex-1 rounded-full bg-slate-900 dark:bg-white" />
       </ScrollArea.Scrollbar>
       <ScrollArea.Corner />
     </ScrollArea.Root>

@@ -12,6 +12,9 @@ import * as ScrollArea from "@radix-ui/react-scroll-area";
 
 import { PersonIcon, CameraIcon } from "@radix-ui/react-icons";
 import { useRouter } from "next/router";
+import { PoolButtonProvider } from "../components/contexts/follow-pool-context";
+import type { PoolInfo } from "../types/pool-out";
+import type { ButtonContext } from "../components/contexts/button-types";
 
 const UnauthedContent = () => {
   return (
@@ -26,6 +29,8 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
 
   const amount = 5;
 
+  const util = trpc.useContext();
+
   const { data, hasNextPage, fetchNextPage, isLoading } =
     trpc.pool.getPublicPoolsPaginated.useInfiniteQuery(
       {
@@ -36,51 +41,120 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
       { getNextPageParam: (lastPage) => lastPage.nextCursor }
     );
 
+  const queryKey = {
+    cursor: data?.pages.at(-1)?.nextCursor,
+    userId: session?.user?.id,
+    discover: discover,
+    amount: amount,
+  };
+
   const pools = data?.pages.flatMap((page) => page.info) ?? [];
+
+  const poolMap = new Map<string, PoolInfo>();
+
+  for (const pool of pools) {
+    poolMap.set(pool.id, pool);
+  }
+
+  const { mutate: add, isLoading: adding } = trpc.user.addPool.useMutation({
+    async onMutate() {
+      await util.pool.getPublicPoolsPaginated.cancel(queryKey);
+      const prev = util.pool.getPublicPoolsPaginated.getInfiniteData(queryKey);
+
+      return { prev };
+    },
+    onError(_, __, context) {
+      util.pool.getPublicPoolsPaginated.setInfiniteData(
+        queryKey,
+        context?.prev
+      );
+    },
+    onSettled() {
+      util.pool.getPublicPoolsPaginated.invalidate();
+    },
+  });
+
+  const { mutate: remove, isLoading: removing } =
+    trpc.user.removePool.useMutation({
+      async onMutate() {
+        await util.pool.getPublicPoolsPaginated.cancel(queryKey);
+        const prev =
+          util.pool.getPublicPoolsPaginated.getInfiniteData(queryKey);
+        return { prev };
+      },
+      onError(_, __, context) {
+        util.pool.getPublicPoolsPaginated.setInfiniteData(
+          queryKey,
+          context?.prev
+        );
+      },
+      onSettled() {
+        util.pool.getPublicPoolsPaginated.invalidate(queryKey);
+      },
+    });
+
+  const buttonContext: ButtonContext = {
+    action: (poolId) => {
+      if (!session || !session.user) return;
+      const poolInfo = poolMap.get(poolId);
+      if (!poolInfo || !poolInfo.followInfo) return;
+      if (poolInfo.followInfo.follows || poolInfo.followInfo.requested) {
+        remove({
+          poolId: poolId,
+          userId: session.user.id,
+          requested: poolInfo.followInfo.requested,
+        });
+      } else {
+        add({
+          poolId: poolId,
+          userId: session.user.id,
+          isPublic: poolInfo.public,
+        });
+      }
+    },
+    state: (poolId) => {
+      const poolInfo = poolMap.get(poolId);
+      return {
+        follows: poolInfo?.followInfo?.follows ?? false,
+        pending: poolInfo?.followInfo?.requested ?? false,
+        disabled: adding || removing,
+      };
+    },
+  };
 
   return (
     <ScrollArea.Root className="h-full w-full overflow-hidden">
       <ScrollArea.Viewport className="h-full w-full">
-        <div className="flex flex-col items-center justify-center">
-          <p className="mb-2 pt-4 text-center text-2xl font-semibold text-slate-900 dark:text-white">
-            {discover ? "Discover Reels" : "Public Reels"}
-          </p>
-          <div className="grid max-w-6xl grid-cols-1 items-center justify-center gap-4 py-4 sm:grid-cols-2 md:gap-8 lg:grid-cols-3">
-            {isLoading && <LoadingSpinner loadingType={"Loading discover"} />}
-            {data &&
-              pools.map((reel) => (
-                <PoolComponent
-                  key={reel.id}
-                  pool={reel}
-                  fetch={{
-                    profile: undefined,
-                    discover: {
-                      userId: session?.user?.id ?? undefined,
-                      amount: amount,
-                      cursor: data.pages[data.pages.length - 1]?.nextCursor,
-                      discover: discover,
-                    },
-                  }}
-                />
-              ))}
-            {data && pools.length == 0 && (
-              <p className="text font-semibold text-slate-900">
-                No New Reels to Discover
-              </p>
+        <PoolButtonProvider value={buttonContext}>
+          <div className="flex flex-col items-center justify-center">
+            <p className="mb-2 pt-4 text-center text-2xl font-semibold text-slate-900 dark:text-white">
+              {discover ? "Discover Reels" : "Public Reels"}
+            </p>
+            <div className="grid max-w-6xl grid-cols-1 items-center justify-center gap-4 py-4 sm:grid-cols-2 md:gap-8 lg:grid-cols-3">
+              {isLoading && <LoadingSpinner loadingType={"Loading discover"} />}
+              {data &&
+                pools.map((reel) => (
+                  <PoolComponent key={reel.id} pool={reel} />
+                ))}
+              {data && pools.length == 0 && (
+                <p className="text font-semibold text-slate-900">
+                  No New Reels to Discover
+                </p>
+              )}
+            </div>
+            {hasNextPage && (
+              <div className="mt-4 flex items-center justify-center">
+                <button
+                  className="mb-4 w-fit rounded-lg bg-indigo-500 px-3 py-2 font-semibold text-white no-underline transition hover:bg-indigo-700 disabled:opacity-75"
+                  onClick={() => fetchNextPage()}
+                  disabled={isLoading || data === null}
+                >
+                  Load More
+                </button>
+              </div>
             )}
           </div>
-          {hasNextPage && (
-            <div className="mt-4 flex items-center justify-center">
-              <button
-                className="mb-4 w-fit rounded-lg bg-indigo-500 px-3 py-2 font-semibold text-white no-underline transition hover:bg-indigo-700 disabled:opacity-75"
-                onClick={() => fetchNextPage()}
-                disabled={isLoading || data === null}
-              >
-                Load More
-              </button>
-            </div>
-          )}
-        </div>
+        </PoolButtonProvider>
       </ScrollArea.Viewport>
       <ScrollArea.Scrollbar
         orientation="vertical"
@@ -116,24 +190,9 @@ const AuthedContent = () => {
 
   const { data: session } = useSession();
 
-  const id = session?.user?.id ?? "";
-
-  const { data: profile, isLoading } = trpc.user.profileQuery.useQuery({
-    user: id,
-    ref: id,
-  });
+  const id = session?.user?.id;
 
   const [value, onChange] = useTabsValue();
-
-  if (isLoading) return <LoadingSpinner loadingType={""} />;
-
-  if (!profile) {
-    return <p>Invalid Config</p>;
-  }
-
-  if (!profile.username || profile.public == null) {
-    return <UserFinish />;
-  }
 
   return (
     <Tab.Root
@@ -148,7 +207,13 @@ const AuthedContent = () => {
           <PoolsFeed discover={true} />
         </Tab.Content>
         <Tab.Content value="profile">
-          <ProfileComponent profile={profile} />
+          {id ? (
+            <ProfileLayout userId={id} />
+          ) : (
+            <p className="mb-2 pt-4 text-center text-2xl font-semibold text-slate-900 dark:text-white">
+              Must be signed in to view profile
+            </p>
+          )}
         </Tab.Content>
       </div>
 
@@ -174,6 +239,33 @@ const AuthedContent = () => {
       </footer>
     </Tab.Root>
   );
+};
+
+const ProfileLayout: React.FC<{ userId: string }> = ({ userId }) => {
+  const { data: profile, isLoading } = trpc.user.profileQuery.useQuery({
+    user: userId,
+    ref: userId,
+  });
+
+  if (isLoading)
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <LoadingSpinner loadingType={null} />
+      </div>
+    );
+
+  if (!profile)
+    return (
+      <p className="mb-2 pt-4 text-center text-2xl font-semibold text-slate-900 dark:text-white">
+        Error fetching your profile
+      </p>
+    );
+
+  if (!profile.username || profile.public == null) {
+    return <UserFinish />;
+  }
+
+  return <ProfileComponent profile={profile} />;
 };
 
 const HomePage: NextPage = () => {

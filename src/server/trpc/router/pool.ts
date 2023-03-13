@@ -12,12 +12,6 @@ import { router, protectedProcedure, publicProcedure } from "../trpc";
 
 export const poolRouter = router({
   getPoolById: protectedProcedure
-    .input(z.string().cuid())
-    .query(({ ctx, input }) => {
-      return ctx.prisma.highlightPool.findUnique({ where: { id: input } });
-    }),
-
-  userState: publicProcedure
     .input(
       z.object({
         poolId: z.string().cuid(),
@@ -25,29 +19,41 @@ export const poolRouter = router({
       })
     )
     .query(async ({ ctx, input }) => {
-      if (!input.userId) return { follows: false, requested: false };
-      const followerState = await ctx.prisma.highlightPool.findUnique({
+      const pool = await ctx.prisma.highlightPool.findUnique({
         where: { id: input.poolId },
-        select: {
-          followers: {
-            where: {
-              id: input.userId,
+        include: {
+          _count: {
+            select: {
+              highlights: true,
+              followers: true,
             },
           },
-          pending: {
-            where: {
-              id: input.userId,
-            },
-          },
+          followers: input.userId
+            ? {
+                where: {
+                  id: input.userId,
+                },
+              }
+            : undefined,
+          pending: input.userId
+            ? {
+                where: {
+                  id: input.userId,
+                },
+              }
+            : undefined,
         },
       });
-      if (followerState) {
-        if (followerState.followers.length > 0)
-          return { follows: true, requested: false };
-        if (followerState.pending.length > 0)
-          return { follows: false, requested: true };
-      }
-      return { follows: false, requested: false };
+      if (!pool) return undefined;
+      return <PoolInfo>{
+        ...pool,
+        followInfo: {
+          follows: pool.followers.length > 0,
+          requested: pool.pending.length > 0,
+        },
+        followerCount: pool._count.followers,
+        highlightCount: pool._count.highlights,
+      };
     }),
 
   createPool: protectedProcedure

@@ -14,20 +14,9 @@ const ProfileView = (props: { user: User }) => {
 
   const { data: session } = useSession();
 
-  if (!session || !session.user)
-    return (
-      <div className="items-center justify-center text-center text-slate-900 dark:text-white">
-        Must be signed in to view profile
-      </div>
-    );
-
-  return ProfileLayout(user.id, session.user.id);
-};
-
-const ProfileLayout = (id: string, refId: string) => {
   const { data: profile, isLoading } = trpc.user.profileQuery.useQuery({
-    user: id,
-    ref: refId,
+    user: user.id,
+    ref: session?.user?.id,
   });
 
   if (isLoading) return <LoadingSpinner loadingType={null} />;

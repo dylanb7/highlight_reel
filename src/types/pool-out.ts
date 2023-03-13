@@ -11,24 +11,6 @@ export type PoolInfo = HighlightPool & {
   followerCount: number;
 };
 
-export type ProfilePoolFetch = {
-  userId: string;
-  refId?: string;
-  kind: "owned" | "mod" | "followed";
-};
-
-export type DiscoverPoolFetch = {
-  userId: string | undefined;
-  amount: number;
-  cursor: string | undefined;
-  discover: boolean | undefined;
-};
-
-export type PoolFetchInfo = {
-  profile?: ProfilePoolFetch;
-  discover?: DiscoverPoolFetch;
-};
-
 export type PoolReturn = HighlightPool & {
   _count: {
     highlights: number;

@@ -2,11 +2,11 @@ import { prisma } from "../src/server/db/client";
 import { faker } from "@faker-js/faker";
 
 async function topSeed(
-  length: number = 16,
-  poolsMin: number = 0,
-  poolsMax: number = 4,
-  highlightsMin: number = 1,
-  highlightsMax: number = 20
+  length = 16,
+  poolsMin = 0,
+  poolsMax = 4,
+  highlightsMin = 1,
+  highlightsMax = 20
 ) {
   const userData = Array.from({ length: length }).map(() => {
     const poolsLength = Math.floor(
@@ -37,8 +37,7 @@ async function topSeed(
     };
   });
 
-  for (let i = 0; i < userData.length; i++) {
-    const user = userData[i]!;
+  for (const user of userData) {
     await prisma.user.create({ data: user });
   }
 }

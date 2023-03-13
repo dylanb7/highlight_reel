@@ -10,26 +10,13 @@ import {
   PoolData,
   PoolMessageCard,
 } from "../../components/highlight-pool-card";
-import type { PoolInfo } from "../../types/pool-out";
 import { HighlightView } from "../../components/highlight";
 
-const PoolView = (props: {
-  pool: HighlightPool & {
-    _count: {
-      highlights: number;
-      followers: number;
-    };
-  };
-}) => {
+import { PoolButtonProvider } from "../../components/contexts/follow-pool-context";
+import type { ButtonContext } from "../../components/contexts/button-types";
+
+const PoolView = (props: { pool: HighlightPool }) => {
   const { pool } = props;
-
-  const poolInfo: PoolInfo = {
-    ...pool,
-    followerCount: pool._count.followers,
-    highlightCount: pool._count.highlights,
-  };
-
-  const { data: session } = useSession();
 
   if (!pool) {
     return (
@@ -40,107 +27,162 @@ const PoolView = (props: {
       </PoolMessageCard>
     );
   }
-  if (!pool.public) return <PrivatePool pool={poolInfo} />;
 
-  return (
-    <div className="m-4 flex flex-col items-center justify-center">
-      <PoolMessageCard isCenter={true}>
-        <PoolData
-          pool={poolInfo}
-          fetch={{
-            profile: undefined,
-            discover: undefined,
-          }}
-        />
-      </PoolMessageCard>
-      <div className="mt-4">
-        <HighlightFeed
-          userId={session?.user?.id ?? null}
-          poolId={pool.id}
-          isPublic={pool.public}
-        />
-      </div>
-    </div>
-  );
+  return <PoolComponent poolId={pool.id} />;
 };
 
-const PrivatePool: React.FC<{
-  pool: PoolInfo;
-}> = ({ pool }) => {
+const PoolComponent: React.FC<{ poolId: string }> = ({ poolId }) => {
   const { data: session } = useSession();
 
-  const { data: follows } = trpc.pool.userState.useQuery({
-    poolId: pool.id,
+  const util = trpc.useContext();
+
+  const queryKey = {
+    poolId: poolId,
     userId: session?.user?.id,
+  };
+
+  const { data: poolInfo, isLoading } =
+    trpc.pool.getPoolById.useQuery(queryKey);
+
+  const { mutate: add, isLoading: adding } = trpc.user.addPool.useMutation({
+    async onMutate() {
+      await util.pool.getPoolById.cancel(queryKey);
+      const prev = util.pool.getPoolById.getData(queryKey);
+      if (prev) {
+        util.pool.getPoolById.setData(queryKey, {
+          ...prev,
+          followInfo: {
+            follows: prev.public,
+            requested: !prev.public,
+          },
+        });
+      }
+      return { prev };
+    },
+    onError(_, __, context) {
+      util.pool.getPoolById.setData(queryKey, context?.prev);
+    },
+    onSettled() {
+      util.pool.getPoolById.invalidate();
+    },
   });
 
-  if (!session || !session.user) {
-    return (
-      <PoolMessageCard isCenter={true}>
-        <div className="flex flex-col">
-          <PoolData
-            pool={pool}
-            fetch={{
-              profile: undefined,
-              discover: undefined,
-            }}
-          />
-          <p className="mt-5 font-semibold text-slate-900 dark:text-white">
-            This <span className="font-semibold text-indigo-500">Reel</span> is
-            private. Sign in to follow.
-          </p>
-          <div className="mt-2 flex items-center justify-center">
-            <SignInComponent />
-          </div>
-        </div>
-      </PoolMessageCard>
-    );
-  }
+  const { mutate: remove, isLoading: removing } =
+    trpc.user.removePool.useMutation({
+      async onMutate() {
+        await util.pool.getPoolById.cancel(queryKey);
+        const prev = util.pool.getPoolById.getData(queryKey);
+        if (prev) {
+          util.pool.getPoolById.setData(queryKey, {
+            ...prev,
+            followInfo: {
+              follows: false,
+              requested: false,
+            },
+          });
+        }
+        return { prev };
+      },
+      onError(_, __, context) {
+        util.pool.getPoolById.setData(queryKey, context?.prev);
+      },
+      onSettled() {
+        util.pool.getPoolById.invalidate(queryKey);
+      },
+    });
 
-  if (!follows || !follows.follows) {
-    return (
-      <PoolMessageCard isCenter={true}>
-        <div className="flex flex-col">
-          <PoolData
-            pool={pool}
-            fetch={{
-              profile: undefined,
-              discover: undefined,
-            }}
-          />
-          <p className="mt-5 text-center font-semibold text-slate-900 dark:text-white">
-            This <span className="font-semibold text-indigo-500">Reel</span> is
-            private. You can request to follow it.
-          </p>
-        </div>
-      </PoolMessageCard>
-    );
-  }
+  const followInfo = {
+    follows: poolInfo?.followInfo?.follows ?? false,
+    requested: poolInfo?.followInfo?.requested ?? false,
+  };
+
+  const hasSession = session && session.user;
+
+  const hasHighlights = poolInfo && (poolInfo.public || followInfo.follows);
+
+  const privateNoSession = poolInfo && !poolInfo.public && !hasSession;
+
+  const privateNoFollow =
+    poolInfo && !poolInfo.public && !followInfo.follows && hasSession;
+
+  const buttonContext: ButtonContext = {
+    action: () => {
+      if (!session || !session.user || !poolInfo) return;
+      if (followInfo.follows || followInfo.requested) {
+        remove({
+          poolId: poolId,
+          userId: session.user.id,
+          requested: poolInfo.followInfo?.requested ?? false,
+        });
+      } else {
+        add({
+          poolId: poolId,
+          userId: session.user.id,
+          isPublic: poolInfo.public,
+        });
+      }
+    },
+    state: () => {
+      return {
+        follows: followInfo.follows,
+        pending: followInfo.requested,
+        disabled: adding || removing,
+      };
+    },
+  };
 
   return (
-    <div className="m-4 flex flex-col items-center justify-center">
-      <PoolMessageCard isCenter={true}>
-        <PoolData
-          pool={pool}
-          fetch={{
-            profile: undefined,
-            discover: undefined,
-          }}
-        />
-      </PoolMessageCard>
-      <div className="mt-4">
-        <HighlightFeed
-          userId={session?.user?.id ?? null}
-          poolId={pool.id}
-          isPublic={pool.public}
-        />
+    <PoolButtonProvider value={buttonContext}>
+      <div className="m-4 flex flex-col items-center justify-center">
+        <PoolMessageCard isCenter={true}>
+          {isLoading && <LoadingSpinner loadingType={"Loading Reel"} />}
+          {poolInfo ? (
+            <div className="flex flex-col">
+              <PoolData pool={poolInfo} />
+              {privateNoSession && (
+                <>
+                  <p className="mt-5 font-semibold text-slate-900 dark:text-white">
+                    This{" "}
+                    <span className="font-semibold text-indigo-500">Reel</span>{" "}
+                    is private. Sign in to follow.
+                  </p>
+                  <div className="mt-2 flex items-center justify-center">
+                    <SignInComponent />
+                  </div>
+                </>
+              )}
+              {privateNoFollow && (
+                <p className="mt-5 text-center font-semibold text-slate-900 dark:text-white">
+                  This{" "}
+                  <span className="font-semibold text-indigo-500">Reel</span> is
+                  private. You can request to follow it.
+                </p>
+              )}
+            </div>
+          ) : (
+            !isLoading && (
+              <p className="mt-5 font-semibold text-slate-900 dark:text-white">
+                Unable to fetch reel
+              </p>
+            )
+          )}
+        </PoolMessageCard>
+        {hasHighlights && (
+          <div className="mt-4">
+            <HighlightFeed
+              userId={session?.user?.id}
+              poolId={poolInfo.id}
+              isPublic={poolInfo.public}
+            />
+          </div>
+        )}
       </div>
-    </div>
+    </PoolButtonProvider>
   );
 };
 
 const HighlightFeed: React.FC<{
-  userId: string | null;
+  userId: string | undefined;
   poolId: string;
   isPublic: boolean;
 }> = ({ userId, poolId, isPublic }) => {
@@ -181,14 +223,6 @@ export const getStaticProps: GetStaticProps = async ({ params }) => {
   const pool = await prisma.highlightPool.findUnique({
     where: {
       id: params.id,
-    },
-    include: {
-      _count: {
-        select: {
-          highlights: true,
-          followers: true,
-        },
-      },
     },
   });
 

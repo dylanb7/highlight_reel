@@ -7,16 +7,19 @@ import { PoolComponent } from "./highlight-pool-card";
 import { ProfileList } from "./profile-scroll-components";
 import { useSession } from "next-auth/react";
 import { ProfileFollowButton } from "./follow-profile";
-import type { PoolInfo, ProfilePoolFetch } from "../types/pool-out";
+import type { PoolInfo } from "../types/pool-out";
 
 import type { ProfileInfo, UserInfo } from "../types/user-out";
+import { ProfilePoolButtonProvider } from "./contexts/follow-pool-context";
+import { ProfileButtonProvider } from "./contexts/follow-profile-context";
+import type { ButtonContext } from "./contexts/button-types";
+import { trpc } from "../utils/trpc";
 
 export const PoolScroll: React.FC<{
   pools: PoolInfo[];
   title: string;
   initialOpen: boolean;
-  fetch: ProfilePoolFetch;
-}> = ({ pools, title, initialOpen, fetch }) => {
+}> = ({ pools, title, initialOpen }) => {
   const [open, setOpen] = useState(initialOpen);
 
   const hasPools = pools && pools.length > 0;
@@ -40,19 +43,14 @@ export const PoolScroll: React.FC<{
         </Collapsible.Trigger>
         <Collapsible.Content className="h-fit radix-state-open:animate-slide-down">
           <ScrollArea.Root className="overflow-hidden">
-            <ScrollArea.Viewport className="h-full w-full">
+            <ScrollArea.Viewport className="h-full w-full snap-x scroll-pl-4">
               {hasPools && (
                 <div className="my-3 flex flex-row gap-4 px-6 pb-1">
                   {pools &&
                     pools.map((pool) => (
-                      <PoolComponent
-                        key={pool.id}
-                        pool={pool}
-                        fetch={{
-                          profile: fetch,
-                          discover: undefined,
-                        }}
-                      />
+                      <div key={pool.id} className="snap-center">
+                        <PoolComponent key={pool.id} pool={pool} />
+                      </div>
                     ))}
                 </div>
               )}
@@ -77,23 +75,96 @@ export const ProfileData: React.FC<{
     following: number;
   };
 }> = ({ user }) => {
-  const { data } = useSession();
+  const { data: session } = useSession();
+
+  const utils = trpc.useContext();
+
+  const queryKey = {
+    user: user.id,
+    ref: session?.user?.id,
+  };
+
+  const { mutate: follow, isLoading: following } =
+    trpc.user.followUser.useMutation({
+      async onMutate() {
+        await utils.user.profileQuery.cancel(queryKey);
+        const prev = utils.user.profileQuery.getData(queryKey);
+        if (prev) {
+          const isPublic = prev.public ?? false;
+          utils.user.profileQuery.setData(queryKey, {
+            ...prev,
+            follows: isPublic,
+            requested: !isPublic,
+          });
+        }
+        return { prev };
+      },
+      onError(_, __, context) {
+        utils.user.profileQuery.setData(queryKey, context?.prev);
+      },
+      onSettled() {
+        utils.user.profileQuery.invalidate(queryKey);
+      },
+    });
+
+  const { mutate: unfollow, isLoading: unfollowing } =
+    trpc.user.unfollowUser.useMutation({
+      async onMutate() {
+        await utils.user.profileQuery.cancel(queryKey);
+        const prev = utils.user.profileQuery.getData(queryKey);
+        if (prev) {
+          utils.user.profileQuery.setData(queryKey, {
+            ...prev,
+            follows: false,
+            requested: false,
+          });
+        }
+        return { prev };
+      },
+      onError(_, __, context) {
+        utils.user.profileQuery.setData(queryKey, context?.prev);
+      },
+      onSettled() {
+        utils.user.profileQuery.invalidate(queryKey);
+      },
+    });
+
+  const buttonContext: ButtonContext = {
+    action: () => {
+      if (!session || !session.user) return;
+      if (user.follows || user.requested) {
+        unfollow({
+          userId: session.user.id,
+          followId: user.id,
+          requested: user.requested,
+        });
+      } else {
+        follow({
+          userId: session.user.id,
+          followId: user.id,
+          public: user.public ?? false,
+        });
+      }
+    },
+    state: () => {
+      return {
+        follows: user.follows,
+        pending: user.requested,
+        disabled: following || unfollowing,
+      };
+    },
+  };
+
   return (
     <div className="justify-left ml-8 w-fit">
       <div className="flex flex-shrink flex-row items-center justify-between gap-4">
         <p className="text-2xl font-semibold text-slate-900 dark:text-white">
           {user.username}
         </p>
-        {data?.user?.id !== user.id && (
-          <ProfileFollowButton
-            info={{
-              userFetch: undefined,
-              poolFetch: undefined,
-            }}
-            profile={{
-              ...user,
-            }}
-          />
+        {session?.user?.id !== user.id && (
+          <ProfileButtonProvider value={buttonContext}>
+            <ProfileFollowButton profileId={user.id} />
+          </ProfileButtonProvider>
         )}
       </div>
       <Separator.Root
@@ -108,7 +179,7 @@ export const ProfileData: React.FC<{
           fetch={{
             userFetch: {
               userId: user.id,
-              refId: data?.user?.id,
+              refId: session?.user?.id,
               following: true,
             },
           }}
@@ -125,7 +196,7 @@ export const ProfileData: React.FC<{
           fetch={{
             userFetch: {
               userId: user.id,
-              refId: data?.user?.id,
+              refId: session?.user?.id,
               following: false,
             },
           }}
@@ -156,43 +227,34 @@ export const ProfileComponent: React.FC<{
   const owner = profile.id === session?.user?.id;
 
   return (
-    <div className="flex flex-col justify-start gap-1 pt-10">
-      <ProfileData user={{ ...profile }} />
-      <PoolScroll
-        pools={profile.pools}
-        title={"Followed Reels"}
-        initialOpen={true}
-        fetch={{
-          userId: profile.id,
-          refId: session?.user?.id,
-          kind: "followed",
-        }}
-      />
-      {owner && (
+    <ProfilePoolButtonProvider
+      userId={profile.id}
+      refId={session?.user?.id}
+      profile={profile}
+    >
+      <div className="flex flex-col justify-start gap-1 pt-10">
+        <ProfileData user={{ ...profile }} />
         <PoolScroll
-          pools={profile.ownedPools}
-          title={"Owned Reels"}
-          initialOpen={false}
-          fetch={{
-            userId: profile.id,
-            refId: session?.user?.id,
-            kind: "owned",
-          }}
+          pools={profile.pools}
+          title={"Followed Reels"}
+          initialOpen={true}
         />
-      )}
-      {owner && (
-        <PoolScroll
-          pools={profile.modPools}
-          title={"Mod Reels"}
-          initialOpen={false}
-          fetch={{
-            userId: profile.id,
-            refId: session?.user?.id,
-            kind: "mod",
-          }}
-        />
-      )}
-      <ProfileHighlights id={profile.id} refId={session?.user?.id} />
-    </div>
+        {owner && (
+          <PoolScroll
+            pools={profile.ownedPools}
+            title={"Owned Reels"}
+            initialOpen={false}
+          />
+        )}
+        {owner && (
+          <PoolScroll
+            pools={profile.modPools}
+            title={"Mod Reels"}
+            initialOpen={false}
+          />
+        )}
+        <ProfileHighlights id={profile.id} refId={session?.user?.id} />
+      </div>
+    </ProfilePoolButtonProvider>
   );
 };

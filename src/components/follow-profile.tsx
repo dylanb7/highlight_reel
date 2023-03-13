@@ -1,36 +1,38 @@
 import * as Popover from "@radix-ui/react-popover";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
-import type {
-  FetchInfo,
-  PoolUserFetch,
-  UserFetch,
-  UserInfo,
-} from "../types/user-out";
-import { trpc } from "../utils/trpc";
+import { useProfileButtonContext } from "./contexts/follow-profile-context";
 import SignInComponent from "./sign-in";
 
-const ButtonStyle = (
-  follows: boolean,
-  pending: boolean,
-  disabled: boolean,
-  onClick: () => void
-) => (
-  <button
-    onClick={onClick}
-    disabled={disabled}
-    className={
-      "rounded-lg px-3 py-1 text-sm font-semibold no-underline transition " +
-      (pending
-        ? "bg-gray-500 text-white hover:bg-gray-700"
-        : "bg-indigo-500 text-white hover:bg-indigo-700") +
-      "disabled:opacity-50"
-    }
-  >
-    {follows ? "Unfollow" : pending ? "Requested" : "Follow"}
-  </button>
-);
+const ButtonStyle: React.FC<{ profileId: string }> = ({ profileId }) => {
+  const { action, state } = useProfileButtonContext();
 
+  const buttonState = state(profileId);
+
+  return (
+    <button
+      onClick={() => {
+        action(profileId);
+      }}
+      disabled={buttonState.disabled}
+      className={
+        "rounded-lg px-3 py-1 text-sm font-semibold no-underline transition " +
+        (buttonState.pending
+          ? "bg-gray-500 text-white hover:bg-gray-700"
+          : "bg-indigo-500 text-white hover:bg-indigo-700") +
+        "disabled:opacity-50"
+      }
+    >
+      {buttonState.follows
+        ? "Unfollow"
+        : buttonState.pending
+        ? "Requested"
+        : "Follow"}
+    </button>
+  );
+};
+
+/*
 const ProfileFollow: React.FC<{ profile: UserInfo; userId: string }> = ({
   profile,
   userId,
@@ -365,60 +367,40 @@ const PoolProfileFollow: React.FC<{
       }
     }
   );
-};
+};*/
 
 export const ProfileFollowButton: React.FC<{
-  info: FetchInfo;
-  profile: UserInfo;
-}> = ({ info, profile }) => {
+  profileId: string;
+}> = ({ profileId }) => {
   const { data: session } = useSession();
 
   const [open, setOpen] = useState(false);
 
   if (session && session.user) {
-    if (session.user.id === profile.id) {
+    if (session.user.id === profileId) {
       return (
         <div className="rounded-lg bg-indigo-500 px-3 py-1 text-sm font-semibold text-white no-underline transition">
           You
         </div>
       );
     }
-    if (info.poolFetch) {
-      return (
-        <PoolProfileFollow
-          poolInfo={info.poolFetch}
-          profile={profile}
-          userId={session.user.id}
-        />
-      );
-    }
-    if (info.userFetch) {
-      if (info.userFetch.following) {
-        return (
-          <ProfileFollowingFollow
-            userInfo={info.userFetch}
-            profile={profile}
-            userId={session.user.id}
-          />
-        );
-      }
-      return (
-        <ProfileFollowersFollow
-          userInfo={info.userFetch}
-          profile={profile}
-          userId={session.user.id}
-        />
-      );
-    }
-    return <ProfileFollow profile={profile} userId={session.user.id} />;
+    return <ButtonStyle profileId={profileId} />;
   }
 
   return (
     <Popover.Root open={open}>
       <Popover.Trigger>
-        {ButtonStyle(false, false, false, () => {
-          setOpen((value) => !value);
-        })}
+        <button
+          onClick={() => {
+            setOpen((value) => !value);
+          }}
+          disabled={open}
+          className={
+            "rounded-lg bg-indigo-500 px-3 py-1 text-sm font-semibold text-white no-underline transition hover:bg-indigo-700 disabled:opacity-50"
+          }
+        >
+          Follow
+        </button>
       </Popover.Trigger>
       <Popover.Content
         onInteractOutside={() => {

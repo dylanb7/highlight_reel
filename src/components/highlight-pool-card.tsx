@@ -1,7 +1,7 @@
 import * as Separator from "@radix-ui/react-separator";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import type { PoolFetchInfo, PoolInfo } from "../types/pool-out";
+import type { PoolInfo } from "../types/pool-out";
 import { PoolFollowButton } from "./follow-pool";
 import { ProfileList } from "./profile-scroll-components";
 
@@ -10,37 +10,34 @@ export const PoolMessageCard: React.FC<
 > = ({ children, isCenter }) => {
   return (
     <div
-      className={
-        "flex items-center justify-center " + (isCenter ? "px-4 pt-10" : "")
-      }
+      className={`flex h-fit w-fit items-center justify-center rounded-lg ${
+        isCenter ? "mx-4 mt-10" : ""
+      } border border-gray-300 bg-white p-4 shadow-sm dark:border-gray-500 dark:bg-slate-900`}
     >
-      <div className="flex h-fit w-fit items-center justify-center place-self-center rounded-lg border border-gray-300 bg-white p-4 shadow-sm dark:border-gray-500 dark:bg-slate-900">
-        {children}
-      </div>
+      {children}
     </div>
   );
 };
 
 export const PoolData: React.FC<{
   pool: PoolInfo;
-  fetch: PoolFetchInfo;
-}> = ({ pool, fetch }) => {
+}> = ({ pool }) => {
   const { data: session } = useSession();
 
   return (
-    <div className="justify-left">
+    <div className="justify-left flex flex-col">
       <div className="flex flex-row justify-between">
         <h1 className="truncate text-2xl font-semibold text-slate-900 dark:text-white">
           {pool.name}
         </h1>
-        <PoolFollowButton pool={pool} info={fetch} />
+        <PoolFollowButton poolId={pool.id} />
       </div>
       <Separator.Root
         orientation="horizontal"
         decorative
         className="mt-1.5 mb-1 h-px bg-gray-300 dark:bg-gray-500"
       />
-      <div className="flex flex-row justify-between">
+      <div className="justify-left flex flex-row overflow-x-scroll">
         <p className="truncate text-xs font-semibold text-slate-500 dark:text-gray-400">
           Highlights: {pool.highlightCount}
         </p>
@@ -73,37 +70,13 @@ export const PoolData: React.FC<{
   );
 };
 
-export const FetcherPoolComponent: React.FC<{
+export const PoolComponent: React.FC<{
   pool: PoolInfo;
 }> = ({ pool }) => {
   return (
     <PoolMessageCard isCenter={false}>
       <div className="flex flex-col gap-4 sm:gap-8">
-        <PoolData
-          pool={pool}
-          fetch={{
-            profile: undefined,
-            discover: undefined,
-          }}
-        />
-        <Link href={"/reels/" + encodeURIComponent(pool.id)}>
-          <div className="items-center justify-center rounded-lg bg-indigo-500 py-1 text-sm font-semibold text-white no-underline transition hover:bg-indigo-700">
-            <p className="text-center">View Reel</p>
-          </div>
-        </Link>
-      </div>
-    </PoolMessageCard>
-  );
-};
-
-export const PoolComponent: React.FC<{
-  pool: PoolInfo;
-  fetch: PoolFetchInfo;
-}> = ({ pool, fetch }) => {
-  return (
-    <PoolMessageCard isCenter={false}>
-      <div className="flex flex-col gap-4 sm:gap-8">
-        <PoolData pool={pool} fetch={fetch} />
+        <PoolData pool={pool} />
         <Link href={"/reels/" + encodeURIComponent(pool.id)}>
           <div className="items-center justify-center rounded-lg bg-indigo-500 py-1 text-sm font-semibold text-white no-underline transition hover:bg-indigo-700">
             <p className="text-center">View Reel</p>
