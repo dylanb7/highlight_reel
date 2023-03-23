@@ -1,7 +1,7 @@
 import type { HighlightPool } from "@prisma/client";
 import type { GetStaticProps } from "next";
 import { useSession } from "next-auth/react";
-import React from "react";
+import React, { useState } from "react";
 import { prisma } from "../../server/db/client";
 import SignInComponent from "../../components/sign-in";
 import { trpc } from "../../utils/trpc";
@@ -14,6 +14,9 @@ import { HighlightView } from "../../components/highlight";
 
 import { PoolButtonProvider } from "../../components/contexts/follow-pool-context";
 import type { ButtonContext } from "../../components/contexts/button-types";
+import type { HighlightContext } from "../../components/contexts/highlight-context";
+import { HighlightContextProvider } from "../../components/contexts/highlight-context";
+import type { HighlightFetchInfo } from "../../types/highlight-out";
 
 const PoolView = (props: { pool: HighlightPool }) => {
   const { pool } = props;
@@ -169,7 +172,7 @@ const PoolComponent: React.FC<{ poolId: string }> = ({ poolId }) => {
         </PoolMessageCard>
         {hasHighlights && (
           <div className="mt-4">
-            <HighlightFeed
+            <LoadFeed
               userId={session?.user?.id}
               poolId={poolInfo.id}
               isPublic={poolInfo.public}
@@ -181,14 +184,14 @@ const PoolComponent: React.FC<{ poolId: string }> = ({ poolId }) => {
   );
 };
 
-const HighlightFeed: React.FC<{
+const LoadFeed: React.FC<{
   userId: string | undefined;
   poolId: string;
   isPublic: boolean;
 }> = ({ userId, poolId, isPublic }) => {
   const loadAmount = 2;
 
-  const { data, isLoading } =
+  const { data, isLoading, hasNextPage, fetchNextPage } =
     trpc.pool.getPoolHighlightsPaginated.useInfiniteQuery(
       {
         amount: loadAmount,
@@ -201,15 +204,51 @@ const HighlightFeed: React.FC<{
 
   if (isLoading) return <LoadingSpinner loadingType={"Loading Highlights"} />;
 
-  const highlights = data?.pages.flatMap((page) => page.lights) ?? [];
+  const highlights = data?.pages.flatMap((page) => page.highlights) ?? [];
 
   return (
     <>
-      <p></p>
+      <HighlightFeed
+        highlights={highlights}
+        newPage={data?.pages[-1]?.highlights[0] ?? undefined}
+      />
+      {hasNextPage && (
+        <div className="mt-4 flex items-center justify-center">
+          <button
+            className="mb-4 w-fit rounded-lg bg-indigo-500 px-3 py-2 font-semibold text-white no-underline transition hover:bg-indigo-700 disabled:opacity-75"
+            onClick={() => fetchNextPage()}
+            disabled={isLoading || data === null}
+          >
+            Load More
+          </button>
+        </div>
+      )}
+    </>
+  );
+};
+
+const HighlightFeed: React.FC<{
+  highlights: HighlightFetchInfo[];
+  newPage: HighlightFetchInfo | undefined;
+}> = ({ highlights, newPage }) => {
+  const [playing, setPlaying] = useState(newPage?.id);
+
+  const makeRequest = (id: string, playing: boolean) => {
+    if (!playing) setPlaying(undefined);
+    else setPlaying(id);
+  };
+
+  const highlightContext: HighlightContext = {
+    playingId: playing,
+    playControl: makeRequest,
+  };
+
+  return (
+    <HighlightContextProvider value={highlightContext}>
       {highlights?.map((highlight) => (
         <HighlightView highlight={highlight} key={highlight.id} />
       ))}
-    </>
+    </HighlightContextProvider>
   );
 };
 

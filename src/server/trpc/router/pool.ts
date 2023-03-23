@@ -11,7 +11,7 @@ import type { UserInfo } from "../../../types/user-out";
 import { router, protectedProcedure, publicProcedure } from "../trpc";
 
 export const poolRouter = router({
-  getPoolById: protectedProcedure
+  getPoolById: publicProcedure
     .input(
       z.object({
         poolId: z.string().cuid(),
@@ -186,7 +186,7 @@ export const poolRouter = router({
         poolId: z.string().cuid(),
         userId: z.string().cuid().nullish(),
         isPublic: z.boolean(),
-        cursor: z.string().cuid().nullish(),
+        cursor: z.string().nullish(),
         amount: z.number(),
       })
     )
@@ -276,7 +276,7 @@ export const poolRouter = router({
       }
 
       return {
-        lights: highlights,
+        highlights,
         nextCursor,
       };
     }),

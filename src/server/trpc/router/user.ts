@@ -34,6 +34,7 @@ export const userRouter = router({
       })
     )
     .mutation(({ ctx, input }) => {
+      ctx.session.user.id;
       return ctx.prisma.user.update({
         where: {
           id: input.userId,
