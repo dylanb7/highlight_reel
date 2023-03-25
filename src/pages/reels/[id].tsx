@@ -1,10 +1,8 @@
-import type { HighlightPool } from "@prisma/client";
-import type { GetStaticProps } from "next";
+import type { GetServerSideProps } from "next";
 import { useSession } from "next-auth/react";
 import React, { useState } from "react";
-import { prisma } from "../../server/db/client";
 import SignInComponent from "../../components/sign-in";
-import { trpc } from "../../utils/trpc";
+import { api } from "../../utils/trpc";
 import { LoadingSpinner } from "../../components/loading";
 import {
   PoolData,
@@ -17,37 +15,22 @@ import type { ButtonContext } from "../../components/contexts/button-types";
 import type { HighlightContext } from "../../components/contexts/highlight-context";
 import { HighlightContextProvider } from "../../components/contexts/highlight-context";
 import type { HighlightFetchInfo } from "../../types/highlight-out";
+import { generateSSGHelper } from "../../utils/ssgHelper";
+import { getServerAuthSession } from "../../server/common/get-server-auth-session";
 
-const PoolView = (props: { pool: HighlightPool }) => {
-  const { pool } = props;
-
-  if (!pool) {
-    return (
-      <PoolMessageCard isCenter={true}>
-        <p className="font-semibold text-slate-900 dark:text-white">
-          The reel you are looking for is unavailible
-        </p>
-      </PoolMessageCard>
-    );
-  }
-
-  return <PoolComponent poolId={pool.id} />;
-};
-
-const PoolComponent: React.FC<{ poolId: string }> = ({ poolId }) => {
+const PoolView: React.FC<{ poolId: string }> = ({ poolId }) => {
   const { data: session } = useSession();
 
-  const util = trpc.useContext();
+  const util = api.useContext();
 
   const queryKey = {
     poolId: poolId,
     userId: session?.user?.id,
   };
 
-  const { data: poolInfo, isLoading } =
-    trpc.pool.getPoolById.useQuery(queryKey);
+  const { data: poolInfo, isLoading } = api.pool.getPoolById.useQuery(queryKey);
 
-  const { mutate: add, isLoading: adding } = trpc.user.addPool.useMutation({
+  const { mutate: add, isLoading: adding } = api.user.addPool.useMutation({
     async onMutate() {
       await util.pool.getPoolById.cancel(queryKey);
       const prev = util.pool.getPoolById.getData(queryKey);
@@ -71,7 +54,7 @@ const PoolComponent: React.FC<{ poolId: string }> = ({ poolId }) => {
   });
 
   const { mutate: remove, isLoading: removing } =
-    trpc.user.removePool.useMutation({
+    api.user.removePool.useMutation({
       async onMutate() {
         await util.pool.getPoolById.cancel(queryKey);
         const prev = util.pool.getPoolById.getData(queryKey);
@@ -136,7 +119,7 @@ const PoolComponent: React.FC<{ poolId: string }> = ({ poolId }) => {
 
   return (
     <PoolButtonProvider value={buttonContext}>
-      <div className="m-4 flex flex-col items-center justify-center">
+      <div className="m-4 flex w-full flex-col items-center justify-center">
         <PoolMessageCard isCenter={true}>
           {isLoading && <LoadingSpinner loadingType={"Loading Reel"} />}
           {poolInfo ? (
@@ -192,7 +175,7 @@ const LoadFeed: React.FC<{
   const loadAmount = 2;
 
   const { data, isLoading, hasNextPage, fetchNextPage } =
-    trpc.pool.getPoolHighlightsPaginated.useInfiniteQuery(
+    api.pool.getPoolHighlightsPaginated.useInfiniteQuery(
       {
         amount: loadAmount,
         userId: userId,
@@ -252,34 +235,33 @@ const HighlightFeed: React.FC<{
   );
 };
 
-export const getStaticProps: GetStaticProps = async ({ params }) => {
+export const getServerSideProps: GetServerSideProps<{
+  poolId: string;
+}> = async (props) => {
+  const { params } = props;
   if (!params || !params.id || typeof params.id !== "string") {
     return {
       notFound: true,
     };
   }
 
-  const pool = await prisma.highlightPool.findUnique({
-    where: {
-      id: params.id,
-    },
-  });
+  const poolId = params.id;
 
-  if (!pool) {
-    return {
-      notFound: true,
-    };
-  }
+  const ssg = generateSSGHelper();
+
+  const session = await getServerAuthSession(props);
+
+  await ssg.pool.getPoolById.prefetch({
+    userId: session?.user?.id,
+    poolId: poolId,
+  });
 
   return {
     props: {
-      pool: pool,
+      trpcState: ssg.dehydrate(),
+      poolId,
     },
   };
 };
-
-export async function getStaticPaths() {
-  return { paths: [], fallback: "blocking" };
-}
 
 export default PoolView;

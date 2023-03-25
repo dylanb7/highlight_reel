@@ -1,11 +1,10 @@
-import type { GetServerSidePropsContext, NextPage } from "next";
-import { trpc } from "../utils/trpc";
+import { api } from "../utils/trpc";
 import { LoadingSpinner } from "../components/loading";
 import { PoolComponent } from "../components/highlight-pool-card";
 import { UserFinish } from "../components/user-finish";
 import { useSession } from "next-auth/react";
 import React from "react";
-import { getServerAuthSession } from "../server/common/get-server-auth-session";
+
 import * as Tab from "@radix-ui/react-tabs";
 import { ProfileComponent } from "../components/profile-components";
 import * as ScrollArea from "@radix-ui/react-scroll-area";
@@ -15,6 +14,7 @@ import { useRouter } from "next/router";
 import { PoolButtonProvider } from "../components/contexts/follow-pool-context";
 import type { PoolInfo } from "../types/pool-out";
 import type { ButtonContext } from "../components/contexts/button-types";
+import type { NextPage } from "next";
 
 const UnauthedContent = () => {
   return (
@@ -29,10 +29,10 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
 
   const amount = 5;
 
-  const util = trpc.useContext();
+  const util = api.useContext();
 
   const { data, hasNextPage, fetchNextPage, isLoading } =
-    trpc.pool.getPublicPoolsPaginated.useInfiniteQuery(
+    api.pool.getPublicPoolsPaginated.useInfiniteQuery(
       {
         amount: amount,
         userId: session?.user?.id,
@@ -56,7 +56,7 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
     poolMap.set(pool.id, pool);
   }
 
-  const { mutate: add, isLoading: adding } = trpc.user.addPool.useMutation({
+  const { mutate: add, isLoading: adding } = api.user.addPool.useMutation({
     async onMutate() {
       await util.pool.getPublicPoolsPaginated.cancel(queryKey);
       const prev = util.pool.getPublicPoolsPaginated.getInfiniteData(queryKey);
@@ -75,7 +75,7 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
   });
 
   const { mutate: remove, isLoading: removing } =
-    trpc.user.removePool.useMutation({
+    api.user.removePool.useMutation({
       async onMutate() {
         await util.pool.getPublicPoolsPaginated.cancel(queryKey);
         const prev =
@@ -122,6 +122,8 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
     },
   };
 
+  if (isLoading) return <LoadingSpinner loadingType={"Loading discover"} />;
+
   return (
     <ScrollArea.Root className="h-full w-full overflow-hidden">
       <ScrollArea.Viewport className="h-full w-full">
@@ -131,7 +133,6 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
               {discover ? "Discover Reels" : "Public Reels"}
             </p>
             <div className="grid max-w-6xl grid-cols-1 items-center justify-center gap-4 py-4 sm:grid-cols-2 md:gap-8 lg:grid-cols-3">
-              {isLoading && <LoadingSpinner loadingType={"Loading discover"} />}
               {data &&
                 pools.map((reel) => (
                   <PoolComponent key={reel.id} pool={reel} />
@@ -242,7 +243,7 @@ const AuthedContent = () => {
 };
 
 const ProfileLayout: React.FC<{ userId: string }> = ({ userId }) => {
-  const { data: profile, isLoading } = trpc.user.profileQuery.useQuery({
+  const { data: profile, isLoading } = api.user.profileQuery.useQuery({
     user: userId,
     ref: userId,
   });
@@ -276,14 +277,6 @@ const HomePage: NextPage = () => {
   }
 
   return <AuthedContent />;
-};
-
-export const getServerSideProps = async (ctx: GetServerSidePropsContext) => {
-  return {
-    props: {
-      session: await getServerAuthSession(ctx),
-    },
-  };
 };
 
 export default HomePage;

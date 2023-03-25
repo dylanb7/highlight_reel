@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react";
 import { useState } from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import * as ScrollArea from "@radix-ui/react-scroll-area";
-import { trpc } from "../../utils/trpc";
+import { api } from "../../utils/trpc";
 import { MagnifyingGlassIcon, Cross2Icon } from "@radix-ui/react-icons";
 import { LoadingSpinner } from "../loading";
 import type { HighlightPool, User } from "@prisma/client";
@@ -18,7 +18,7 @@ const FetchResults: React.FC<{
 }> = ({ searchTerm, setClosed, width }) => {
   const { data: session } = useSession();
 
-  const { data: results, isLoading } = trpc.pool.poolSearch.useQuery({
+  const { data: results, isLoading } = api.pool.poolSearch.useQuery({
     searchTerm: searchTerm,
     id: session?.user?.id,
   });

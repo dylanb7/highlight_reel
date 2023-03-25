@@ -13,7 +13,7 @@ import type { ProfileInfo, UserInfo } from "../types/user-out";
 import { ProfilePoolButtonProvider } from "./contexts/follow-pool-context";
 import { ProfileButtonProvider } from "./contexts/follow-profile-context";
 import type { ButtonContext } from "./contexts/button-types";
-import { trpc } from "../utils/trpc";
+import { api } from "../utils/trpc";
 
 export const PoolScroll: React.FC<{
   pools: PoolInfo[];
@@ -77,7 +77,7 @@ export const ProfileData: React.FC<{
 }> = ({ user }) => {
   const { data: session } = useSession();
 
-  const utils = trpc.useContext();
+  const utils = api.useContext();
 
   const queryKey = {
     user: user.id,
@@ -85,7 +85,7 @@ export const ProfileData: React.FC<{
   };
 
   const { mutate: follow, isLoading: following } =
-    trpc.user.followUser.useMutation({
+    api.user.followUser.useMutation({
       async onMutate() {
         await utils.user.profileQuery.cancel(queryKey);
         const prev = utils.user.profileQuery.getData(queryKey);
@@ -108,7 +108,7 @@ export const ProfileData: React.FC<{
     });
 
   const { mutate: unfollow, isLoading: unfollowing } =
-    trpc.user.unfollowUser.useMutation({
+    api.user.unfollowUser.useMutation({
       async onMutate() {
         await utils.user.profileQuery.cancel(queryKey);
         const prev = utils.user.profileQuery.getData(queryKey);

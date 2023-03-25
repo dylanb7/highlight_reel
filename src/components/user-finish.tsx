@@ -3,7 +3,7 @@
 import React from "react";
 import { useState } from "react";
 import { z, type ZodError } from "zod";
-import { trpc } from "../utils/trpc";
+import { api } from "../utils/trpc";
 import { useSession } from "next-auth/react";
 import { Field, Form, Formik } from "formik";
 
@@ -24,10 +24,10 @@ export const UserFinish: React.FC = () => {
 
   const [error, setError] = useState("");
 
-  const utils = trpc.useContext();
+  const utils = api.useContext();
 
   const { mutate: finishProfile, isLoading } =
-    trpc.user.finishProfile.useMutation({
+    api.user.finishProfile.useMutation({
       onError(error) {
         setError(error.message);
       },

@@ -2,7 +2,7 @@ import { useSession } from "next-auth/react";
 import { createContext, useContext } from "react";
 import type { PoolInfo } from "../../types/pool-out";
 import type { ProfileInfo } from "../../types/user-out";
-import { trpc } from "../../utils/trpc";
+import { api } from "../../utils/trpc";
 import type { ButtonContext } from "./button-types";
 import { unauthedContext } from "./button-types";
 
@@ -25,7 +25,7 @@ export const ProfilePoolButtonProvider: React.FC<
 > = ({ userId, refId, profile, children }) => {
   const { data: session } = useSession();
 
-  const util = trpc.useContext();
+  const util = api.useContext();
 
   const queryKey = {
     user: userId,
@@ -63,7 +63,7 @@ export const ProfilePoolButtonProvider: React.FC<
     return undefined;
   };
 
-  const { mutate: add, isLoading: adding } = trpc.user.addPool.useMutation({
+  const { mutate: add, isLoading: adding } = api.user.addPool.useMutation({
     async onMutate(variables) {
       await util.user.profileQuery.cancel(queryKey);
       const prev = util.user.profileQuery.getData(queryKey);
@@ -93,7 +93,7 @@ export const ProfilePoolButtonProvider: React.FC<
   });
 
   const { mutate: remove, isLoading: removing } =
-    trpc.user.removePool.useMutation({
+    api.user.removePool.useMutation({
       async onMutate(variables) {
         await util.user.profileQuery.cancel(queryKey);
         const prev = util.user.profileQuery.getData(queryKey);

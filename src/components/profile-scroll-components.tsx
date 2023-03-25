@@ -10,7 +10,7 @@ import type {
   UserFetch,
   UserInfo,
 } from "../types/user-out";
-import { trpc } from "../utils/trpc";
+import { api } from "../utils/trpc";
 import type { ButtonContext } from "./contexts/button-types";
 import { ProfileButtonProvider } from "./contexts/follow-profile-context";
 import { ProfileFollowButton } from "./follow-profile";
@@ -71,7 +71,7 @@ const PoolRowFetch: React.FC<{ fetch: PoolUserFetch; dismiss: () => void }> = ({
   fetch,
   dismiss,
 }) => {
-  const utils = trpc.useContext();
+  const utils = api.useContext();
 
   const queryKey = {
     poolId: fetch.poolId,
@@ -79,12 +79,12 @@ const PoolRowFetch: React.FC<{ fetch: PoolUserFetch; dismiss: () => void }> = ({
   };
 
   const { data: users, isLoading } =
-    trpc.pool.getPoolFollowers.useQuery(queryKey);
+    api.pool.getPoolFollowers.useQuery(queryKey);
 
   const userMap = usersToMap(users);
 
   const { mutate: follow, isLoading: following } =
-    trpc.user.followUser.useMutation({
+    api.user.followUser.useMutation({
       async onMutate(variables) {
         await utils.pool.getPoolFollowers.cancel(queryKey);
         const prev = utils.pool.getPoolFollowers.getData(queryKey);
@@ -111,7 +111,7 @@ const PoolRowFetch: React.FC<{ fetch: PoolUserFetch; dismiss: () => void }> = ({
     });
 
   const { mutate: unfollow, isLoading: unfollowing } =
-    trpc.user.unfollowUser.useMutation({
+    api.user.unfollowUser.useMutation({
       async onMutate(variables) {
         await utils.pool.getPoolFollowers.cancel(queryKey);
         const prev = utils.pool.getPoolFollowers.getData(queryKey);
@@ -184,19 +184,19 @@ const FollowersFetch: React.FC<{ fetch: UserFetch; dismiss: () => void }> = ({
   fetch,
   dismiss,
 }) => {
-  const utils = trpc.useContext();
+  const utils = api.useContext();
 
   const queryKey = {
     userId: fetch.userId,
     refId: fetch.refId,
   };
 
-  const { data: users, isLoading } = trpc.user.getFollowers.useQuery(queryKey);
+  const { data: users, isLoading } = api.user.getFollowers.useQuery(queryKey);
 
   const userMap = usersToMap(users);
 
   const { mutate: follow, isLoading: following } =
-    trpc.user.followUser.useMutation({
+    api.user.followUser.useMutation({
       async onMutate(variables) {
         await utils.user.getFollowers.cancel(queryKey);
         const prev = utils.user.getFollowers.getData(queryKey);
@@ -223,7 +223,7 @@ const FollowersFetch: React.FC<{ fetch: UserFetch; dismiss: () => void }> = ({
     });
 
   const { mutate: unfollow, isLoading: unfollowing } =
-    trpc.user.unfollowUser.useMutation({
+    api.user.unfollowUser.useMutation({
       async onMutate(variables) {
         await utils.user.getFollowers.cancel(queryKey);
         const prev = utils.user.getFollowers.getData(queryKey);
@@ -287,19 +287,19 @@ const FollowingFetch: React.FC<{ fetch: UserFetch; dismiss: () => void }> = ({
   fetch,
   dismiss,
 }) => {
-  const utils = trpc.useContext();
+  const utils = api.useContext();
 
   const queryKey = {
     userId: fetch.userId,
     refId: fetch.refId,
   };
 
-  const { data: users, isLoading } = trpc.user.getFollowing.useQuery(queryKey);
+  const { data: users, isLoading } = api.user.getFollowing.useQuery(queryKey);
 
   const userMap = usersToMap(users);
 
   const { mutate: follow, isLoading: following } =
-    trpc.user.followUser.useMutation({
+    api.user.followUser.useMutation({
       async onMutate(variables) {
         await utils.user.getFollowing.cancel(queryKey);
         const prev = utils.user.getFollowing.getData(queryKey);
@@ -326,7 +326,7 @@ const FollowingFetch: React.FC<{ fetch: UserFetch; dismiss: () => void }> = ({
     });
 
   const { mutate: unfollow, isLoading: unfollowing } =
-    trpc.user.unfollowUser.useMutation({
+    api.user.unfollowUser.useMutation({
       async onMutate(variables) {
         await utils.user.getFollowing.cancel(queryKey);
         const prev = utils.user.getFollowing.getData(queryKey);

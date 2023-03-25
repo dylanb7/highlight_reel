@@ -2,10 +2,10 @@ import { NavBar } from "./navbar";
 
 const PageWrap: React.FC<React.PropsWithChildren> = ({ children }) => {
   return (
-    <div className="flex h-full w-full flex-col gap-0">
+    <main className="flex h-screen w-screen flex-col">
       <NavBar />
-      <div className="relative top-16">{children}</div>
-    </div>
+      <div className="relative mt-16 grow">{children}</div>
+    </main>
   );
 };
 

@@ -11,12 +11,12 @@ import {
 } from "@radix-ui/react-icons";
 import * as AspectRatio from "@radix-ui/react-aspect-ratio";
 import { IconButton, twIcons } from "./icon-button";
-import { trpc } from "../utils/trpc";
+import { api } from "../utils/trpc";
 import { useSession } from "next-auth/react";
 
 import { usePlayingHighlightContext } from "./contexts/highlight-context";
 import { useState } from "react";
-import { InView, useInView } from "react-intersection-observer";
+import { useInView } from "react-intersection-observer";
 
 export const HighlightView: React.FC<{
   highlight: HighlightFetchInfo;
@@ -40,19 +40,19 @@ export const HighlightView: React.FC<{
 const ActionRow: React.FC<{ highlight: HighlightFetchInfo }> = ({
   highlight,
 }) => {
-  const utils = trpc.useContext();
+  const utils = api.useContext();
 
   const { data: session } = useSession();
 
   const { mutate: upvote, isLoading: upvoting } =
-    trpc.user.upvoteHighlight.useMutation({
+    api.user.upvoteHighlight.useMutation({
       onSettled() {
         utils.pool.getPoolHighlightsPaginated.invalidate();
       },
     });
 
   const { mutate: bookmark, isLoading: bookmarking } =
-    trpc.user.toggleHighlight.useMutation({
+    api.user.toggleHighlight.useMutation({
       onSettled() {
         utils.pool.getPoolHighlightsPaginated.invalidate();
       },

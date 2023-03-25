@@ -1,21 +1,18 @@
-import type { User } from "@prisma/client";
-
-import type { GetStaticProps } from "next";
+import type { GetServerSideProps, NextPage } from "next";
 
 import { useSession } from "next-auth/react";
-import { prisma } from "../../server/db/client";
 
 import { ProfileComponent } from "../../components/profile-components";
-import { trpc } from "../../utils/trpc";
+import { api } from "../../utils/trpc";
 import { LoadingSpinner } from "../../components/loading";
+import { generateSSGHelper } from "../../utils/ssgHelper";
+import { getServerAuthSession } from "../../server/common/get-server-auth-session";
 
-const ProfileView = (props: { user: User }) => {
-  const { user } = props;
-
+const ProfileView: NextPage<{ userId: string }> = ({ userId }) => {
   const { data: session } = useSession();
 
-  const { data: profile, isLoading } = trpc.user.profileQuery.useQuery({
-    user: user.id,
+  const { data: profile, isLoading } = api.user.profileQuery.useQuery({
+    user: userId,
     ref: session?.user?.id,
   });
 
@@ -31,34 +28,33 @@ const ProfileView = (props: { user: User }) => {
   return <ProfileComponent profile={profile} />;
 };
 
-export const getStaticProps: GetStaticProps = async ({ params }) => {
+export const getServerSideProps: GetServerSideProps<{
+  userId: string;
+}> = async (props) => {
+  const { params } = props;
   if (!params || !params.id || typeof params.id !== "string") {
     return {
       notFound: true,
     };
   }
 
-  const user = await prisma.user.findUnique({
-    where: {
-      id: params.id,
-    },
-  });
+  const userId = params.id;
 
-  if (!user) {
-    return {
-      notFound: true,
-    };
-  }
+  const ssg = generateSSGHelper();
+
+  const session = await getServerAuthSession(props);
+
+  await ssg.user.profileQuery.prefetch({
+    ref: session?.user?.id,
+    user: userId,
+  });
 
   return {
     props: {
-      user: user,
+      trpcState: ssg.dehydrate(),
+      userId,
     },
   };
 };
-
-export async function getStaticPaths() {
-  return { paths: [], fallback: "blocking" };
-}
 
 export default ProfileView;
