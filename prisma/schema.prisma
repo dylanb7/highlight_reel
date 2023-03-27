@@ -28,6 +28,7 @@ model Highlight {
   s3region               String?        @db.VarChar(255)
   raspberryPiId          String?        @db.VarChar(255)
   wristbandId            String?        @db.VarChar(255)
+  thumbnail              String?
   timestampUTC           BigInt?
   duration               Float?         @db.Float
   aspectRatioNumerator   Int?           @db.SmallInt

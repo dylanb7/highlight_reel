@@ -8,7 +8,7 @@ import {
   PoolData,
   PoolMessageCard,
 } from "../../components/highlight-pool-card";
-import { HighlightView } from "../../components/highlight";
+import { HighlightView } from "../../components/highlight-components/highlight";
 
 import { PoolButtonProvider } from "../../components/contexts/follow-pool-context";
 import type { ButtonContext } from "../../components/contexts/button-types";
@@ -17,6 +17,8 @@ import { HighlightContextProvider } from "../../components/contexts/highlight-co
 import type { HighlightFetchInfo } from "../../types/highlight-out";
 import { generateSSGHelper } from "../../utils/ssgHelper";
 import { getServerAuthSession } from "../../server/common/get-server-auth-session";
+import Head from "next/head";
+import { HighlightGridsComponent } from "../../components/highlight-components/highlight-grid";
 
 const PoolView: React.FC<{ poolId: string }> = ({ poolId }) => {
   const { data: session } = useSession();
@@ -119,6 +121,9 @@ const PoolView: React.FC<{ poolId: string }> = ({ poolId }) => {
 
   return (
     <PoolButtonProvider value={buttonContext}>
+      <Head>
+        <title>{`Reel - ${poolInfo?.name ?? "Loading"}`}</title>
+      </Head>
       <div className="m-4 flex w-full flex-col items-center justify-center">
         <PoolMessageCard isCenter={true}>
           {isLoading && <LoadingSpinner loadingType={"Loading Reel"} />}
@@ -191,6 +196,9 @@ const LoadFeed: React.FC<{
 
   return (
     <>
+      <HighlightGridsComponent
+        highlights={highlights}
+      ></HighlightGridsComponent>
       <HighlightFeed
         highlights={highlights}
         newPage={data?.pages[-1]?.highlights[0] ?? undefined}

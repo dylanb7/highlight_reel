@@ -13,5 +13,13 @@ const config = {
     locales: ["en"],
     defaultLocale: "en",
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "highlight-reel-prototype.s3.us-east-1.amazonaws.com"
+      }
+    ]
+  }
 };
 export default config;

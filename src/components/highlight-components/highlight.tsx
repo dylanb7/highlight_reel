@@ -1,5 +1,5 @@
 import ReactPlayer from "react-player/lazy";
-import type { HighlightFetchInfo } from "../types/highlight-out";
+import type { HighlightFetchInfo } from "../../types/highlight-out";
 import {
   BookmarkIcon,
   BookmarkFilledIcon,
@@ -10,13 +10,14 @@ import {
   PauseIcon,
 } from "@radix-ui/react-icons";
 import * as AspectRatio from "@radix-ui/react-aspect-ratio";
-import { IconButton, twIcons } from "./icon-button";
-import { api } from "../utils/trpc";
+import { IconButton, twIcons } from "../icon-button";
+import { api } from "../../utils/trpc";
 import { useSession } from "next-auth/react";
 
-import { usePlayingHighlightContext } from "./contexts/highlight-context";
+import { usePlayingHighlightContext } from "../contexts/highlight-context";
 import { useState } from "react";
 import { useInView } from "react-intersection-observer";
+import { ActionRow } from "./action-row";
 
 export const HighlightView: React.FC<{
   highlight: HighlightFetchInfo;
@@ -32,83 +33,7 @@ export const HighlightView: React.FC<{
           <Player url={highlight.url} highlightId={highlight.id} />
         </AspectRatio.Root>
       </div>
-      <ActionRow highlight={highlight}></ActionRow>
-    </div>
-  );
-};
-
-const ActionRow: React.FC<{ highlight: HighlightFetchInfo }> = ({
-  highlight,
-}) => {
-  const utils = api.useContext();
-
-  const { data: session } = useSession();
-
-  const { mutate: upvote, isLoading: upvoting } =
-    api.user.upvoteHighlight.useMutation({
-      onSettled() {
-        utils.pool.getPoolHighlightsPaginated.invalidate();
-      },
-    });
-
-  const { mutate: bookmark, isLoading: bookmarking } =
-    api.user.toggleHighlight.useMutation({
-      onSettled() {
-        utils.pool.getPoolHighlightsPaginated.invalidate();
-      },
-    });
-
-  return (
-    <div className="flex h-12 w-full flex-row items-center justify-between px-3">
-      <p className="grow truncate text-sm text-slate-900 dark:text-white">
-        {highlight.upvotes + (highlight.upvotes == 1 ? " upvote" : " upvotes")}
-      </p>
-      <div className="flex flex-row items-center justify-end gap-2 overflow-x-scroll">
-        <IconButton
-          onClick={() => {
-            if (session && session.user) {
-              upvote({
-                userId: session.user.id,
-                liked: highlight.upvoted,
-                highlightId: highlight.id,
-              });
-            }
-          }}
-          disabled={upvoting || session?.user?.id == undefined}
-        >
-          {highlight.upvoted ? (
-            <HeartFilledIcon className={twIcons} />
-          ) : (
-            <HeartIcon className={twIcons} />
-          )}
-        </IconButton>
-        <IconButton
-          onClick={() => {
-            if (session && session.user) {
-              bookmark({
-                userId: session.user.id,
-                add: !highlight.bookmarked,
-                highlightId: highlight.id,
-              });
-            }
-          }}
-          disabled={bookmarking || session?.user?.id == undefined}
-        >
-          {highlight.bookmarked ? (
-            <BookmarkFilledIcon className={twIcons} />
-          ) : (
-            <BookmarkIcon className={twIcons} />
-          )}
-        </IconButton>
-        <IconButton
-          onClick={() => {
-            //TODO: add share functionality
-            return;
-          }}
-        >
-          <Share2Icon className={twIcons} />
-        </IconButton>
-      </div>
+      <ActionRow highlight={highlight} />
     </div>
   );
 };
