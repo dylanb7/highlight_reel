@@ -1,9 +1,9 @@
 import { api } from "../utils/trpc";
-import { LoadingSpinner } from "../components/loading";
+import { LoadingSpinner } from "../components/misc/loading";
 import { PoolComponent } from "../components/highlight-pool-card";
 import { UserFinish } from "../components/user-finish";
 import { useSession } from "next-auth/react";
-import React from "react";
+import React, { useMemo } from "react";
 
 import * as Tab from "@radix-ui/react-tabs";
 import { ProfileComponent } from "../components/profile-components";
@@ -35,8 +35,6 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
     api.pool.getPublicPoolsPaginated.useInfiniteQuery(
       {
         amount: amount,
-        userId: session?.user?.id,
-        dicover: discover,
       },
       { getNextPageParam: (lastPage) => lastPage.nextCursor }
     );
@@ -48,13 +46,18 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
     amount: amount,
   };
 
-  const pools = data?.pages.flatMap((page) => page.info) ?? [];
+  const pools = useMemo(() => {
+    return data?.pages.flatMap((page) => page.info) ?? [];
+  }, [data]);
 
-  const poolMap = new Map<string, PoolInfo>();
+  const poolMap = useMemo(() => {
+    const poolMap = new Map<string, PoolInfo>();
 
-  for (const pool of pools) {
-    poolMap.set(pool.id, pool);
-  }
+    for (const pool of pools) {
+      poolMap.set(pool.id, pool);
+    }
+    return poolMap;
+  }, [pools]);
 
   const { mutate: add, isLoading: adding } = api.user.addPool.useMutation({
     async onMutate() {
@@ -101,13 +104,11 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
       if (poolInfo.followInfo.follows || poolInfo.followInfo.requested) {
         remove({
           poolId: poolId,
-          userId: session.user.id,
           requested: poolInfo.followInfo.requested,
         });
       } else {
         add({
           poolId: poolId,
-          userId: session.user.id,
           isPublic: poolInfo.public,
         });
       }
@@ -132,7 +133,7 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
             <p className="mb-2 pt-4 text-center text-2xl font-semibold text-slate-900 dark:text-white">
               {discover ? "Discover Reels" : "Public Reels"}
             </p>
-            <div className="grid max-w-6xl grid-cols-1 items-center justify-center gap-4 py-4 sm:grid-cols-2 md:gap-8 lg:grid-cols-3">
+            <div className="m-4 flex max-w-6xl grid-cols-1 flex-col items-center justify-center gap-4 sm:grid sm:grid-cols-2 md:gap-8 lg:grid-cols-3">
               {data &&
                 pools.map((reel) => (
                   <PoolComponent key={reel.id} pool={reel} />
@@ -169,22 +170,18 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
 };
 
 const AuthedContent = () => {
-  const tabs = ["discover", "profile"];
-
   const useTabsValue = (): [
-    TabsValue: number,
-    TabsOnChange: (newVal: number) => void
+    TabsValue: string,
+    TabsOnChange: (newVal: string) => void
   ] => {
-    const router = useRouter();
+    const { query, push } = useRouter();
 
-    const QUERY_PARAM_TAB = "tab";
-
-    const currentTab = router.query[QUERY_PARAM_TAB] ?? 0;
+    const { tab } = query;
 
     return [
-      Number(currentTab),
-      (newValue: number) => {
-        router.push(`/?${QUERY_PARAM_TAB}=${newValue}`);
+      typeof tab === "string" ? tab : "discover",
+      (newValue: string) => {
+        push({ query: { tab: newValue } }, undefined, { shallow: true });
       },
     ];
   };
@@ -198,10 +195,11 @@ const AuthedContent = () => {
   return (
     <Tab.Root
       className="flex flex-col"
-      defaultValue={tabs[value]}
-      onValueChange={(value) => {
-        onChange(tabs.indexOf(value));
+      defaultValue={"discover"}
+      onValueChange={(newTab) => {
+        onChange(newTab);
       }}
+      value={value}
     >
       <div className="mb-14">
         <Tab.Content value="discover">
@@ -243,10 +241,7 @@ const AuthedContent = () => {
 };
 
 const ProfileLayout: React.FC<{ userId: string }> = ({ userId }) => {
-  const { data: profile, isLoading } = api.user.profileQuery.useQuery({
-    user: userId,
-    ref: userId,
-  });
+  const { data: profile, isLoading } = api.user.profileQuery.useQuery(userId);
 
   if (isLoading)
     return (

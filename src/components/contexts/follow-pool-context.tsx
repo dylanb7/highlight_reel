@@ -1,5 +1,5 @@
 import { useSession } from "next-auth/react";
-import { createContext, useContext } from "react";
+import { createContext, useContext, useMemo } from "react";
 import type { PoolInfo } from "../../types/pool-out";
 import type { ProfileInfo } from "../../types/user-out";
 import { api } from "../../utils/trpc";
@@ -16,34 +16,38 @@ export const PoolButtonProvider: React.FC<
 
 type PoolLocation = "pools" | "modPools" | "ownedPools";
 
+const toMap = (pools: PoolInfo[] | undefined) => {
+  const map: Map<string, PoolInfo> = new Map();
+  if (!pools) return map;
+  for (const pool of pools) {
+    map.set(pool.id, pool);
+  }
+  return map;
+};
+
 export const ProfilePoolButtonProvider: React.FC<
   React.PropsWithChildren<{
     userId: string;
-    refId?: string;
     profile?: ProfileInfo;
   }>
-> = ({ userId, refId, profile, children }) => {
+> = ({ userId, profile, children }) => {
   const { data: session } = useSession();
 
   const util = api.useContext();
 
-  const queryKey = {
-    user: userId,
-    ref: refId,
-  };
+  const queryKey = userId;
 
-  const toMap = (pools: PoolInfo[] | undefined) => {
-    const map: Map<string, PoolInfo> = new Map();
-    if (!pools) return map;
-    for (const pool of pools) {
-      map.set(pool.id, pool);
-    }
-    return map;
-  };
+  const following = useMemo(() => {
+    return toMap(profile?.pools);
+  }, [profile?.pools]);
 
-  const following = toMap(profile?.pools);
-  const mod = toMap(profile?.modPools);
-  const owned = toMap(profile?.ownedPools);
+  const mod = useMemo(() => {
+    return toMap(profile?.modPools);
+  }, [profile?.modPools]);
+
+  const owned = useMemo(() => {
+    return toMap(profile?.ownedPools);
+  }, [profile?.ownedPools]);
 
   const fromId = (
     poolId: string
@@ -129,13 +133,11 @@ export const ProfilePoolButtonProvider: React.FC<
       const requested = info.followInfo?.requested ?? false;
       if ((info.followInfo?.follows ?? false) || requested) {
         remove({
-          userId: session.user.id,
           poolId: id,
           requested: requested,
         });
       } else {
         add({
-          userId: session.user.id,
           poolId: id,
           isPublic: info.public,
         });

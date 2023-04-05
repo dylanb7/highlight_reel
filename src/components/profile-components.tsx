@@ -14,6 +14,7 @@ import { ProfilePoolButtonProvider } from "./contexts/follow-pool-context";
 import { ProfileButtonProvider } from "./contexts/follow-profile-context";
 import type { ButtonContext } from "./contexts/button-types";
 import { api } from "../utils/trpc";
+import { HighlightGridsComponent } from "./highlight-components/highlight-grid";
 
 export const PoolScroll: React.FC<{
   pools: PoolInfo[];
@@ -79,10 +80,7 @@ export const ProfileData: React.FC<{
 
   const utils = api.useContext();
 
-  const queryKey = {
-    user: user.id,
-    ref: session?.user?.id,
-  };
+  const queryKey = user.id;
 
   const { mutate: follow, isLoading: following } =
     api.user.followUser.useMutation({
@@ -134,13 +132,11 @@ export const ProfileData: React.FC<{
       if (!session || !session.user) return;
       if (user.follows || user.requested) {
         unfollow({
-          userId: session.user.id,
           followId: user.id,
           requested: user.requested,
         });
       } else {
         follow({
-          userId: session.user.id,
           followId: user.id,
           public: user.public ?? false,
         });
@@ -208,13 +204,19 @@ export const ProfileData: React.FC<{
 
 export const ProfileHighlights: React.FC<{
   id: string;
-  refId?: string | undefined;
-}> = ({ id, refId }) => {
+}> = ({ id }) => {
+  const { data } = api.user.getUserBookmarksPaginated.useInfiniteQuery({
+    userId: id,
+    amount: 6,
+  });
+
+  const highlights = data?.pages.flatMap((page) => page.highlights) ?? [];
+
   return (
-    <div className="flex flex-col">
-      <p className="ml-8 text-2xl font-semibold text-slate-900 dark:text-white">
-        Highlights
-      </p>
+    <div className="ml-8">
+      <HighlightGridsComponent
+        highlights={highlights}
+      ></HighlightGridsComponent>
     </div>
   );
 };
@@ -227,11 +229,7 @@ export const ProfileComponent: React.FC<{
   const owner = profile.id === session?.user?.id;
 
   return (
-    <ProfilePoolButtonProvider
-      userId={profile.id}
-      refId={session?.user?.id}
-      profile={profile}
-    >
+    <ProfilePoolButtonProvider userId={profile.id} profile={profile}>
       <div className="flex flex-col justify-start gap-1 pt-10">
         <ProfileData user={{ ...profile }} />
         <PoolScroll
@@ -253,7 +251,7 @@ export const ProfileComponent: React.FC<{
             initialOpen={false}
           />
         )}
-        <ProfileHighlights id={profile.id} refId={session?.user?.id} />
+        <ProfileHighlights id={profile.id} />
       </div>
     </ProfilePoolButtonProvider>
   );

@@ -1,7 +1,7 @@
 import { useSession } from "next-auth/react";
 import * as Popover from "@radix-ui/react-popover";
 import { useState } from "react";
-import SignInComponent from "./sign-in";
+import SignInComponent from "./misc/sign-in";
 import { usePoolButtonContext } from "./contexts/follow-pool-context";
 
 const ButtonStyle: React.FC<{ poolId: string }> = ({ poolId }) => {

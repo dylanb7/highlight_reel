@@ -2,7 +2,7 @@ import * as Popover from "@radix-ui/react-popover";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 import { useProfileButtonContext } from "./contexts/follow-profile-context";
-import SignInComponent from "./sign-in";
+import SignInComponent from "./misc/sign-in";
 
 const ButtonStyle: React.FC<{ profileId: string }> = ({ profileId }) => {
   const { action, state } = useProfileButtonContext();

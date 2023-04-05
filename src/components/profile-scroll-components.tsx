@@ -14,7 +14,7 @@ import { api } from "../utils/trpc";
 import type { ButtonContext } from "./contexts/button-types";
 import { ProfileButtonProvider } from "./contexts/follow-profile-context";
 import { ProfileFollowButton } from "./follow-profile";
-import { LoadingSpinner } from "./loading";
+import { LoadingSpinner } from "./misc/loading";
 
 export const ProfileRow: React.FC<{
   profile: UserInfo;
@@ -73,10 +73,7 @@ const PoolRowFetch: React.FC<{ fetch: PoolUserFetch; dismiss: () => void }> = ({
 }) => {
   const utils = api.useContext();
 
-  const queryKey = {
-    poolId: fetch.poolId,
-    refId: fetch.refId,
-  };
+  const queryKey = fetch.poolId;
 
   const { data: users, isLoading } =
     api.pool.getPoolFollowers.useQuery(queryKey);
@@ -142,13 +139,11 @@ const PoolRowFetch: React.FC<{ fetch: PoolUserFetch; dismiss: () => void }> = ({
       if (!user || !fetch.refId) return;
       if (user.follows || user.requested) {
         unfollow({
-          userId: fetch.refId,
           followId: user.id,
           requested: user.requested,
         });
       } else {
         follow({
-          userId: fetch.refId,
           followId: user.id,
           public: user.public ?? false,
         });
@@ -254,13 +249,11 @@ const FollowersFetch: React.FC<{ fetch: UserFetch; dismiss: () => void }> = ({
       if (!user || !fetch.refId) return;
       if (user.follows || user.requested) {
         unfollow({
-          userId: fetch.refId,
           followId: user.id,
           requested: user.requested,
         });
       } else {
         follow({
-          userId: fetch.refId,
           followId: user.id,
           public: user.public ?? false,
         });
@@ -357,13 +350,11 @@ const FollowingFetch: React.FC<{ fetch: UserFetch; dismiss: () => void }> = ({
       if (!user || !fetch.refId) return;
       if (user.follows || user.requested) {
         unfollow({
-          userId: fetch.refId,
           followId: user.id,
           requested: user.requested,
         });
       } else {
         follow({
-          userId: fetch.refId,
           followId: user.id,
           public: user.public ?? false,
         });
@@ -404,7 +395,7 @@ export const ProfileList: React.FC<{
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black opacity-40" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 w-full max-w-md -translate-y-1/2 -translate-x-1/2 ">
+        <Dialog.Content className="fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-y-1/2 -translate-x-1/2">
           <div className="m-4 flex flex-col rounded-lg bg-white p-2 shadow-lg dark:bg-slate-700">
             <div className="flex flex-row items-center justify-between px-2">
               <p className="text-lg font-semibold text-slate-900 dark:text-white">

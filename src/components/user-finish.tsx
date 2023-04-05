@@ -66,7 +66,6 @@ export const UserFinish: React.FC = () => {
     finishProfile({
       public: submitObj.public,
       username: submitObj.text,
-      userId: session.user.id,
     });
   }
 

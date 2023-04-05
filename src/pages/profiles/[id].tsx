@@ -1,20 +1,12 @@
 import type { GetServerSideProps, NextPage } from "next";
 
-import { useSession } from "next-auth/react";
-
 import { ProfileComponent } from "../../components/profile-components";
 import { api } from "../../utils/trpc";
-import { LoadingSpinner } from "../../components/loading";
+import { LoadingSpinner } from "../../components/misc/loading";
 import { generateSSGHelper } from "../../utils/ssgHelper";
-import { getServerAuthSession } from "../../server/common/get-server-auth-session";
 
 const ProfileView: NextPage<{ userId: string }> = ({ userId }) => {
-  const { data: session } = useSession();
-
-  const { data: profile, isLoading } = api.user.profileQuery.useQuery({
-    user: userId,
-    ref: session?.user?.id,
-  });
+  const { data: profile, isLoading } = api.user.profileQuery.useQuery(userId);
 
   if (isLoading) return <LoadingSpinner loadingType={null} />;
 
@@ -42,11 +34,11 @@ export const getServerSideProps: GetServerSideProps<{
 
   const ssg = generateSSGHelper();
 
-  const session = await getServerAuthSession(props);
+  await ssg.user.profileQuery.prefetch(userId);
 
-  await ssg.user.profileQuery.prefetch({
-    ref: session?.user?.id,
-    user: userId,
+  await ssg.user.getUserBookmarksPaginated.prefetchInfinite({
+    userId: userId,
+    amount: 6,
   });
 
   return {

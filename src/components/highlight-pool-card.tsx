@@ -5,14 +5,12 @@ import type { PoolInfo } from "../types/pool-out";
 import { PoolFollowButton } from "./follow-pool";
 import { ProfileList } from "./profile-scroll-components";
 
-export const PoolMessageCard: React.FC<
-  React.PropsWithChildren<{ isCenter: boolean }>
-> = ({ children, isCenter }) => {
+export const PoolMessageCard: React.FC<React.PropsWithChildren> = ({
+  children,
+}) => {
   return (
     <div
-      className={`flex h-fit w-fit items-center justify-center rounded-lg ${
-        isCenter ? "mx-4 mt-10" : ""
-      } border border-gray-300 bg-white p-4 shadow-sm dark:border-gray-500 dark:bg-slate-900`}
+      className={`flex h-fit w-fit items-center justify-center rounded-lg border border-gray-300 bg-white p-4 shadow-sm dark:border-gray-500 dark:bg-slate-900`}
     >
       {children}
     </div>
@@ -74,7 +72,7 @@ export const PoolComponent: React.FC<{
   pool: PoolInfo;
 }> = ({ pool }) => {
   return (
-    <PoolMessageCard isCenter={false}>
+    <PoolMessageCard>
       <div className="flex flex-col gap-4 sm:gap-8">
         <PoolData pool={pool} />
         <Link href={"/reels/" + encodeURIComponent(pool.id)}>

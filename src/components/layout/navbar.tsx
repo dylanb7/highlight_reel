@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import Link from "next/link";
-import SignInComponent from "../sign-in";
+import SignInComponent from "../misc/sign-in";
 import PoolSearchComponent from "./pool-search-bar";
 
 const MobileNav = ({ open }: { open: boolean }) => {

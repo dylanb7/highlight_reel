@@ -1,12 +1,11 @@
 "use client";
 
-import { useSession } from "next-auth/react";
 import { useState } from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import * as ScrollArea from "@radix-ui/react-scroll-area";
 import { api } from "../../utils/trpc";
 import { MagnifyingGlassIcon, Cross2Icon } from "@radix-ui/react-icons";
-import { LoadingSpinner } from "../loading";
+import { LoadingSpinner } from "../misc/loading";
 import type { HighlightPool, User } from "@prisma/client";
 import Link from "next/link";
 import { useResizeDetector } from "react-resize-detector";
@@ -16,12 +15,7 @@ const FetchResults: React.FC<{
   setClosed: () => void;
   width: number;
 }> = ({ searchTerm, setClosed, width }) => {
-  const { data: session } = useSession();
-
-  const { data: results, isLoading } = api.pool.poolSearch.useQuery({
-    searchTerm: searchTerm,
-    id: session?.user?.id,
-  });
+  const { data: results, isLoading } = api.pool.poolSearch.useQuery(searchTerm);
 
   return (
     <ScrollArea.Root
