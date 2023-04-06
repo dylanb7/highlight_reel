@@ -35,9 +35,10 @@ export const dayGrouping: GroupingStrategy = (highlights) => {
   const dayMap = new Map<string, HighlightThumbnail[]>();
 
   for (const highlight of highlights) {
+    if (!highlight.timestampUTC) continue;
     const key = dayjs
+      .unix(Number(highlight.timestampUTC))
       .utc()
-      .millisecond(Number(highlight.timestampUTC))
       .local()
       .format("MMM DD, YYYY");
 
@@ -82,7 +83,7 @@ export const HighlightGridsComponent: React.FC<{
   const gridContext = useGridContext();
 
   return (
-    <>
+    <div className="pb-10">
       {highlightGroups.map((group) => (
         <HighlightGrid
           group={group}
@@ -99,7 +100,7 @@ export const HighlightGridsComponent: React.FC<{
           </button>
         </div>
       )}
-    </>
+    </div>
   );
 };
 
@@ -114,7 +115,7 @@ const HighlightGrid: React.FC<{ group: HighlightGroup }> = ({ group }) => {
         {group.header}
       </h3>
       {!isEmpty && (
-        <div className="container grid w-full grid-cols-2 justify-start gap-1 sm:grid-cols-3">
+        <div className="container grid w-full grid-cols-2 justify-start gap-1.5 sm:grid-cols-3">
           {group.highlights.map((highlight, index) => (
             <ImageComponent
               key={highlight.id}
@@ -154,12 +155,12 @@ const ImageComponent: React.FC<{
     <AspectRatio.Root ratio={aspect}>
       <div
         key={highlight.id}
-        className="relative h-full w-full overflow-clip rounded-md border border-transparent hover:border-slate-600 hover:border-slate-900 hover:shadow-xl dark:hover:border-white"
+        className="group relative h-full w-full overflow-clip rounded-md border border-gray-300 hover:border-slate-600 hover:border-slate-900 hover:shadow-xl dark:border-gray-500 dark:hover:border-white"
       >
-        <div className={"absolute left-0 top-0 h-full w-full"}>
+        <div className={"absolute inset-0"}>
           {highlight.thumbnailUrl && (
             <Image
-              className="z-10"
+              className="z-10 group-hover:opacity-50"
               src={highlight.thumbnailUrl}
               alt={"Highlight"}
               onLoadingComplete={() => setLoading(false)}

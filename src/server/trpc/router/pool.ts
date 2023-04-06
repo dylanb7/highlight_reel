@@ -452,7 +452,7 @@ export const poolRouter = router({
     .query(async ({ ctx, input }) => {
       const userId = ctx.session?.user?.id;
       const { poolId, cursor, initialCursor } = input;
-      const amount = 1;
+      const amount = 3;
       let ret: HighlightReturn;
       if (userId) {
         ret = (

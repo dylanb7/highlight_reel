@@ -31,7 +31,7 @@ export const ContinuousFeed: React.FC<{
   highlights: HighlightVideo[];
   backPath: string;
   fetching?: boolean;
-  from?: string;
+  from: string;
   hasNext: boolean;
   hasPrev: boolean;
   fetchNext: () => Promise<string | undefined>;
@@ -55,32 +55,50 @@ export const ContinuousFeed: React.FC<{
   useEffect(() => {
     const initial = highlights.at(0);
     if (startId === undefined && initial) {
-      push({ query: { ...query, startId: removeExt(initial.id) } }, undefined, {
-        shallow: true,
-      });
+      push(
+        {
+          pathname: "/reels/[id]/feed/[startId]",
+          query: {
+            ...query,
+            startId: encodeURIComponent(removeExt(initial.id)),
+          },
+        },
+        undefined,
+        {
+          shallow: true,
+        }
+      );
     }
   }, [highlights, push, query, startId]);
 
   const current = useMemo(() => {
     if (typeof startId !== "string") return undefined;
-    return highlights.findIndex((highlight) => {
-      removeExt(highlight.id) === startId;
+    const index = highlights.findIndex((highlight) => {
+      return removeExt(highlight.id) === startId;
     });
+    return index == -1 ? undefined : index;
   }, [highlights, startId]);
 
   const highlight = useMemo(() => {
-    return current ? highlights.at(current) : undefined;
+    return current !== undefined ? highlights.at(current) : undefined;
   }, [current, highlights]);
 
-  const hasCachedNext = current != null && current < length - 1;
+  const hasCachedNext = current !== undefined && current < length - 1;
 
-  const hasCachedPrev = current != null && current > 0;
+  const hasCachedPrev = current !== undefined && current > 0;
 
   const goNext = async () => {
-    const nextHighlight = current ? highlights.at(current + 1) : undefined;
+    const nextHighlight =
+      current !== undefined ? highlights.at(current + 1) : undefined;
     if (nextHighlight) {
       return push(
-        { query: { ...query, startId: removeExt(nextHighlight.id) } },
+        {
+          pathname: "/reels/[id]/feed/[startId]",
+          query: {
+            ...query,
+            startId: encodeURIComponent(removeExt(nextHighlight.id)),
+          },
+        },
         undefined,
         {
           shallow: true,
@@ -89,16 +107,30 @@ export const ContinuousFeed: React.FC<{
     }
     const id = await fetchNext();
     if (!id) return;
-    push({ query: { ...query, startId: removeExt(id) } }, undefined, {
-      shallow: true,
-    });
+    push(
+      {
+        pathname: "/reels/[id]/feed/[startId]",
+        query: { ...query, startId: encodeURIComponent(removeExt(id)) },
+      },
+      undefined,
+      {
+        shallow: true,
+      }
+    );
   };
 
   const goPrev = async () => {
-    const prevHighlight = current ? highlights.at(current - 1) : undefined;
+    const prevHighlight =
+      current !== undefined ? highlights.at(current - 1) : undefined;
     if (prevHighlight) {
       return push(
-        { query: { ...query, startId: removeExt(prevHighlight.id) } },
+        {
+          pathname: "/reels/[id]/feed/[startId]",
+          query: {
+            ...query,
+            startId: encodeURIComponent(removeExt(prevHighlight.id)),
+          },
+        },
         undefined,
         {
           shallow: true,
@@ -107,9 +139,16 @@ export const ContinuousFeed: React.FC<{
     }
     const id = await fetchPrev();
     if (!id) return;
-    push({ query: { ...query, startId: removeExt(id) } }, undefined, {
-      shallow: true,
-    });
+    push(
+      {
+        pathname: "/reels/[id]/feed/[startId]",
+        query: { ...query, startId: encodeURIComponent(removeExt(id)) },
+      },
+      undefined,
+      {
+        shallow: true,
+      }
+    );
   };
 
   if (length == 0)
@@ -231,9 +270,7 @@ const BaseCompontent: React.FC<{
 }) => {
   const relativeTime = useMemo(() => {
     if (!highlight || !highlight.timestampUTC) return undefined;
-    return dayjs().from(
-      dayjs.utc().millisecond(Number(highlight.timestampUTC))
-    );
+    return dayjs().to(dayjs.unix(Number(highlight.timestampUTC)).utc().local());
   }, [highlight]);
 
   const aspect = useMemo(() => {

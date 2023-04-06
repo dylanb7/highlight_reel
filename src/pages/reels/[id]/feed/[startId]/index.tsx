@@ -36,6 +36,7 @@ export const FeedWithStart: NextPage<{ id: string; startId: string }> = ({
         return (await fetchPreviousPage()).data?.pages.at(0)?.highlights.at(0)
           ?.id;
       }}
+      from={""}
     />
   );
 };

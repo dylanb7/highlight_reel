@@ -31,6 +31,7 @@ export const Group: NextPage<{ id: string }> = ({ id }) => {
         return (await fetchPreviousPage()).data?.pages.at(0)?.highlights.at(0)
           ?.id;
       }}
+      from={""}
     />
   );
 };

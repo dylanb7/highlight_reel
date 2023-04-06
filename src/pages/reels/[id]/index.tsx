@@ -30,8 +30,10 @@ const PoolView: NextPage<{ poolId: string }> = ({ poolId }) => {
       <Head>
         <title>{`Reel - ${poolInfo?.name ?? "Loading"}`}</title>
       </Head>
-      <div className="flex h-full w-full flex-col items-start justify-start px-4 pt-8 sm:px-8">
-        <PoolInfo poolId={poolId} />
+      <div className="flex h-full w-full flex-col items-start justify-center px-4 pt-8 sm:px-8">
+        <div className="self-center">
+          <PoolInfo poolId={poolId} />
+        </div>
         <LoadFeed poolId={poolId} />
       </div>
     </>
