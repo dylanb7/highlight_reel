@@ -1,13 +1,11 @@
 import { createContext, useContext } from "react";
+import type { VideoActions } from "./action-types";
 
 export type GridActions = {
   basePath: string;
   fetchMore: () => void;
   hasMore: () => boolean;
-  bookmark: (arg0: string) => void;
-  like: (arg0: string) => void;
-  disabled: boolean;
-};
+} & VideoActions;
 
 const noPlay: GridActions = {
   basePath: "",

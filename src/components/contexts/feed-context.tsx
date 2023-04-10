@@ -1,19 +1,20 @@
-import type { HighlightVideo } from "../../types/highlight-out";
+import { createContext, useContext } from "react";
+import type { VideoActions } from "./action-types";
 
-export type FeedValues = {
-  from?: string;
-  initial?: number;
-  current?: number;
-  hasMore?: boolean;
-  highlights: HighlightVideo[];
-  disabled: boolean;
-  fetchNext?: () => Promise<HighlightVideo>;
-  fetching: boolean;
-  hasPrev: () => boolean;
-  hasNext: () => boolean;
-  video: () => HighlightVideo | undefined;
-  next: () => void;
-  prev: () => void;
-  bookmark: () => void;
-  like: () => void;
+const FeedContext = createContext<VideoActions>({
+  bookmark: function (): void {
+    return;
+  },
+  like: function (): void {
+    return;
+  },
+  disabled: true,
+});
+
+export const FeedContextProvider: React.FC<
+  React.PropsWithChildren<{ value: VideoActions }>
+> = ({ value, children }) => {
+  return <FeedContext.Provider value={value}>{children}</FeedContext.Provider>;
 };
+
+export const useFeedContext = () => useContext(FeedContext);

@@ -36,7 +36,10 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
       {
         amount: amount,
       },
-      { getNextPageParam: (lastPage) => lastPage.nextCursor }
+      {
+        refetchOnWindowFocus: false,
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
+      }
     );
 
   const queryKey = {
@@ -216,7 +219,7 @@ const AuthedContent = () => {
         </Tab.Content>
       </div>
 
-      <footer className="border-grey-300 fixed inset-x-0 bottom-0 z-20 h-14 border-t bg-white pb-3 shadow-lg dark:border-white dark:bg-slate-900">
+      <footer className="border-grey-300 fixed inset-x-0 bottom-0 z-50 h-14 border-t bg-white pb-3 shadow-lg dark:border-white dark:bg-slate-900">
         <div className="mx-5 mt-3">
           <Tab.List className="flex flex-row items-center justify-around gap-8 ">
             <Tab.Trigger

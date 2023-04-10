@@ -3,10 +3,14 @@ import { z } from "zod";
 import { router, protectedProcedure, publicProcedure } from "../trpc";
 import { poolFromQuery } from "../../../types/pool-out";
 import {
+  addExt,
   addUnathedProps,
+  packageHighlightsPaginated,
   packageThumbnailsPaginated,
+  removeExt,
 } from "../../../utils/highlightUtils";
 import type { HighlightReturn } from "../../../types/highlight-out";
+import type { User } from "@prisma/client";
 
 export const userRouter = router({
   fromId: protectedProcedure
@@ -249,13 +253,14 @@ export const userRouter = router({
     )
     .mutation(({ ctx, input }) => {
       const userId = ctx.session.user.id;
+      const extId = addExt(input.highlightId);
       if (input.add) {
         return ctx.prisma.user.update({
           where: { id: userId },
           data: {
             highlights: {
               connect: {
-                id: input.highlightId,
+                id: extId,
               },
             },
           },
@@ -266,7 +271,7 @@ export const userRouter = router({
         data: {
           highlights: {
             disconnect: {
-              id: input.highlightId,
+              id: extId,
             },
           },
         },
@@ -277,20 +282,21 @@ export const userRouter = router({
     .input(
       z.object({
         highlightId: z.string(),
-        liked: z.boolean().nullish(),
+        like: z.boolean().nullish(),
       })
     )
     .mutation(({ ctx, input }) => {
       const userId = ctx.session.user.id;
-      if (input.liked) {
+      const extId = addExt(input.highlightId);
+      if (input.like) {
         return ctx.prisma.user.update({
           where: {
             id: userId,
           },
           data: {
             upvotes: {
-              disconnect: {
-                id: input.highlightId,
+              connect: {
+                id: extId,
               },
             },
           },
@@ -302,8 +308,8 @@ export const userRouter = router({
         },
         data: {
           upvotes: {
-            connect: {
-              id: input.highlightId,
+            disconnect: {
+              id: extId,
             },
           },
         },
@@ -687,6 +693,7 @@ export const userRouter = router({
             public: true,
           },
           select: {
+            username: true,
             highlights: {
               orderBy: {
                 timestampUTC: "desc",
@@ -715,16 +722,122 @@ export const userRouter = router({
       return packageThumbnailsPaginated(amount, ret, cursor);
     }),
 
-  getUserLikesPaginated: protectedProcedure
+  getBookmarkVideosPaginated: publicProcedure
     .input(
       z.object({
+        profileId: z.string().cuid(),
+        initialCursor: z.string().nullish(),
         cursor: z.string().nullish(),
-        amount: z.number(),
       })
     )
     .query(async ({ ctx, input }) => {
       const userId = ctx.session?.user?.id;
-      const { cursor, amount } = input;
+      const { profileId, cursor, initialCursor } = input;
+      const amount = 1;
+      let ret: {
+        highlights: HighlightReturn;
+        username: string | null | undefined;
+      } | null;
+      if (userId) {
+        ret = await ctx.prisma.user.findFirst({
+          where: {
+            OR: [
+              {
+                public: true,
+              },
+              {
+                followedBy: {
+                  some: {
+                    id: userId,
+                  },
+                },
+              },
+            ],
+            AND: {
+              id: profileId,
+            },
+          },
+          select: {
+            username: true,
+            highlights: {
+              orderBy: {
+                timestampUTC: "desc",
+              },
+              include: {
+                _count: {
+                  select: {
+                    upvotes: true,
+                  },
+                },
+                upvotes: {
+                  where: {
+                    id: userId,
+                  },
+                },
+                addedBy: {
+                  where: {
+                    id: userId,
+                  },
+                },
+              },
+
+              take: amount + 1,
+              cursor: initialCursor
+                ? {
+                    id: cursor ?? initialCursor,
+                  }
+                : undefined,
+            },
+          },
+        });
+      } else {
+        const rawPool = await ctx.prisma.user.findFirst({
+          where: {
+            id: profileId,
+            public: true,
+          },
+          select: {
+            username: true,
+            highlights: {
+              include: {
+                _count: {
+                  select: {
+                    upvotes: true,
+                  },
+                },
+              },
+
+              take: amount + 1,
+              cursor: initialCursor
+                ? {
+                    id: cursor ?? initialCursor,
+                  }
+                : undefined,
+            },
+          },
+        });
+        ret = {
+          highlights: addUnathedProps(rawPool?.highlights),
+          username: rawPool?.username,
+        };
+      }
+      return {
+        name: ret?.username,
+        ...(await packageHighlightsPaginated(amount, ret?.highlights, cursor)),
+      };
+    }),
+
+  getUserBookmarkedVideosPaginated: protectedProcedure
+    .input(
+      z.object({
+        initialCursor: z.string().nullish(),
+        cursor: z.string().nullish(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const { cursor, initialCursor } = input;
+      const amount = 1;
 
       const ret = await ctx.prisma.user.findFirst({
         where: {
@@ -746,13 +859,59 @@ export const userRouter = router({
                   id: userId,
                 },
               },
+            },
+
+            take: amount + 1,
+            cursor: initialCursor
+              ? {
+                  id: cursor ?? initialCursor,
+                }
+              : undefined,
+          },
+        },
+      });
+
+      const addedBookmarks = ret?.highlights
+        ? ret.highlights.map((highlight) => {
+            return { ...highlight, addedBy: [<User>{ id: userId }] };
+          })
+        : null;
+
+      return packageHighlightsPaginated(amount, addedBookmarks, cursor);
+    }),
+
+  getUserLikesPaginated: protectedProcedure
+    .input(
+      z.object({
+        cursor: z.string().nullish(),
+        amount: z.number(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const { cursor, amount } = input;
+
+      const ret = await ctx.prisma.user.findUnique({
+        where: {
+          id: userId,
+        },
+        select: {
+          upvotes: {
+            orderBy: {
+              timestampUTC: "desc",
+            },
+            include: {
+              _count: {
+                select: {
+                  upvotes: true,
+                },
+              },
               addedBy: {
                 where: {
                   id: userId,
                 },
               },
             },
-
             take: amount + 1,
             cursor: cursor
               ? {
@@ -763,10 +922,129 @@ export const userRouter = router({
         },
       });
 
-      return packageThumbnailsPaginated(
-        amount,
-        ret?.highlights ?? null,
-        cursor
-      );
+      const addedUpvotes = ret?.upvotes
+        ? ret.upvotes.map((highlight) => {
+            return { ...highlight, upvotes: [<User>{ id: userId }] };
+          })
+        : null;
+
+      return packageThumbnailsPaginated(amount, addedUpvotes, cursor);
     }),
+
+  getLikedVideosPaginated: protectedProcedure
+    .input(
+      z.object({
+        initialCursor: z.string().nullish(),
+        cursor: z.string().nullish(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const { cursor, initialCursor } = input;
+      const amount = 1;
+
+      const ret = await ctx.prisma.user.findUnique({
+        where: {
+          id: userId,
+        },
+        select: {
+          upvotes: {
+            orderBy: {
+              timestampUTC: "desc",
+            },
+            include: {
+              _count: {
+                select: {
+                  upvotes: true,
+                },
+              },
+              addedBy: {
+                where: {
+                  id: userId,
+                },
+              },
+            },
+
+            take: amount + 1,
+            cursor: initialCursor
+              ? {
+                  id: cursor ?? initialCursor,
+                }
+              : undefined,
+          },
+        },
+      });
+
+      const addedUpvotes = ret?.upvotes
+        ? ret.upvotes.map((highlight) => {
+            return { ...highlight, upvotes: [<User>{ id: userId }] };
+          })
+        : null;
+
+      return packageHighlightsPaginated(amount, addedUpvotes, cursor);
+    }),
+
+  getFirstBookmarkId: publicProcedure
+    .input(z.string().cuid())
+    .query(async ({ ctx, input }) => {
+      const ret = await ctx.prisma.user.findUnique({
+        where: { id: input },
+        select: {
+          highlights: {
+            orderBy: {
+              timestampUTC: "desc",
+            },
+            select: {
+              id: true,
+            },
+            take: 1,
+          },
+        },
+      });
+      const first = ret?.highlights.at(0) ?? undefined;
+      if (!first) return undefined;
+      return removeExt(first.id);
+    }),
+
+  getFirstUserBookmarkId: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    const ret = await ctx.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        highlights: {
+          orderBy: {
+            timestampUTC: "desc",
+          },
+          select: {
+            id: true,
+          },
+          take: 1,
+        },
+      },
+    });
+    const first = ret?.highlights.at(0) ?? undefined;
+    if (!first) return undefined;
+    return removeExt(first.id);
+  }),
+
+  getFirstUserLikeId: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    const ret = await ctx.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        upvotes: {
+          orderBy: {
+            timestampUTC: "desc",
+          },
+          select: {
+            id: true,
+          },
+          take: 1,
+        },
+      },
+    });
+    const first = ret?.upvotes.at(0) ?? undefined;
+    if (!first) return undefined;
+    return first.id;
+  }),
 });

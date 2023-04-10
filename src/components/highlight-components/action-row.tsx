@@ -5,36 +5,19 @@ import {
   BookmarkIcon,
   Share2Icon,
 } from "@radix-ui/react-icons";
-import { useSession } from "next-auth/react";
 import type {
   HighlightThumbnail,
   HighlightVideo,
 } from "../../types/highlight-out";
-import { api } from "../../utils/trpc";
 import { IconButton, twIcons } from "../misc/icon-button";
 import * as Separator from "@radix-ui/react-separator";
 import { useGridContext } from "../contexts/grid-context";
+import { useFeedContext } from "../contexts/feed-context";
 
 export const ActionRow: React.FC<{ highlight: HighlightVideo }> = ({
   highlight,
 }) => {
-  const utils = api.useContext();
-
-  const { data: session } = useSession();
-
-  const { mutate: upvote, isLoading: upvoting } =
-    api.user.upvoteHighlight.useMutation({
-      onSettled() {
-        utils.pool.getPoolHighlightsPaginated.invalidate();
-      },
-    });
-
-  const { mutate: bookmark, isLoading: bookmarking } =
-    api.user.toggleHighlight.useMutation({
-      onSettled() {
-        utils.pool.getPoolHighlightsPaginated.invalidate();
-      },
-    });
+  const feedContext = useFeedContext();
 
   return (
     <div className="flex h-12 w-full flex-row items-center justify-between rounded-sm px-3 shadow-sm shadow-gray-300 transition-opacity dark:shadow-slate-900">
@@ -44,14 +27,9 @@ export const ActionRow: React.FC<{ highlight: HighlightVideo }> = ({
       <div className="flex flex-row items-center justify-end gap-2">
         <IconButton
           onClick={() => {
-            if (session && session.user) {
-              upvote({
-                liked: highlight.upvoted,
-                highlightId: highlight.id,
-              });
-            }
+            feedContext.like(highlight.id);
           }}
-          disabled={upvoting || session?.user?.id == undefined}
+          disabled={feedContext.disabled}
         >
           {highlight.upvoted ? (
             <HeartFilledIcon className={twIcons()} />
@@ -61,14 +39,9 @@ export const ActionRow: React.FC<{ highlight: HighlightVideo }> = ({
         </IconButton>
         <IconButton
           onClick={() => {
-            if (session && session.user) {
-              bookmark({
-                add: !highlight.bookmarked,
-                highlightId: highlight.id,
-              });
-            }
+            feedContext.bookmark(highlight.id);
           }}
-          disabled={bookmarking || session?.user?.id == undefined}
+          disabled={feedContext.disabled}
         >
           {highlight.bookmarked ? (
             <BookmarkFilledIcon className={twIcons()} />

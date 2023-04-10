@@ -1,24 +1,20 @@
-import type { GetStaticProps, NextPage } from "next";
+import type { NextPage, GetStaticProps } from "next";
 import { useMemo } from "react";
 import {
   bookmarkActionUpdate,
   likeActionUpdate,
-} from "../../../../../components/contexts/action-types";
-import { FeedContextProvider } from "../../../../../components/contexts/feed-context";
-import { ContinuousFeed } from "../../../../../components/highlight-components/highlight-feed";
-import type { HighlightVideo } from "../../../../../types/highlight-out";
-import { addExt } from "../../../../../utils/highlightUtils";
-import { generateSSGHelper } from "../../../../../utils/ssgHelper";
-import { api } from "../../../../../utils/trpc";
+} from "../../components/contexts/action-types";
+import { FeedContextProvider } from "../../components/contexts/feed-context";
+import { ContinuousFeed } from "../../components/highlight-components/highlight-feed";
+import type { HighlightVideo } from "../../types/highlight-out";
+import { addExt } from "../../utils/highlightUtils";
+import { generateSSGHelper } from "../../utils/ssgHelper";
+import { api } from "../../utils/trpc";
 
-const FeedWithStart: NextPage<{ id: string; startId: string }> = ({
-  id,
-  startId,
-}) => {
+const FeedWithStart: NextPage<{ startId: string }> = ({ startId }) => {
   const util = api.useContext();
 
   const queryKey = {
-    poolId: id,
     initialCursor: addExt(startId),
   };
 
@@ -29,7 +25,7 @@ const FeedWithStart: NextPage<{ id: string; startId: string }> = ({
     isFetching,
     hasPreviousPage,
     fetchPreviousPage,
-  } = api.pool.getHighlightVideosPaginated.useInfiniteQuery(queryKey, {
+  } = api.user.getUserBookmarkedVideosPaginated.useInfiniteQuery(queryKey, {
     refetchOnWindowFocus: false,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
   });
@@ -50,11 +46,11 @@ const FeedWithStart: NextPage<{ id: string; startId: string }> = ({
   const { mutate: bookmark, isLoading: bookmarking } =
     api.user.toggleHighlight.useMutation({
       async onMutate(variables) {
-        await util.pool.getHighlightVideosPaginated.cancel(queryKey);
+        await util.user.getUserBookmarkedVideosPaginated.cancel(queryKey);
         const prev =
-          util.pool.getHighlightVideosPaginated.getInfiniteData(queryKey);
+          util.user.getUserBookmarkedVideosPaginated.getInfiniteData(queryKey);
         if (prev) {
-          util.pool.getHighlightVideosPaginated.setInfiniteData(queryKey, {
+          util.user.getUserBookmarkedVideosPaginated.setInfiniteData(queryKey, {
             ...prev,
             pages: bookmarkActionUpdate(prev, variables),
           });
@@ -62,24 +58,24 @@ const FeedWithStart: NextPage<{ id: string; startId: string }> = ({
         return { prev };
       },
       onError(_, __, context) {
-        util.pool.getHighlightVideosPaginated.setInfiniteData(
+        util.user.getUserBookmarkedVideosPaginated.setInfiniteData(
           queryKey,
           context?.prev
         );
       },
       onSettled() {
-        util.pool.getHighlightVideosPaginated.invalidate(queryKey);
+        util.user.getUserBookmarkedVideosPaginated.invalidate(queryKey);
       },
     });
 
   const { mutate: upvote, isLoading: upvoting } =
     api.user.upvoteHighlight.useMutation({
       async onMutate(variables) {
-        await util.pool.getHighlightVideosPaginated.cancel(queryKey);
+        await util.user.getUserBookmarkedVideosPaginated.cancel(queryKey);
         const prev =
-          util.pool.getHighlightVideosPaginated.getInfiniteData(queryKey);
+          util.user.getUserBookmarkedVideosPaginated.getInfiniteData(queryKey);
         if (prev) {
-          util.pool.getHighlightVideosPaginated.setInfiniteData(queryKey, {
+          util.user.getUserBookmarkedVideosPaginated.setInfiniteData(queryKey, {
             ...prev,
             pages: likeActionUpdate(prev, variables),
           });
@@ -87,13 +83,13 @@ const FeedWithStart: NextPage<{ id: string; startId: string }> = ({
         return { prev };
       },
       onError(_, __, context) {
-        util.pool.getHighlightVideosPaginated.setInfiniteData(
+        util.user.getUserBookmarkedVideosPaginated.setInfiniteData(
           queryKey,
           context?.prev
         );
       },
       onSettled() {
-        util.pool.getHighlightVideosPaginated.invalidate(queryKey);
+        util.user.getUserBookmarkedVideosPaginated.invalidate(queryKey);
       },
     });
 
@@ -119,7 +115,7 @@ const FeedWithStart: NextPage<{ id: string; startId: string }> = ({
       <ContinuousFeed
         highlights={highlights ?? []}
         fetching={isFetching}
-        backPath={`/reels/${encodeURIComponent(id)}`}
+        backPath={`/?tab=profile`}
         hasNext={hasNextPage ?? false}
         hasPrev={hasPreviousPage ?? false}
         fetchNext={async () => {
@@ -130,23 +126,22 @@ const FeedWithStart: NextPage<{ id: string; startId: string }> = ({
           return (await fetchPreviousPage()).data?.pages.at(0)?.highlights.at(0)
             ?.id;
         }}
-        from={data?.pages.at(0)?.name ?? ""}
+        from={"Bookmarked Videos"}
       />
     </FeedContextProvider>
   );
 };
 
 export const getStaticProps: GetStaticProps<{
-  id: string;
   startId: string;
 }> = async (props) => {
   const { params } = props;
 
   if (!params) return { notFound: true };
 
-  const { id, startId } = params;
+  const { startId } = params;
 
-  if (typeof id !== "string" || typeof startId !== "string") {
+  if (typeof startId !== "string") {
     return {
       notFound: true,
     };
@@ -154,15 +149,13 @@ export const getStaticProps: GetStaticProps<{
 
   const ssg = generateSSGHelper();
 
-  await ssg.pool.getHighlightVideosPaginated.prefetchInfinite({
-    poolId: id,
+  await ssg.user.getUserBookmarkedVideosPaginated.prefetchInfinite({
     initialCursor: startId,
   });
 
   return {
     props: {
       trpcState: ssg.dehydrate(),
-      id,
       startId,
     },
   };

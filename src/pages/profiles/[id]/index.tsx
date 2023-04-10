@@ -1,9 +1,8 @@
-import type { GetServerSideProps, NextPage } from "next";
-
-import { ProfileComponent } from "../../components/profile-components";
-import { api } from "../../utils/trpc";
-import { LoadingSpinner } from "../../components/misc/loading";
-import { generateSSGHelper } from "../../utils/ssgHelper";
+import type { NextPage, GetServerSideProps } from "next";
+import { LoadingSpinner } from "../../../components/misc/loading";
+import { ProfileComponent } from "../../../components/profile-components";
+import { generateSSGHelper } from "../../../utils/ssgHelper";
+import { api } from "../../../utils/trpc";
 
 const ProfileView: NextPage<{ userId: string }> = ({ userId }) => {
   const { data: profile, isLoading } = api.user.profileQuery.useQuery(userId);

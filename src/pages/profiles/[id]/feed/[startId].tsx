@@ -3,13 +3,13 @@ import { useMemo } from "react";
 import {
   bookmarkActionUpdate,
   likeActionUpdate,
-} from "../../../../../components/contexts/action-types";
-import { FeedContextProvider } from "../../../../../components/contexts/feed-context";
-import { ContinuousFeed } from "../../../../../components/highlight-components/highlight-feed";
-import type { HighlightVideo } from "../../../../../types/highlight-out";
-import { addExt } from "../../../../../utils/highlightUtils";
-import { generateSSGHelper } from "../../../../../utils/ssgHelper";
-import { api } from "../../../../../utils/trpc";
+} from "../../../../components/contexts/action-types";
+import { FeedContextProvider } from "../../../../components/contexts/feed-context";
+import { ContinuousFeed } from "../../../../components/highlight-components/highlight-feed";
+import type { HighlightVideo } from "../../../../types/highlight-out";
+import { addExt } from "../../../../utils/highlightUtils";
+import { generateSSGHelper } from "../../../../utils/ssgHelper";
+import { api } from "../../../../utils/trpc";
 
 const FeedWithStart: NextPage<{ id: string; startId: string }> = ({
   id,
@@ -18,7 +18,7 @@ const FeedWithStart: NextPage<{ id: string; startId: string }> = ({
   const util = api.useContext();
 
   const queryKey = {
-    poolId: id,
+    profileId: id,
     initialCursor: addExt(startId),
   };
 
@@ -29,7 +29,7 @@ const FeedWithStart: NextPage<{ id: string; startId: string }> = ({
     isFetching,
     hasPreviousPage,
     fetchPreviousPage,
-  } = api.pool.getHighlightVideosPaginated.useInfiniteQuery(queryKey, {
+  } = api.user.getBookmarkVideosPaginated.useInfiniteQuery(queryKey, {
     refetchOnWindowFocus: false,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
   });
@@ -50,11 +50,11 @@ const FeedWithStart: NextPage<{ id: string; startId: string }> = ({
   const { mutate: bookmark, isLoading: bookmarking } =
     api.user.toggleHighlight.useMutation({
       async onMutate(variables) {
-        await util.pool.getHighlightVideosPaginated.cancel(queryKey);
+        await util.user.getBookmarkVideosPaginated.cancel(queryKey);
         const prev =
-          util.pool.getHighlightVideosPaginated.getInfiniteData(queryKey);
+          util.user.getBookmarkVideosPaginated.getInfiniteData(queryKey);
         if (prev) {
-          util.pool.getHighlightVideosPaginated.setInfiniteData(queryKey, {
+          util.user.getBookmarkVideosPaginated.setInfiniteData(queryKey, {
             ...prev,
             pages: bookmarkActionUpdate(prev, variables),
           });
@@ -62,24 +62,24 @@ const FeedWithStart: NextPage<{ id: string; startId: string }> = ({
         return { prev };
       },
       onError(_, __, context) {
-        util.pool.getHighlightVideosPaginated.setInfiniteData(
+        util.user.getBookmarkVideosPaginated.setInfiniteData(
           queryKey,
           context?.prev
         );
       },
       onSettled() {
-        util.pool.getHighlightVideosPaginated.invalidate(queryKey);
+        util.user.getBookmarkVideosPaginated.invalidate(queryKey);
       },
     });
 
   const { mutate: upvote, isLoading: upvoting } =
     api.user.upvoteHighlight.useMutation({
       async onMutate(variables) {
-        await util.pool.getHighlightVideosPaginated.cancel(queryKey);
+        await util.user.getBookmarkVideosPaginated.cancel(queryKey);
         const prev =
-          util.pool.getHighlightVideosPaginated.getInfiniteData(queryKey);
+          util.user.getBookmarkVideosPaginated.getInfiniteData(queryKey);
         if (prev) {
-          util.pool.getHighlightVideosPaginated.setInfiniteData(queryKey, {
+          util.user.getBookmarkVideosPaginated.setInfiniteData(queryKey, {
             ...prev,
             pages: likeActionUpdate(prev, variables),
           });
@@ -87,13 +87,13 @@ const FeedWithStart: NextPage<{ id: string; startId: string }> = ({
         return { prev };
       },
       onError(_, __, context) {
-        util.pool.getHighlightVideosPaginated.setInfiniteData(
+        util.user.getBookmarkVideosPaginated.setInfiniteData(
           queryKey,
           context?.prev
         );
       },
       onSettled() {
-        util.pool.getHighlightVideosPaginated.invalidate(queryKey);
+        util.user.getBookmarkVideosPaginated.invalidate(queryKey);
       },
     });
 
@@ -119,7 +119,7 @@ const FeedWithStart: NextPage<{ id: string; startId: string }> = ({
       <ContinuousFeed
         highlights={highlights ?? []}
         fetching={isFetching}
-        backPath={`/reels/${encodeURIComponent(id)}`}
+        backPath={`/profiles/${encodeURIComponent(id)}`}
         hasNext={hasNextPage ?? false}
         hasPrev={hasPreviousPage ?? false}
         fetchNext={async () => {
@@ -132,6 +132,7 @@ const FeedWithStart: NextPage<{ id: string; startId: string }> = ({
         }}
         from={data?.pages.at(0)?.name ?? ""}
       />
+      \
     </FeedContextProvider>
   );
 };
@@ -154,8 +155,8 @@ export const getStaticProps: GetStaticProps<{
 
   const ssg = generateSSGHelper();
 
-  await ssg.pool.getHighlightVideosPaginated.prefetchInfinite({
-    poolId: id,
+  await ssg.user.getBookmarkVideosPaginated.prefetchInfinite({
+    profileId: id,
     initialCursor: startId,
   });
 

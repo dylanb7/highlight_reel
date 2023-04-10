@@ -75,16 +75,16 @@ export const ProfilePoolButtonProvider: React.FC<
       if (prev && info) {
         const toUpdate = prev[info.location];
         const index = toUpdate.findIndex((ele) => ele.id == info.pool.id);
-        toUpdate[index] = {
-          ...info.pool,
-          followInfo: {
+        const val = toUpdate.at(index);
+        if (val) {
+          val.followInfo = {
             follows: info.pool.public,
             requested: !info.pool.public,
-          },
-        };
+          };
+        }
         const newObj = { ...prev };
         newObj[info.location] = toUpdate;
-        util.user.profileQuery.setData(queryKey, { ...newObj });
+        util.user.profileQuery.setData(queryKey, newObj);
       }
       return { prev };
     },
@@ -105,13 +105,13 @@ export const ProfilePoolButtonProvider: React.FC<
         if (prev && info) {
           const toUpdate = prev[info.location];
           const index = toUpdate.findIndex((ele) => ele.id == info.pool.id);
-          toUpdate[index] = {
-            ...info.pool,
-            followInfo: {
-              follows: false,
-              requested: false,
-            },
-          };
+          const val = toUpdate.at(index);
+          if (val) {
+            val.followInfo = {
+              follows: info.pool.public,
+              requested: !info.pool.public,
+            };
+          }
           const newObj = { ...prev };
           newObj[info.location] = toUpdate;
           util.user.profileQuery.setData(queryKey, { ...newObj });

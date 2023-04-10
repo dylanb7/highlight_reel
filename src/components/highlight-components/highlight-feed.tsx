@@ -13,7 +13,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { HighlightVideo } from "../../types/highlight-out";
 
 import { IconButton, twIcons } from "../misc/icon-button";
-import { LoadingSpinner } from "../misc/loading";
+
 import { ActionRow } from "./action-row";
 import dynamic from "next/dynamic";
 
@@ -57,7 +57,6 @@ export const ContinuousFeed: React.FC<{
     if (startId === undefined && initial) {
       push(
         {
-          pathname: "/reels/[id]/feed/[startId]",
           query: {
             ...query,
             startId: encodeURIComponent(removeExt(initial.id)),
@@ -93,7 +92,6 @@ export const ContinuousFeed: React.FC<{
     if (nextHighlight) {
       return push(
         {
-          pathname: "/reels/[id]/feed/[startId]",
           query: {
             ...query,
             startId: encodeURIComponent(removeExt(nextHighlight.id)),
@@ -109,7 +107,6 @@ export const ContinuousFeed: React.FC<{
     if (!id) return;
     push(
       {
-        pathname: "/reels/[id]/feed/[startId]",
         query: { ...query, startId: encodeURIComponent(removeExt(id)) },
       },
       undefined,
@@ -125,7 +122,6 @@ export const ContinuousFeed: React.FC<{
     if (prevHighlight) {
       return push(
         {
-          pathname: "/reels/[id]/feed/[startId]",
           query: {
             ...query,
             startId: encodeURIComponent(removeExt(prevHighlight.id)),
@@ -141,7 +137,6 @@ export const ContinuousFeed: React.FC<{
     if (!id) return;
     push(
       {
-        pathname: "/reels/[id]/feed/[startId]",
         query: { ...query, startId: encodeURIComponent(removeExt(id)) },
       },
       undefined,
@@ -266,7 +261,6 @@ const BaseCompontent: React.FC<{
   backPath,
   from,
   progress,
-  fetching,
 }) => {
   const relativeTime = useMemo(() => {
     if (!highlight || !highlight.timestampUTC) return undefined;
@@ -282,14 +276,6 @@ const BaseCompontent: React.FC<{
       return 9 / 16;
     return highlight.aspectRatioDenominator / highlight.aspectRatioNumerator;
   }, [highlight]);
-
-  if (fetching) {
-    return (
-      <div className="flex justify-center">
-        <LoadingSpinner loadingType={null} />
-      </div>
-    );
-  }
 
   if (!highlight)
     return (
@@ -374,7 +360,6 @@ const Player: React.FC<{ url: string }> = ({ url }) => {
     <div
       onMouseEnter={() => setFocused(true)}
       onMouseLeave={() => setFocused(false)}
-      className="absolute inset-0"
     >
       <ReactPlayer
         url={url}

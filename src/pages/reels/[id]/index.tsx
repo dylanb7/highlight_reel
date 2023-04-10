@@ -21,6 +21,10 @@ import {
 import type { GridActions } from "../../../components/contexts/grid-context";
 import { GridContextProvider } from "../../../components/contexts/grid-context";
 import type { HighlightThumbnail } from "../../../types/highlight-out";
+import {
+  bookmarkActionUpdate,
+  likeActionUpdate,
+} from "../../../components/contexts/action-types";
 
 const PoolView: NextPage<{ poolId: string }> = ({ poolId }) => {
   const { data: poolInfo } = api.pool.getPoolById.useQuery(poolId);
@@ -30,13 +34,34 @@ const PoolView: NextPage<{ poolId: string }> = ({ poolId }) => {
       <Head>
         <title>{`Reel - ${poolInfo?.name ?? "Loading"}`}</title>
       </Head>
-      <div className="flex h-full w-full flex-col items-start justify-center px-4 pt-8 sm:px-8">
-        <div className="self-center">
+      <div className="flex h-full w-full flex-col items-start justify-start px-4 sm:px-8">
+        <div className="mt-8 self-center pb-4">
           <PoolInfo poolId={poolId} />
         </div>
+        <WristBands poolId={poolId} />
         <LoadFeed poolId={poolId} />
       </div>
     </>
+  );
+};
+
+const WristBands: React.FC<{ poolId: string }> = ({ poolId }) => {
+  const { data } = api.pool.getWristbands.useQuery(poolId);
+
+  if (!data || data.length == 0) return <></>;
+
+  const cleaned: string[] = data.filter(
+    (val) => val && val !== "undefined"
+  ) as string[];
+
+  return (
+    <div className="flex flex-col">
+      <div className="flex flex-row items-center justify-start">
+        {cleaned.map((data) => (
+          <div key={data}></div>
+        ))}
+      </div>
+    </div>
   );
 };
 
@@ -204,34 +229,9 @@ const LoadFeed: React.FC<{
         const prev =
           util.pool.getPoolHighlightsPaginated.getInfiniteData(queryKey);
         if (prev) {
-          let updated = false;
-
-          const { add, highlightId } = variables;
-
-          const newPages = prev.pages.map((page) => {
-            if (updated) return page;
-            for (const { index, upt } of page.highlights.map((upt, index) => ({
-              index,
-              upt,
-            }))) {
-              if (updated) break;
-              if (upt.id === highlightId) {
-                const found = page.highlights[index];
-                if (!found) break;
-                page.highlights[index] = {
-                  ...found,
-                  bookmarked: add,
-                };
-                updated = true;
-                return page;
-              }
-            }
-            return page;
-          });
-
           util.pool.getPoolHighlightsPaginated.setInfiniteData(queryKey, {
             ...prev,
-            pages: newPages,
+            pages: bookmarkActionUpdate(prev, variables),
           });
         }
         return { prev };
@@ -254,34 +254,9 @@ const LoadFeed: React.FC<{
         const prev =
           util.pool.getPoolHighlightsPaginated.getInfiniteData(queryKey);
         if (prev) {
-          let updated = false;
-
-          const { liked, highlightId } = variables;
-
-          const newPages = prev.pages.map((page) => {
-            if (updated) return page;
-            for (const { index, upt } of page.highlights.map((upt, index) => ({
-              index,
-              upt,
-            }))) {
-              if (updated) break;
-              if (upt.id === highlightId) {
-                const found = page.highlights[index];
-                if (!found) break;
-                page.highlights[index] = {
-                  ...found,
-                  upvoted: !liked ?? false,
-                };
-                updated = true;
-                return page;
-              }
-            }
-            return page;
-          });
-
           util.pool.getPoolHighlightsPaginated.setInfiniteData(queryKey, {
             ...prev,
-            pages: newPages,
+            pages: likeActionUpdate(prev, variables),
           });
         }
         return { prev };
@@ -300,7 +275,7 @@ const LoadFeed: React.FC<{
   if (isLoading) return <LoadingSpinner loadingType={"Loading Highlights"} />;
 
   const actions: GridActions = {
-    basePath: poolId,
+    basePath: `reels/${poolId}/feed`,
     fetchMore: () => {
       fetchNextPage();
     },
@@ -313,19 +288,14 @@ const LoadFeed: React.FC<{
     like: (id: string) => {
       const highlight = highlightMap.get(id);
       if (!highlight) return;
-      upvote({ highlightId: highlight.id, liked: highlight.upvoted });
+      upvote({ highlightId: highlight.id, like: !highlight.upvoted });
     },
     disabled: bookmarking || upvoting,
   };
 
   return (
     <GridContextProvider value={actions}>
-      <div className="h-full w-full">
-        <HighlightGridsComponent
-          highlights={highlights}
-          grouping={dayGrouping}
-        />
-      </div>
+      <HighlightGridsComponent highlights={highlights} grouping={dayGrouping} />
     </GridContextProvider>
   );
 };
@@ -350,6 +320,8 @@ export const getStaticProps: GetStaticProps<{
     amount: 6,
     poolId: poolId,
   });
+
+  await ssg.pool.getWristbands.prefetch(poolId);
 
   return {
     props: {

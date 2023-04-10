@@ -27,6 +27,7 @@ export const poolRouter = router({
                 followers: true,
               },
             },
+
             followers: {
               where: {
                 id: userId,
@@ -441,6 +442,28 @@ export const poolRouter = router({
       };
     }),
 
+  getFirstHighlightId: publicProcedure
+    .input(z.string().cuid())
+    .query(async ({ ctx, input }) => {
+      const ret = await ctx.prisma.highlightPool.findUnique({
+        where: { id: input },
+        select: {
+          highlights: {
+            orderBy: {
+              timestampUTC: "desc",
+            },
+            select: {
+              id: true,
+            },
+            take: 1,
+          },
+        },
+      });
+      const first = ret?.highlights.at(0) ?? undefined;
+      if (!first) return undefined;
+      return first.id;
+    }),
+
   getHighlightVideosPaginated: publicProcedure
     .input(
       z.object({
@@ -452,61 +475,63 @@ export const poolRouter = router({
     .query(async ({ ctx, input }) => {
       const userId = ctx.session?.user?.id;
       const { poolId, cursor, initialCursor } = input;
-      const amount = 3;
-      let ret: HighlightReturn;
+      const amount = 1;
+      let ret: {
+        highlights: HighlightReturn;
+        name: string | null | undefined;
+      } | null;
       if (userId) {
-        ret = (
-          await ctx.prisma.highlightPool.findFirst({
-            where: {
-              OR: [
-                {
-                  public: true,
-                },
-                {
-                  followers: {
-                    some: {
-                      id: userId,
-                    },
-                  },
-                },
-              ],
-              AND: {
-                id: poolId,
+        ret = await ctx.prisma.highlightPool.findFirst({
+          where: {
+            OR: [
+              {
+                public: true,
               },
+              {
+                followers: {
+                  some: {
+                    id: userId,
+                  },
+                },
+              },
+            ],
+            AND: {
+              id: poolId,
             },
-            select: {
-              highlights: {
-                orderBy: {
-                  timestampUTC: "desc",
-                },
-                include: {
-                  _count: {
-                    select: {
-                      upvotes: true,
-                    },
-                  },
-                  upvotes: {
-                    where: {
-                      id: userId,
-                    },
-                  },
-                  addedBy: {
-                    where: {
-                      id: userId,
-                    },
+          },
+          select: {
+            name: true,
+            highlights: {
+              orderBy: {
+                timestampUTC: "desc",
+              },
+              include: {
+                _count: {
+                  select: {
+                    upvotes: true,
                   },
                 },
+                upvotes: {
+                  where: {
+                    id: userId,
+                  },
+                },
+                addedBy: {
+                  where: {
+                    id: userId,
+                  },
+                },
+              },
 
-                take: amount + 1,
-                cursor: initialCursor
-                  ? {
-                      id: cursor ?? initialCursor,
-                    }
-                  : undefined,
-              },
+              take: amount + 1,
+              cursor: initialCursor
+                ? {
+                    id: cursor ?? initialCursor,
+                  }
+                : undefined,
             },
-          })
-        )?.highlights;
+          },
+        });
       } else {
         const rawPool = await ctx.prisma.highlightPool.findFirst({
           where: {
@@ -533,9 +558,36 @@ export const poolRouter = router({
             },
           },
         });
-        ret = addUnathedProps(rawPool?.highlights);
+        ret = {
+          highlights: addUnathedProps(rawPool?.highlights),
+          name: rawPool?.name,
+        };
       }
-      return await packageHighlightsPaginated(amount, ret, cursor);
+      return {
+        name: ret?.name,
+        ...(await packageHighlightsPaginated(amount, ret?.highlights, cursor)),
+      };
+    }),
+
+  getWristbands: publicProcedure
+    .input(z.string().cuid())
+    .query(async ({ ctx, input }) => {
+      const res = await ctx.prisma.highlightPool.findUnique({
+        where: {
+          id: input,
+        },
+        select: {
+          highlights: {
+            select: {
+              wristbandId: true,
+            },
+            distinct: ["wristbandId"],
+          },
+        },
+      });
+      return res
+        ? res.highlights.map((highlight) => highlight.wristbandId)
+        : [];
     }),
 
   getPoolFollowers: publicProcedure

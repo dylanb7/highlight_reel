@@ -2,7 +2,7 @@ import * as Separator from "@radix-ui/react-separator";
 import * as ScrollArea from "@radix-ui/react-scroll-area";
 import { ChevronDownIcon, ChevronUpIcon } from "@radix-ui/react-icons";
 import * as Collapsible from "@radix-ui/react-collapsible";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { PoolComponent } from "./highlight-pool-card";
 import { ProfileList } from "./profile-scroll-components";
 import { useSession } from "next-auth/react";
@@ -15,6 +15,14 @@ import { ProfileButtonProvider } from "./contexts/follow-profile-context";
 import type { ButtonContext } from "./contexts/button-types";
 import { api } from "../utils/trpc";
 import { HighlightGridsComponent } from "./highlight-components/highlight-grid";
+import type { GridActions } from "./contexts/grid-context";
+import { GridContextProvider } from "./contexts/grid-context";
+import type { HighlightThumbnail } from "../types/highlight-out";
+import { LoadingSpinner } from "./misc/loading";
+import {
+  bookmarkActionUpdate,
+  likeActionUpdate,
+} from "./contexts/action-types";
 
 export const PoolScroll: React.FC<{
   pools: PoolInfo[];
@@ -30,7 +38,7 @@ export const PoolScroll: React.FC<{
       <div className="flex flex-col">
         <Collapsible.Trigger asChild>
           {hasPools && (
-            <div className="ml-8 flex w-fit cursor-pointer flex-row items-center gap-1">
+            <div className="ml-4 flex w-fit cursor-pointer flex-row items-center gap-1 sm:ml-8">
               <p className="text-2xl font-semibold text-slate-900 dark:text-white">
                 {title}
               </p>
@@ -46,7 +54,7 @@ export const PoolScroll: React.FC<{
           <ScrollArea.Root className="overflow-hidden">
             <ScrollArea.Viewport className="h-full w-full snap-x scroll-pl-4">
               {hasPools && (
-                <div className="my-3 flex flex-row gap-4 px-6 pb-1">
+                <div className="my-3 flex flex-row gap-4 px-3 pb-1 sm:px-6">
                   {pools &&
                     pools.map((pool) => (
                       <div key={pool.id} className="snap-center">
@@ -152,7 +160,7 @@ export const ProfileData: React.FC<{
   };
 
   return (
-    <div className="justify-left ml-8 w-fit">
+    <div className="justify-left ml-4 w-fit sm:ml-8">
       <div className="flex flex-shrink flex-row items-center justify-between gap-4">
         <p className="text-2xl font-semibold text-slate-900 dark:text-white">
           {user.username}
@@ -202,22 +210,116 @@ export const ProfileData: React.FC<{
   );
 };
 
-export const ProfileHighlights: React.FC<{
+export const ProfileBookmarks: React.FC<{
   id: string;
-}> = ({ id }) => {
-  const { data } = api.user.getUserBookmarksPaginated.useInfiniteQuery({
-    userId: id,
-    amount: 6,
-  });
+  isOwner: boolean;
+}> = ({ id, isOwner }) => {
+  const loadAmount = 6;
 
-  const highlights = data?.pages.flatMap((page) => page.highlights) ?? [];
+  const queryKey = {
+    amount: loadAmount,
+    userId: id,
+  };
+
+  const { data, isLoading, hasNextPage, fetchNextPage } =
+    api.user.getUserBookmarksPaginated.useInfiniteQuery(queryKey, {
+      getNextPageParam: (lastPage) => lastPage.nextCursor,
+    });
+
+  const util = api.useContext();
+
+  const highlights = useMemo(() => {
+    return data?.pages.flatMap((page) => page.highlights) ?? [];
+  }, [data]);
+
+  const highlightMap = useMemo(() => {
+    const highlightMap = new Map<string, HighlightThumbnail>();
+
+    for (const highlight of highlights) {
+      highlightMap.set(highlight.id, highlight);
+    }
+    return highlightMap;
+  }, [highlights]);
+
+  const { mutate: bookmark, isLoading: bookmarking } =
+    api.user.toggleHighlight.useMutation({
+      async onMutate(variables) {
+        await util.user.getUserBookmarksPaginated.cancel(queryKey);
+        const prev =
+          util.user.getUserBookmarksPaginated.getInfiniteData(queryKey);
+        if (prev) {
+          util.user.getUserBookmarksPaginated.setInfiniteData(queryKey, {
+            ...prev,
+            pages: bookmarkActionUpdate(prev, variables),
+          });
+        }
+        return { prev };
+      },
+      onError(_, __, context) {
+        util.user.getUserBookmarksPaginated.setInfiniteData(
+          queryKey,
+          context?.prev
+        );
+      },
+      onSettled() {
+        util.user.getUserBookmarksPaginated.invalidate();
+      },
+    });
+
+  const { mutate: upvote, isLoading: upvoting } =
+    api.user.upvoteHighlight.useMutation({
+      async onMutate(variables) {
+        await util.user.getUserBookmarksPaginated.cancel();
+        const prev =
+          util.user.getUserBookmarksPaginated.getInfiniteData(queryKey);
+        if (prev) {
+          util.user.getUserBookmarksPaginated.setInfiniteData(queryKey, {
+            ...prev,
+            pages: likeActionUpdate(prev, variables),
+          });
+        }
+        return { prev };
+      },
+      onError(_, __, context) {
+        util.user.getUserBookmarksPaginated.setInfiniteData(
+          queryKey,
+          context?.prev
+        );
+      },
+      onSettled() {
+        util.user.getUserBookmarksPaginated.invalidate();
+      },
+    });
+
+  if (isLoading) return <LoadingSpinner loadingType={"Loading Highlights"} />;
+
+  const actions: GridActions = {
+    basePath: isOwner ? "bookmarks" : `profiles/${id}/feed`,
+    fetchMore: () => {
+      fetchNextPage();
+    },
+    hasMore: () => hasNextPage ?? false,
+    bookmark: (id: string) => {
+      const highlight = highlightMap.get(id);
+      if (!highlight) return;
+      bookmark({ highlightId: highlight.id, add: !highlight.bookmarked });
+    },
+    like: (id: string) => {
+      const highlight = highlightMap.get(id);
+      if (!highlight) return;
+      upvote({ highlightId: highlight.id, like: !highlight.upvoted });
+    },
+    disabled: bookmarking || upvoting,
+  };
 
   return (
-    <div className="ml-8">
-      <HighlightGridsComponent
-        highlights={highlights}
-      ></HighlightGridsComponent>
-    </div>
+    <GridContextProvider value={actions}>
+      <div className="mx-4 sm:mx-8">
+        <HighlightGridsComponent
+          highlights={highlights}
+        ></HighlightGridsComponent>
+      </div>
+    </GridContextProvider>
   );
 };
 
@@ -251,7 +353,7 @@ export const ProfileComponent: React.FC<{
             initialOpen={false}
           />
         )}
-        <ProfileHighlights id={profile.id} />
+        <ProfileBookmarks id={profile.id} isOwner={owner} />
       </div>
     </ProfilePoolButtonProvider>
   );

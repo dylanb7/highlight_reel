@@ -10,12 +10,15 @@ import { useGridContext } from "../contexts/grid-context";
 
 import dayjs from "dayjs";
 import * as utc from "dayjs/plugin/utc";
+import type { UrlObject } from "url";
+import { useRouter } from "next/router";
 
 dayjs.extend(utc.default);
 
 export type HighlightGroup = {
   highlights: HighlightThumbnail[];
   header: string;
+  continuous: boolean;
 };
 
 export type GroupingStrategy = (
@@ -27,6 +30,7 @@ const defaultGroup: GroupingStrategy = (highlights) => {
     {
       header: "Highlights",
       highlights,
+      continuous: true,
     },
   ];
 };
@@ -41,11 +45,9 @@ export const dayGrouping: GroupingStrategy = (highlights) => {
       .utc()
       .local()
       .format("MMM DD, YYYY");
-
-    if (dayMap.has(key)) {
-      const current = dayMap.get(key);
-      if (!current) continue;
-      dayMap.set(key, [...current, highlight]);
+    const current = dayMap.get(key);
+    if (current) {
+      current.push(highlight);
     } else {
       dayMap.set(key, [highlight]);
     }
@@ -54,7 +56,11 @@ export const dayGrouping: GroupingStrategy = (highlights) => {
   const values: HighlightGroup[] = [];
 
   for (const [key, dayValues] of dayMap) {
-    values.push({ header: key, highlights: dayValues });
+    values.push({
+      header: key,
+      highlights: dayValues,
+      continuous: dayValues.length > 15,
+    });
   }
 
   return values;
@@ -66,6 +72,7 @@ const individualGroup: GroupingStrategy = (highlights) => {
     return {
       highlights: [highlight],
       header: highlight.id,
+      continuous: false,
     };
   });
 };
@@ -83,23 +90,28 @@ export const HighlightGridsComponent: React.FC<{
   const gridContext = useGridContext();
 
   return (
-    <div className="pb-10">
-      {highlightGroups.map((group) => (
-        <HighlightGrid
-          group={group}
-          key={group.highlights.at(0)?.id ?? group.header}
-        />
-      ))}
-      {gridContext.hasMore() && (
-        <div className="mt-4 flex items-center justify-center">
+    <div className="flex w-full flex-col">
+      {highlightGroups.map((group, index) => {
+        return (
+          <div
+            key={group.highlights.at(0)?.id ?? group.header}
+            className={index == 0 ? "" : "pt-3"}
+          >
+            <HighlightGrid group={group} />
+          </div>
+        );
+      })}
+
+      <div className="self-center py-8">
+        {gridContext.hasMore() && (
           <button
-            className="mb-4 w-fit rounded-lg bg-indigo-500 px-3 py-2 font-semibold text-white no-underline transition hover:bg-indigo-700 disabled:opacity-75"
+            className="w-fit rounded-lg bg-indigo-500 px-3 py-2 font-semibold text-white no-underline transition hover:bg-indigo-700 disabled:opacity-75"
             onClick={() => gridContext.fetchMore()}
           >
             Load More
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
@@ -111,16 +123,17 @@ const HighlightGrid: React.FC<{ group: HighlightGroup }> = ({ group }) => {
 
   return (
     <div className="flex flex-col items-start justify-start">
-      <h3 className="py-3 text-2xl font-semibold text-slate-900 dark:text-white">
+      <h3 className="pb-3 text-2xl font-semibold text-slate-900 dark:text-white">
         {group.header}
       </h3>
       {!isEmpty && (
-        <div className="container grid w-full grid-cols-2 justify-start gap-1.5 sm:grid-cols-3">
+        <div className="container grid w-full grid-cols-2 justify-start gap-2 sm:grid-cols-3">
           {group.highlights.map((highlight, index) => (
             <ImageComponent
               key={highlight.id}
               highlight={highlight}
               length={length}
+              continuous={group.continuous}
               start={group.highlights.at(0)?.id ?? ""}
               index={index}
             />
@@ -140,16 +153,46 @@ const ImageComponent: React.FC<{
   start: string;
   length: number;
   index: number;
+  continuous: boolean;
   highlight: HighlightThumbnail;
-}> = ({ highlight, start, length, index }) => {
+}> = ({ highlight, start, length, index, continuous }) => {
   const [loading, setLoading] = useState(true);
 
   const gridContext = useGridContext();
+
+  const { query } = useRouter();
 
   const aspect =
     highlight.aspectRatioNumerator && highlight.aspectRatioDenominator
       ? highlight.aspectRatioDenominator / highlight.aspectRatioNumerator
       : 9 / 16;
+
+  const href: UrlObject = useMemo(() => {
+    if (continuous)
+      return {
+        pathname: `/${gridContext.basePath}/[startId]`,
+        query: {
+          startId: highlight.id,
+        },
+      };
+    return {
+      pathname: `/${gridContext.basePath}/[startId]/[length]`,
+      query: {
+        ...query,
+        startId: start,
+        length: length,
+        current: index,
+      },
+    };
+  }, [
+    continuous,
+    gridContext.basePath,
+    highlight.id,
+    index,
+    length,
+    query,
+    start,
+  ]);
 
   return (
     <AspectRatio.Root ratio={aspect}>
@@ -173,14 +216,7 @@ const ImageComponent: React.FC<{
             <div className="absolute inset-0 z-20 animate-pulse bg-gray-100 dark:bg-slate-900" />
           )}
 
-          <Link
-            href={{
-              pathname: `${gridContext.basePath}/feed/${start}/${length}`,
-              query: {
-                current: index,
-              },
-            }}
-          >
+          <Link href={href}>
             <div className="absolute inset-x-0 top-0 bottom-[30px] z-40" />
           </Link>
           <div className="absolute inset-x-0 bottom-0 z-40">

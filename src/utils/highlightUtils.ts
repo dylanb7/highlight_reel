@@ -53,6 +53,7 @@ export const packageHighlightsPaginated = async (
 
     highlights.push({
       ...rawHighlight,
+      id: removeExt(rawHighlight.id),
       upvotes: rawHighlight._count.upvotes,
       bookmarked: rawHighlight.addedBy.length > 0,
       upvoted: rawHighlight.upvotes.length > 0,

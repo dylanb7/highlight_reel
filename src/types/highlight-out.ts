@@ -1,18 +1,14 @@
 import type { Highlight, User } from "@prisma/client";
 
-export type HighlightVideo = {
-  id: string;
-  poolId: string | null;
-  timestampUTC: bigint | null;
-  aspectRatioNumerator: number | null;
-  aspectRatioDenominator: number | null;
-  upvotes: number;
-  bookmarked: boolean;
-  upvoted: boolean;
+export type HighlightVideo = BaseHighlight & {
   url: string;
 };
 
-export type HighlightThumbnail = {
+export type HighlightThumbnail = BaseHighlight & {
+  thumbnailUrl?: string;
+};
+
+export type BaseHighlight = {
   id: string;
   poolId: string | null;
   timestampUTC: bigint | null;
@@ -21,7 +17,6 @@ export type HighlightThumbnail = {
   upvotes: number;
   bookmarked: boolean;
   upvoted: boolean;
-  thumbnailUrl?: string;
 };
 
 export type HighlightReturn =
