@@ -39,8 +39,4 @@ export const getStaticProps: GetStaticProps = async () => {
   };
 };
 
-export const getStaticPaths = () => {
-  return { paths: [], fallback: "blocking" };
-};
-
 export default Group;
