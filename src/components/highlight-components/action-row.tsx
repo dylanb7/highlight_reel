@@ -13,10 +13,15 @@ import { IconButton, twIcons } from "../misc/icon-button";
 import * as Separator from "@radix-ui/react-separator";
 import { useGridContext } from "../contexts/grid-context";
 import { useFeedContext } from "../contexts/feed-context";
+import { useSession } from "next-auth/react";
 
 export const ActionRow: React.FC<{ highlight: HighlightVideo }> = ({
   highlight,
 }) => {
+  const { data: session } = useSession();
+
+  const noUser = !session || !session.user;
+
   const feedContext = useFeedContext();
 
   return (
@@ -24,29 +29,29 @@ export const ActionRow: React.FC<{ highlight: HighlightVideo }> = ({
       <p className="grow truncate text-sm text-slate-900 dark:text-white">
         {highlight.upvotes + (highlight.upvotes == 1 ? " upvote" : " upvotes")}
       </p>
-      <div className="flex flex-row items-center justify-end gap-2">
+      <div className="flex flex-row items-center justify-end gap-3">
         <IconButton
           onClick={() => {
             feedContext.like(highlight.id);
           }}
-          disabled={feedContext.disabled}
+          disabled={noUser || feedContext.disabled}
         >
           {highlight.upvoted ? (
-            <HeartFilledIcon className={twIcons()} />
+            <HeartFilledIcon className={twIcons(5, 0)} />
           ) : (
-            <HeartIcon className={twIcons()} />
+            <HeartIcon className={twIcons(5, 0)} />
           )}
         </IconButton>
         <IconButton
           onClick={() => {
             feedContext.bookmark(highlight.id);
           }}
-          disabled={feedContext.disabled}
+          disabled={noUser || feedContext.disabled}
         >
           {highlight.bookmarked ? (
-            <BookmarkFilledIcon className={twIcons()} />
+            <BookmarkFilledIcon className={twIcons(5, 0)} />
           ) : (
-            <BookmarkIcon className={twIcons()} />
+            <BookmarkIcon className={twIcons(5, 0)} />
           )}
         </IconButton>
         <IconButton
@@ -55,7 +60,7 @@ export const ActionRow: React.FC<{ highlight: HighlightVideo }> = ({
             return;
           }}
         >
-          <Share2Icon className={twIcons()} />
+          <Share2Icon className={twIcons(5, 0)} />
         </IconButton>
       </div>
     </div>
@@ -65,6 +70,10 @@ export const ActionRow: React.FC<{ highlight: HighlightVideo }> = ({
 export const ActionRowCompact: React.FC<{ highlight: HighlightThumbnail }> = ({
   highlight,
 }) => {
+  const { data: session } = useSession();
+
+  const noUser = !session || !session.user;
+
   const gridContext = useGridContext();
 
   return (
@@ -82,7 +91,7 @@ export const ActionRowCompact: React.FC<{ highlight: HighlightThumbnail }> = ({
           onClick={() => {
             gridContext.like(highlight.id);
           }}
-          disabled={gridContext.disabled}
+          disabled={noUser || gridContext.disabled}
         >
           {highlight.upvoted ? (
             <HeartFilledIcon className={twIcons()} />
@@ -95,7 +104,7 @@ export const ActionRowCompact: React.FC<{ highlight: HighlightThumbnail }> = ({
         onClick={() => {
           gridContext.bookmark(highlight.id);
         }}
-        disabled={gridContext.disabled}
+        disabled={noUser || gridContext.disabled}
       >
         {highlight.bookmarked ? (
           <BookmarkFilledIcon className={twIcons()} />

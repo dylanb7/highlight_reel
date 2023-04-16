@@ -75,7 +75,7 @@ export const PoolComponent: React.FC<{
     <PoolMessageCard>
       <div className="flex flex-col gap-4 sm:gap-8">
         <PoolData pool={pool} />
-        <Link href={"/reels/" + encodeURIComponent(pool.id)}>
+        <Link href={{ pathname: `/reels/${encodeURIComponent(pool.id)}` }}>
           <div className="items-center justify-center rounded-lg bg-indigo-500 py-1 text-sm font-semibold text-white no-underline transition hover:bg-indigo-700">
             <p className="text-center">View Reel</p>
           </div>

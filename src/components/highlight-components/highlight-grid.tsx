@@ -176,11 +176,9 @@ const ImageComponent: React.FC<{
         },
       };
     return {
-      pathname: `/${gridContext.basePath}/[startId]/[length]`,
+      pathname: `/${gridContext.basePath}/${start}/${length}`,
       query: {
         ...query,
-        startId: start,
-        length: length,
         current: index,
       },
     };

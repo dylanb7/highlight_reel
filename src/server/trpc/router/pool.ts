@@ -9,6 +9,10 @@ import {
   packageHighlightsPaginated,
   packageThumbnailsPaginated,
 } from "../../../utils/highlightUtils";
+import {
+  canViewPool,
+  infiniteHighlightQuery,
+} from "../../../utils/prismaUtils";
 
 import { router, protectedProcedure, publicProcedure } from "../trpc";
 
@@ -279,35 +283,11 @@ export const poolRouter = router({
               },
             },
             select: {
-              highlights: {
-                orderBy: {
-                  timestampUTC: "desc",
-                },
-                include: {
-                  _count: {
-                    select: {
-                      upvotes: true,
-                    },
-                  },
-                  upvotes: {
-                    where: {
-                      id: userId,
-                    },
-                  },
-                  addedBy: {
-                    where: {
-                      id: userId,
-                    },
-                  },
-                },
-
-                take: amount + 1,
-                cursor: cursor
-                  ? {
-                      id: cursor,
-                    }
-                  : undefined,
-              },
+              highlights: infiniteHighlightQuery({
+                cursor,
+                amount,
+                rightPad: 1,
+              }),
             },
           })
         )?.highlights;
@@ -318,25 +298,13 @@ export const poolRouter = router({
             public: true,
           },
           select: {
-            highlights: {
-              orderBy: {
-                timestampUTC: "desc",
-              },
-              include: {
-                _count: {
-                  select: {
-                    upvotes: true,
-                  },
-                },
-              },
-
-              take: amount + 1,
-              cursor: cursor
-                ? {
-                    id: cursor,
-                  }
-                : undefined,
-            },
+            highlights: infiniteHighlightQuery({
+              cursor,
+              amount,
+              includeBookmarked: false,
+              includeLiked: false,
+              rightPad: 1,
+            }),
           },
         });
         ret = addUnathedProps(rawPool?.highlights);
@@ -377,31 +345,11 @@ export const poolRouter = router({
           },
           select: {
             name: true,
-            highlights: {
-              orderBy: {
-                timestampUTC: "desc",
-              },
-              include: {
-                _count: {
-                  select: {
-                    upvotes: true,
-                  },
-                },
-                upvotes: {
-                  where: {
-                    id: userId,
-                  },
-                },
-                addedBy: {
-                  where: {
-                    id: userId,
-                  },
-                },
-              },
-
-              take: amount,
-              cursor: { id: cursor },
-            },
+            highlights: infiniteHighlightQuery({
+              cursor,
+              amount,
+              userId,
+            }),
           },
         });
       } else {
@@ -412,23 +360,12 @@ export const poolRouter = router({
           },
           select: {
             name: true,
-            highlights: {
-              orderBy: {
-                timestampUTC: "desc",
-              },
-              include: {
-                _count: {
-                  select: {
-                    upvotes: true,
-                  },
-                },
-              },
-
-              take: amount,
-              cursor: {
-                id: cursor,
-              },
-            },
+            highlights: infiniteHighlightQuery({
+              cursor,
+              amount,
+              includeBookmarked: false,
+              includeLiked: false,
+            }),
           },
         });
         ret = {
@@ -476,93 +413,26 @@ export const poolRouter = router({
       const userId = ctx.session?.user?.id;
       const { poolId, cursor, initialCursor } = input;
       const amount = 1;
-      let ret: {
+      const ret: {
         highlights: HighlightReturn;
         name: string | null | undefined;
-      } | null;
-      if (userId) {
-        ret = await ctx.prisma.highlightPool.findFirst({
-          where: {
-            OR: [
-              {
-                public: true,
-              },
-              {
-                followers: {
-                  some: {
-                    id: userId,
-                  },
-                },
-              },
-            ],
-            AND: {
-              id: poolId,
-            },
-          },
-          select: {
-            name: true,
-            highlights: {
-              orderBy: {
-                timestampUTC: "desc",
-              },
-              include: {
-                _count: {
-                  select: {
-                    upvotes: true,
-                  },
-                },
-                upvotes: {
-                  where: {
-                    id: userId,
-                  },
-                },
-                addedBy: {
-                  where: {
-                    id: userId,
-                  },
-                },
-              },
-
-              take: amount + 1,
-              cursor: initialCursor
-                ? {
-                    id: cursor ?? initialCursor,
-                  }
-                : undefined,
-            },
-          },
-        });
-      } else {
-        const rawPool = await ctx.prisma.highlightPool.findFirst({
-          where: {
-            id: poolId,
-            public: true,
-          },
-          select: {
-            name: true,
-            highlights: {
-              include: {
-                _count: {
-                  select: {
-                    upvotes: true,
-                  },
-                },
-              },
-
-              take: amount + 1,
-              cursor: initialCursor
-                ? {
-                    id: cursor ?? initialCursor,
-                  }
-                : undefined,
-            },
-          },
-        });
-        ret = {
-          highlights: addUnathedProps(rawPool?.highlights),
-          name: rawPool?.name,
-        };
+      } | null = await ctx.prisma.highlightPool.findFirst({
+        where: canViewPool(poolId, userId),
+        select: {
+          name: true,
+          highlights: infiniteHighlightQuery({
+            initialCursor,
+            cursor,
+            amount,
+            userId,
+            rightPad: 1,
+          }),
+        },
+      });
+      if (!userId && ret) {
+        ret.highlights = addUnathedProps(ret.highlights);
       }
+
       return {
         name: ret?.name,
         ...(await packageHighlightsPaginated(amount, ret?.highlights, cursor)),
@@ -588,6 +458,32 @@ export const poolRouter = router({
       return res
         ? res.highlights.map((highlight) => highlight.wristbandId)
         : [];
+    }),
+
+  getWristbandHighlightsPaginated: publicProcedure
+    .input(
+      z.object({
+        poolId: z.string().cuid(),
+        wristbandId: z.string(),
+        cursor: z.string().nullish(),
+        amount: z.number(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session?.user?.id;
+      const { poolId, wristbandId, cursor, amount } = input;
+      const ret = await ctx.prisma.highlightPool.findFirst({
+        where: canViewPool(poolId, userId),
+        select: {
+          highlights: infiniteHighlightQuery({
+            amount,
+            wristbandId,
+            cursor,
+            rightPad: 1,
+          }),
+        },
+      });
+      return packageThumbnailsPaginated(amount, ret?.highlights, cursor);
     }),
 
   getPoolFollowers: publicProcedure

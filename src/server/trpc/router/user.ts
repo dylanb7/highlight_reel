@@ -11,6 +11,7 @@ import {
 } from "../../../utils/highlightUtils";
 import type { HighlightReturn } from "../../../types/highlight-out";
 import type { User } from "@prisma/client";
+import { infiniteHighlightQuery } from "../../../utils/prismaUtils";
 
 export const userRouter = router({
   fromId: protectedProcedure
@@ -654,35 +655,11 @@ export const userRouter = router({
               },
             },
             select: {
-              highlights: {
-                orderBy: {
-                  timestampUTC: "desc",
-                },
-                include: {
-                  _count: {
-                    select: {
-                      upvotes: true,
-                    },
-                  },
-                  upvotes: {
-                    where: {
-                      id: currentId,
-                    },
-                  },
-                  addedBy: {
-                    where: {
-                      id: currentId,
-                    },
-                  },
-                },
-
-                take: amount + 1,
-                cursor: cursor
-                  ? {
-                      id: cursor,
-                    }
-                  : undefined,
-              },
+              highlights: infiniteHighlightQuery({
+                cursor,
+                amount,
+                rightPad: 1,
+              }),
             },
           })
         )?.highlights;
@@ -694,25 +671,13 @@ export const userRouter = router({
           },
           select: {
             username: true,
-            highlights: {
-              orderBy: {
-                timestampUTC: "desc",
-              },
-              include: {
-                _count: {
-                  select: {
-                    upvotes: true,
-                  },
-                },
-              },
-
-              take: amount + 1,
-              cursor: cursor
-                ? {
-                    id: cursor,
-                  }
-                : undefined,
-            },
+            highlights: infiniteHighlightQuery({
+              cursor,
+              amount,
+              includeBookmarked: false,
+              includeLiked: false,
+              rightPad: 1,
+            }),
           },
         });
 
@@ -759,35 +724,12 @@ export const userRouter = router({
           },
           select: {
             username: true,
-            highlights: {
-              orderBy: {
-                timestampUTC: "desc",
-              },
-              include: {
-                _count: {
-                  select: {
-                    upvotes: true,
-                  },
-                },
-                upvotes: {
-                  where: {
-                    id: userId,
-                  },
-                },
-                addedBy: {
-                  where: {
-                    id: userId,
-                  },
-                },
-              },
-
-              take: amount + 1,
-              cursor: initialCursor
-                ? {
-                    id: cursor ?? initialCursor,
-                  }
-                : undefined,
-            },
+            highlights: infiniteHighlightQuery({
+              cursor,
+              initialCursor,
+              amount,
+              rightPad: 1,
+            }),
           },
         });
       } else {
@@ -798,22 +740,14 @@ export const userRouter = router({
           },
           select: {
             username: true,
-            highlights: {
-              include: {
-                _count: {
-                  select: {
-                    upvotes: true,
-                  },
-                },
-              },
-
-              take: amount + 1,
-              cursor: initialCursor
-                ? {
-                    id: cursor ?? initialCursor,
-                  }
-                : undefined,
-            },
+            highlights: infiniteHighlightQuery({
+              cursor,
+              initialCursor,
+              amount,
+              includeBookmarked: false,
+              includeLiked: false,
+              rightPad: 1,
+            }),
           },
         });
         ret = {
@@ -844,30 +778,13 @@ export const userRouter = router({
           id: userId,
         },
         select: {
-          highlights: {
-            orderBy: {
-              timestampUTC: "desc",
-            },
-            include: {
-              _count: {
-                select: {
-                  upvotes: true,
-                },
-              },
-              upvotes: {
-                where: {
-                  id: userId,
-                },
-              },
-            },
-
-            take: amount + 1,
-            cursor: initialCursor
-              ? {
-                  id: cursor ?? initialCursor,
-                }
-              : undefined,
-          },
+          highlights: infiniteHighlightQuery({
+            cursor,
+            initialCursor,
+            amount,
+            includeBookmarked: false,
+            rightPad: 1,
+          }),
         },
       });
 
@@ -896,29 +813,12 @@ export const userRouter = router({
           id: userId,
         },
         select: {
-          upvotes: {
-            orderBy: {
-              timestampUTC: "desc",
-            },
-            include: {
-              _count: {
-                select: {
-                  upvotes: true,
-                },
-              },
-              addedBy: {
-                where: {
-                  id: userId,
-                },
-              },
-            },
-            take: amount + 1,
-            cursor: cursor
-              ? {
-                  id: cursor,
-                }
-              : undefined,
-          },
+          upvotes: infiniteHighlightQuery({
+            cursor,
+            amount,
+            includeLiked: false,
+            rightPad: 1,
+          }),
         },
       });
 
@@ -948,30 +848,13 @@ export const userRouter = router({
           id: userId,
         },
         select: {
-          upvotes: {
-            orderBy: {
-              timestampUTC: "desc",
-            },
-            include: {
-              _count: {
-                select: {
-                  upvotes: true,
-                },
-              },
-              addedBy: {
-                where: {
-                  id: userId,
-                },
-              },
-            },
-
-            take: amount + 1,
-            cursor: initialCursor
-              ? {
-                  id: cursor ?? initialCursor,
-                }
-              : undefined,
-          },
+          upvotes: infiniteHighlightQuery({
+            initialCursor,
+            cursor,
+            amount,
+            rightPad: 1,
+            includeLiked: false,
+          }),
         },
       });
 

@@ -10,11 +10,11 @@ const Group: NextPage<{ id: string }> = ({ id }) => {
   const { data, isLoading, isFetched } =
     api.pool.getFirstHighlightId.useQuery(id);
 
-  const { push, query, back } = useRouter();
+  const { query, replace } = useRouter();
 
   useEffect(() => {
     if (data) {
-      push({
+      replace({
         pathname: "/reels/[id]/feed/[startId]",
         query: {
           ...query,
@@ -22,9 +22,9 @@ const Group: NextPage<{ id: string }> = ({ id }) => {
         },
       });
     } else if (isFetched && !isLoading) {
-      push({ pathname: "/reels/[id]", query: { id: id } });
+      replace({ pathname: "/reels/[id]", query: { id: id } });
     }
-  }, [back, data, id, isFetched, isLoading, push, query]);
+  }, [data, id, isFetched, isLoading, query, replace]);
 
   return <LoadingSpinner loadingType={null} />;
 };

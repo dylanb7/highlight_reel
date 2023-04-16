@@ -1,46 +1,48 @@
-import type { GetStaticProps, NextPage } from "next";
+import type { NextPage, GetStaticProps } from "next";
 import { useSession } from "next-auth/react";
-import React, { useMemo } from "react";
-import SignInComponent from "../../../components/misc/sign-in";
-import { api } from "../../../utils/trpc";
-import { LoadingSpinner } from "../../../components/misc/loading";
-import {
-  PoolData,
-  PoolMessageCard,
-} from "../../../components/highlight-pool-card";
-
-import { PoolButtonProvider } from "../../../components/contexts/follow-pool-context";
-import type { ButtonContext } from "../../../components/contexts/button-types";
-
-import { generateSSGHelper } from "../../../utils/ssgHelper";
 import Head from "next/head";
-import {
-  dayGrouping,
-  HighlightGridsComponent,
-} from "../../../components/highlight-components/highlight-grid";
-import type { GridActions } from "../../../components/contexts/grid-context";
-import { GridContextProvider } from "../../../components/contexts/grid-context";
-import type { HighlightThumbnail } from "../../../types/highlight-out";
+
+import { useMemo } from "react";
 import {
   bookmarkActionUpdate,
   likeActionUpdate,
-} from "../../../components/contexts/action-types";
-import { WristBands } from "../../../components/highlight-components/wristband-row";
+} from "../../../../../components/contexts/action-types";
+import type { ButtonContext } from "../../../../../components/contexts/button-types";
+import { PoolButtonProvider } from "../../../../../components/contexts/follow-pool-context";
+import type { GridActions } from "../../../../../components/contexts/grid-context";
+import { GridContextProvider } from "../../../../../components/contexts/grid-context";
+import {
+  HighlightGridsComponent,
+  dayGrouping,
+} from "../../../../../components/highlight-components/highlight-grid";
+import { WristBands } from "../../../../../components/highlight-components/wristband-row";
+import {
+  PoolMessageCard,
+  PoolData,
+} from "../../../../../components/highlight-pool-card";
+import { LoadingSpinner } from "../../../../../components/misc/loading";
+import SignInComponent from "../../../../../components/misc/sign-in";
+import type { HighlightThumbnail } from "../../../../../types/highlight-out";
+import { generateSSGHelper } from "../../../../../utils/ssgHelper";
+import { api } from "../../../../../utils/trpc";
 
-const PoolView: NextPage<{ poolId: string }> = ({ poolId }) => {
+const PoolView: NextPage<{ poolId: string; bandId: string }> = ({
+  poolId,
+  bandId,
+}) => {
   const { data: poolInfo } = api.pool.getPoolById.useQuery(poolId);
 
   return (
     <>
       <Head>
-        <title>{`Reel - ${poolInfo?.name ?? "Loading"}`}</title>
+        <title>{`Reel - ${poolInfo?.name ?? "Loading"} - ${bandId}`}</title>
       </Head>
       <div className="flex h-full w-full flex-col items-start justify-start px-4 sm:px-8">
         <div className="mt-8 self-center pb-4">
           <PoolInfo poolId={poolId} />
         </div>
         <WristBands poolId={poolId} />
-        <LoadFeed poolId={poolId} />
+        <LoadFeed poolId={poolId} bandId={bandId} />
       </div>
     </>
   );
@@ -176,18 +178,20 @@ const PoolInfo: React.FC<{ poolId: string }> = ({ poolId }) => {
 
 const LoadFeed: React.FC<{
   poolId: string;
-}> = ({ poolId }) => {
+  bandId: string;
+}> = ({ poolId, bandId }) => {
   const loadAmount = 6;
 
   const queryKey = {
     amount: loadAmount,
     poolId: poolId,
+    wristbandId: bandId,
   };
 
   const util = api.useContext();
 
   const { data, isLoading, hasNextPage, fetchNextPage } =
-    api.pool.getPoolHighlightsPaginated.useInfiniteQuery(queryKey, {
+    api.pool.getWristbandHighlightsPaginated.useInfiniteQuery(queryKey, {
       getNextPageParam: (lastPage) => lastPage.nextCursor,
     });
   const highlights = useMemo(() => {
@@ -206,11 +210,11 @@ const LoadFeed: React.FC<{
   const { mutate: bookmark, isLoading: bookmarking } =
     api.user.toggleHighlight.useMutation({
       async onMutate(variables) {
-        await util.pool.getPoolHighlightsPaginated.cancel(queryKey);
+        await util.pool.getWristbandHighlightsPaginated.cancel(queryKey);
         const prev =
-          util.pool.getPoolHighlightsPaginated.getInfiniteData(queryKey);
+          util.pool.getWristbandHighlightsPaginated.getInfiniteData(queryKey);
         if (prev) {
-          util.pool.getPoolHighlightsPaginated.setInfiniteData(queryKey, {
+          util.pool.getWristbandHighlightsPaginated.setInfiniteData(queryKey, {
             ...prev,
             pages: bookmarkActionUpdate(prev, variables),
           });
@@ -218,24 +222,24 @@ const LoadFeed: React.FC<{
         return { prev };
       },
       onError(_, __, context) {
-        util.pool.getPoolHighlightsPaginated.setInfiniteData(
+        util.pool.getWristbandHighlightsPaginated.setInfiniteData(
           queryKey,
           context?.prev
         );
       },
       onSettled() {
-        util.pool.getPoolHighlightsPaginated.invalidate(queryKey);
+        util.pool.getWristbandHighlightsPaginated.invalidate(queryKey);
       },
     });
 
   const { mutate: upvote, isLoading: upvoting } =
     api.user.upvoteHighlight.useMutation({
       async onMutate(variables) {
-        await util.pool.getPoolHighlightsPaginated.cancel(queryKey);
+        await util.pool.getWristbandHighlightsPaginated.cancel(queryKey);
         const prev =
-          util.pool.getPoolHighlightsPaginated.getInfiniteData(queryKey);
+          util.pool.getWristbandHighlightsPaginated.getInfiniteData(queryKey);
         if (prev) {
-          util.pool.getPoolHighlightsPaginated.setInfiniteData(queryKey, {
+          util.pool.getWristbandHighlightsPaginated.setInfiniteData(queryKey, {
             ...prev,
             pages: likeActionUpdate(prev, variables),
           });
@@ -249,7 +253,7 @@ const LoadFeed: React.FC<{
         );
       },
       onSettled() {
-        util.pool.getPoolHighlightsPaginated.invalidate(queryKey);
+        util.pool.getPoolHighlightsPaginated.invalidate();
       },
     });
 
@@ -283,9 +287,16 @@ const LoadFeed: React.FC<{
 
 export const getStaticProps: GetStaticProps<{
   poolId: string;
+  bandId: string;
 }> = async (props) => {
   const { params } = props;
-  if (!params || !params.id || typeof params.id !== "string") {
+  if (
+    !params ||
+    !params.id ||
+    typeof params.id !== "string" ||
+    !params.bandId ||
+    typeof params.bandId !== "string"
+  ) {
     return {
       notFound: true,
     };
@@ -293,13 +304,16 @@ export const getStaticProps: GetStaticProps<{
 
   const poolId = params.id;
 
+  const bandId = params.bandId;
+
   const ssg = generateSSGHelper();
 
   await ssg.pool.getPoolById.prefetch(poolId);
 
-  await ssg.pool.getPoolHighlightsPaginated.prefetchInfinite({
+  await ssg.pool.getWristbandHighlightsPaginated.prefetchInfinite({
+    poolId,
+    wristbandId: bandId,
     amount: 6,
-    poolId: poolId,
   });
 
   await ssg.pool.getWristbands.prefetch(poolId);
@@ -308,6 +322,7 @@ export const getStaticProps: GetStaticProps<{
     props: {
       trpcState: ssg.dehydrate(),
       poolId,
+      bandId,
     },
   };
 };

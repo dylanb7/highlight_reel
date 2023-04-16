@@ -9,7 +9,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/router";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import type { HighlightVideo } from "../../types/highlight-out";
 
 import { IconButton, twIcons } from "../misc/icon-button";
@@ -287,23 +287,21 @@ const BaseCompontent: React.FC<{
     );
 
   return (
-    <div className="flex-col items-center justify-center px-4 md:px-8">
+    <div className="flex flex-col items-center justify-start px-4 md:px-8">
       <div className="flex w-full flex-row justify-start gap-2">
         <IconStyleLink url={backPath}>
           <ChevronLeftIcon className={twIcons(6, 2)} />
         </IconStyleLink>
-
-        <h3 className="py-3 text-2xl font-semibold text-slate-900 dark:text-white">
+        <h3 className="py-3 text-xl font-semibold text-slate-900 dark:text-white">
           {from ? `${from} - ` : ""}
           {relativeTime && <span>{relativeTime}</span>}
         </h3>
       </div>
-      <div className="grow">
+      <div className="w-full grow overflow-hidden">
         <AspectRatio.Root ratio={aspect}>
           <Player url={highlight.url} />
         </AspectRatio.Root>
       </div>
-
       <ActionRow highlight={highlight} />
       <div className="flex w-full flex-row items-center justify-start gap-3 py-3">
         {progress && (
@@ -360,21 +358,32 @@ const Player: React.FC<{ url: string }> = ({ url }) => {
     <div
       onMouseEnter={() => setFocused(true)}
       onMouseLeave={() => setFocused(false)}
+      className="overflow-hidden"
     >
-      <ReactPlayer
-        url={url}
-        loop={true}
-        playing={playing}
-        width={"100%"}
-        height={"100%"}
-        controls={false}
-        playsinline={true}
-        muted={true}
-        progressInterval={1}
-        onProgress={(state) => {
-          setProgress({ loaded: state.loaded, played: state.played });
-        }}
-      />
+      <Suspense
+        fallback={
+          <div className="animate-pulse">
+            <div className="rounded-lg bg-gray-100 dark:bg-slate-800" />
+          </div>
+        }
+      >
+        <ReactPlayer
+          url={url}
+          loop={true}
+          style={{ objectFit: "contain" }}
+          playing={playing}
+          controls={false}
+          playsinline={true}
+          pip={true}
+          width={"100%"}
+          height={"100%"}
+          muted={true}
+          progressInterval={1}
+          onProgress={(state) => {
+            setProgress({ loaded: state.loaded, played: state.played });
+          }}
+        />
+      </Suspense>
 
       {focused && (
         <div className="z-1 absolute left-4 bottom-0 right-4 mb-2 rounded-lg bg-white/70 py-1 dark:bg-slate-900/70">
@@ -392,13 +401,13 @@ const Player: React.FC<{ url: string }> = ({ url }) => {
             </IconButton>
 
             <div className="h-2 w-full transition-transform duration-[660ms]">
-              <div className="h-full w-full overflow-clip rounded-full bg-slate-800">
+              <div className="h-2 w-full overflow-clip rounded-full bg-slate-800">
                 <div
-                  className=" h-full bg-slate-600"
+                  className=" h-2 bg-slate-600"
                   style={{ width: `${progress.loaded * 100}%` }}
                 >
                   <div
-                    className="h-full bg-white transition-transform duration-[660ms]"
+                    className="h-2 bg-white transition-transform duration-[660ms]"
                     style={{ width: `${progress.played * 100}%` }}
                   />
                 </div>

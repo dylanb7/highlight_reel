@@ -1,4 +1,5 @@
 import type { GetStaticProps, NextPage } from "next";
+import { useSession } from "next-auth/react";
 import { useMemo } from "react";
 import {
   bookmarkActionUpdate,
