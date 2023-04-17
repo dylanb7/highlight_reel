@@ -203,6 +203,7 @@ const ImageComponent: React.FC<{
             <Image
               className="z-10 group-hover:opacity-50"
               src={highlight.thumbnailUrl}
+              unoptimized
               alt={"Highlight"}
               onLoadingComplete={() => setLoading(false)}
               onLoad={() => setLoading(true)}
