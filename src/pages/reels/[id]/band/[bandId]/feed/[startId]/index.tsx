@@ -1,24 +1,26 @@
-import type { GetStaticProps, NextPage } from "next";
+import type { NextPage, GetStaticProps } from "next";
 import { useMemo } from "react";
 import {
   bookmarkActionUpdate,
   likeActionUpdate,
-} from "../../../../components/contexts/action-types";
-import { FeedContextProvider } from "../../../../components/contexts/feed-context";
-import { ContinuousFeed } from "../../../../components/highlight-components/highlight-feed";
-import type { HighlightVideo } from "../../../../types/highlight-out";
-import { addExt } from "../../../../utils/highlightUtils";
-import { generateSSGHelper } from "../../../../utils/ssgHelper";
-import { api } from "../../../../utils/trpc";
+} from "../../../../../../../components/contexts/action-types";
+import { FeedContextProvider } from "../../../../../../../components/contexts/feed-context";
+import { ContinuousFeed } from "../../../../../../../components/highlight-components/highlight-feed";
+import type { HighlightVideo } from "../../../../../../../types/highlight-out";
+import { addExt } from "../../../../../../../utils/highlightUtils";
+import { generateSSGHelper } from "../../../../../../../utils/ssgHelper";
+import { api } from "../../../../../../../utils/trpc";
 
-const FeedWithStart: NextPage<{ id: string; startId: string }> = ({
-  id,
-  startId,
-}) => {
+const FeedWithStart: NextPage<{
+  id: string;
+  startId: string;
+  bandId: string;
+}> = ({ id, startId, bandId }) => {
   const util = api.useContext();
 
   const queryKey = {
-    profileId: id,
+    poolId: id,
+    wristbandId: bandId,
     initialCursor: addExt(startId),
   };
 
@@ -29,7 +31,7 @@ const FeedWithStart: NextPage<{ id: string; startId: string }> = ({
     isFetching,
     hasPreviousPage,
     fetchPreviousPage,
-  } = api.user.getBookmarkVideosPaginated.useInfiniteQuery(queryKey, {
+  } = api.pool.getWristbandVideosPaginated.useInfiniteQuery(queryKey, {
     refetchOnWindowFocus: false,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
   });
@@ -50,11 +52,11 @@ const FeedWithStart: NextPage<{ id: string; startId: string }> = ({
   const { mutate: bookmark, isLoading: bookmarking } =
     api.user.toggleHighlight.useMutation({
       async onMutate(variables) {
-        await util.user.getBookmarkVideosPaginated.cancel(queryKey);
+        await util.pool.getWristbandVideosPaginated.cancel(queryKey);
         const prev =
-          util.user.getBookmarkVideosPaginated.getInfiniteData(queryKey);
+          util.pool.getWristbandVideosPaginated.getInfiniteData(queryKey);
         if (prev) {
-          util.user.getBookmarkVideosPaginated.setInfiniteData(queryKey, {
+          util.pool.getWristbandVideosPaginated.setInfiniteData(queryKey, {
             ...prev,
             pages: bookmarkActionUpdate(prev, variables),
           });
@@ -62,24 +64,24 @@ const FeedWithStart: NextPage<{ id: string; startId: string }> = ({
         return { prev };
       },
       onError(_, __, context) {
-        util.user.getBookmarkVideosPaginated.setInfiniteData(
+        util.pool.getWristbandVideosPaginated.setInfiniteData(
           queryKey,
           context?.prev
         );
       },
       onSettled() {
-        util.user.getBookmarkVideosPaginated.invalidate(queryKey);
+        util.pool.getWristbandVideosPaginated.invalidate(queryKey);
       },
     });
 
   const { mutate: upvote, isLoading: upvoting } =
     api.user.upvoteHighlight.useMutation({
       async onMutate(variables) {
-        await util.user.getBookmarkVideosPaginated.cancel(queryKey);
+        await util.pool.getWristbandVideosPaginated.cancel(queryKey);
         const prev =
-          util.user.getBookmarkVideosPaginated.getInfiniteData(queryKey);
+          util.pool.getWristbandVideosPaginated.getInfiniteData(queryKey);
         if (prev) {
-          util.user.getBookmarkVideosPaginated.setInfiniteData(queryKey, {
+          util.pool.getWristbandVideosPaginated.setInfiniteData(queryKey, {
             ...prev,
             pages: likeActionUpdate(prev, variables),
           });
@@ -87,13 +89,13 @@ const FeedWithStart: NextPage<{ id: string; startId: string }> = ({
         return { prev };
       },
       onError(_, __, context) {
-        util.user.getBookmarkVideosPaginated.setInfiniteData(
+        util.pool.getWristbandVideosPaginated.setInfiniteData(
           queryKey,
           context?.prev
         );
       },
       onSettled() {
-        util.user.getBookmarkVideosPaginated.invalidate(queryKey);
+        util.pool.getWristbandVideosPaginated.invalidate(queryKey);
       },
     });
 
@@ -119,7 +121,9 @@ const FeedWithStart: NextPage<{ id: string; startId: string }> = ({
       <ContinuousFeed
         highlights={highlights ?? []}
         fetching={isFetching}
-        backPath={`/profiles/${encodeURIComponent(id)}`}
+        backPath={`/reels/${encodeURIComponent(id)}/band/${encodeURIComponent(
+          bandId
+        )}`}
         hasNext={hasNextPage ?? false}
         hasPrev={hasPreviousPage ?? false}
         fetchNext={async () => {
@@ -132,22 +136,26 @@ const FeedWithStart: NextPage<{ id: string; startId: string }> = ({
         }}
         from={data?.pages.at(0)?.name ?? ""}
       />
-      \
     </FeedContextProvider>
   );
 };
 
 export const getStaticProps: GetStaticProps<{
   id: string;
+  bandId: string;
   startId: string;
 }> = async (props) => {
   const { params } = props;
 
   if (!params) return { notFound: true };
 
-  const { id, startId } = params;
+  const { id, bandId, startId } = params;
 
-  if (typeof id !== "string" || typeof startId !== "string") {
+  if (
+    typeof id !== "string" ||
+    typeof startId !== "string" ||
+    typeof bandId !== "string"
+  ) {
     return {
       notFound: true,
     };
@@ -155,8 +163,9 @@ export const getStaticProps: GetStaticProps<{
 
   const ssg = generateSSGHelper();
 
-  await ssg.user.getBookmarkVideosPaginated.prefetchInfinite({
-    profileId: id,
+  await ssg.pool.getWristbandVideosPaginated.prefetchInfinite({
+    poolId: id,
+    wristbandId: bandId,
     initialCursor: startId,
   });
 
@@ -165,6 +174,7 @@ export const getStaticProps: GetStaticProps<{
       trpcState: ssg.dehydrate(),
       id,
       startId,
+      bandId,
     },
   };
 };

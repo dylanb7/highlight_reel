@@ -23,13 +23,15 @@ export const getServerSideProps: GetServerSideProps<{
   userId: string;
 }> = async (props) => {
   const { params } = props;
-  if (!params || !params.id || typeof params.id !== "string") {
+
+  if (!params) return { notFound: true };
+
+  const { userId } = params;
+  if (typeof userId !== "string") {
     return {
       notFound: true,
     };
   }
-
-  const userId = params.id;
 
   const ssg = generateSSGHelper();
 

@@ -6,7 +6,7 @@ import { removeExt } from "../../../../utils/highlightUtils";
 import { generateSSGHelper } from "../../../../utils/ssgHelper";
 import { api } from "../../../../utils/trpc";
 
-const Group: NextPage<{ id: string }> = ({ id }) => {
+const Redirect: NextPage<{ id: string }> = ({ id }) => {
   const { data, isLoading, isFetched } =
     api.pool.getFirstHighlightId.useQuery(id);
 
@@ -60,4 +60,4 @@ export const getStaticPaths = () => {
   return { paths: [], fallback: "blocking" };
 };
 
-export default Group;
+export default Redirect;

@@ -1,4 +1,4 @@
-import type { Highlight } from "@prisma/client";
+import type { Highlight, User } from "@prisma/client";
 
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
@@ -144,6 +144,8 @@ export const addUnathedProps = (
         _count: {
           upvotes: number;
         };
+        addedBy?: User[];
+        upvotes?: User[];
       })[]
     | null
     | undefined

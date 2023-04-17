@@ -178,19 +178,10 @@ const ImageComponent: React.FC<{
     return {
       pathname: `/${gridContext.basePath}/${start}/${length}`,
       query: {
-        ...query,
         current: index,
       },
     };
-  }, [
-    continuous,
-    gridContext.basePath,
-    highlight.id,
-    index,
-    length,
-    query,
-    start,
-  ]);
+  }, [continuous, gridContext.basePath, highlight.id, index, length, start]);
 
   return (
     <AspectRatio.Root ratio={aspect}>

@@ -1,18 +1,19 @@
 import type { NextPage, GetStaticProps } from "next";
 import { useRouter } from "next/router";
 import { useMemo } from "react";
-import { FeedContextProvider } from "../../../../../components/contexts/feed-context";
-import { IndexedFeed } from "../../../../../components/highlight-components/highlight-feed";
-import type { HighlightVideo } from "../../../../../types/highlight-out";
-import { addExt } from "../../../../../utils/highlightUtils";
-import { generateSSGHelper } from "../../../../../utils/ssgHelper";
-import { api } from "../../../../../utils/trpc";
+import { FeedContextProvider } from "../../../../../../../components/contexts/feed-context";
+import { IndexedFeed } from "../../../../../../../components/highlight-components/highlight-feed";
+import type { HighlightVideo } from "../../../../../../../types/highlight-out";
+import { addExt } from "../../../../../../../utils/highlightUtils";
+import { generateSSGHelper } from "../../../../../../../utils/ssgHelper";
+import { api } from "../../../../../../../utils/trpc";
 
 const GroupedFeed: NextPage<{
   id: string;
+  bandId: string;
   startId: string;
   length: string;
-}> = ({ id, startId, length }) => {
+}> = ({ id, bandId, startId, length }) => {
   const { query } = useRouter();
 
   const { current } = query;
@@ -25,13 +26,17 @@ const GroupedFeed: NextPage<{
 
   const queryKey = {
     poolId: id,
+    bandId: bandId,
     amount: bundleLength,
     cursor: addExt(startId),
   };
 
-  const { data, isLoading } = api.pool.getHighlightBundle.useQuery(queryKey, {
-    refetchOnWindowFocus: false,
-  });
+  const { data, isLoading } = api.pool.getWristbandHighlightBundle.useQuery(
+    queryKey,
+    {
+      refetchOnWindowFocus: false,
+    }
+  );
 
   const highlights = useMemo(() => data?.highlights ?? [], [data?.highlights]);
 
@@ -47,8 +52,8 @@ const GroupedFeed: NextPage<{
   const { mutate: bookmark, isLoading: bookmarking } =
     api.user.toggleHighlight.useMutation({
       async onMutate(variables) {
-        await util.pool.getHighlightBundle.cancel(queryKey);
-        const prev = util.pool.getHighlightBundle.getData(queryKey);
+        await util.pool.getWristbandHighlightBundle.cancel(queryKey);
+        const prev = util.pool.getWristbandHighlightBundle.getData(queryKey);
         if (prev) {
           const newHighlights = [...prev.highlights];
           const index = newHighlights.findIndex(
@@ -57,7 +62,7 @@ const GroupedFeed: NextPage<{
           const found = newHighlights.at(index);
           if (found) {
             found.bookmarked = variables.add;
-            util.pool.getHighlightBundle.setData(queryKey, {
+            util.pool.getWristbandHighlightBundle.setData(queryKey, {
               ...prev,
               highlights: newHighlights,
             });
@@ -66,18 +71,18 @@ const GroupedFeed: NextPage<{
         return { prev };
       },
       onError(_, __, context) {
-        util.pool.getHighlightBundle.setData(queryKey, context?.prev);
+        util.pool.getWristbandHighlightBundle.setData(queryKey, context?.prev);
       },
       onSettled() {
-        util.pool.getHighlightVideosPaginated.invalidate(queryKey);
+        util.pool.getWristbandHighlightBundle.invalidate(queryKey);
       },
     });
 
   const { mutate: upvote, isLoading: upvoting } =
     api.user.upvoteHighlight.useMutation({
       async onMutate(variables) {
-        await util.pool.getHighlightBundle.cancel(queryKey);
-        const prev = util.pool.getHighlightBundle.getData(queryKey);
+        await util.pool.getWristbandHighlightBundle.cancel(queryKey);
+        const prev = util.pool.getWristbandHighlightBundle.getData(queryKey);
         if (prev) {
           const newHighlights = [...prev.highlights];
           const index = newHighlights.findIndex(
@@ -86,7 +91,7 @@ const GroupedFeed: NextPage<{
           const found = newHighlights.at(index);
           if (found) {
             found.upvoted = variables.like ?? false;
-            util.pool.getHighlightBundle.setData(queryKey, {
+            util.pool.getWristbandHighlightBundle.setData(queryKey, {
               ...prev,
               highlights: newHighlights,
             });
@@ -95,10 +100,10 @@ const GroupedFeed: NextPage<{
         return { prev };
       },
       onError(_, __, context) {
-        util.pool.getHighlightBundle.setData(queryKey, context?.prev);
+        util.pool.getWristbandHighlightBundle.setData(queryKey, context?.prev);
       },
       onSettled() {
-        util.pool.getHighlightBundle.invalidate(queryKey);
+        util.pool.getWristbandHighlightBundle.invalidate(queryKey);
       },
     });
 
@@ -126,7 +131,9 @@ const GroupedFeed: NextPage<{
         from={data?.name ?? undefined}
         initial={Number.isNaN(start) ? undefined : start}
         fetching={isLoading}
-        backPath={`/reels/${encodeURIComponent(id)}`}
+        backPath={`/reels/${encodeURIComponent(id)}/band/${encodeURIComponent(
+          bandId
+        )}/`}
       />
     </FeedContextProvider>
   );
@@ -134,6 +141,7 @@ const GroupedFeed: NextPage<{
 
 export const getStaticProps: GetStaticProps<{
   id: string;
+  bandId: string;
   startId: string;
   length: string;
 }> = async (props) => {
@@ -141,10 +149,11 @@ export const getStaticProps: GetStaticProps<{
 
   if (!params) return { notFound: true };
 
-  const { id, startId, length } = params;
+  const { id, bandId, startId, length } = params;
 
   if (
     typeof id !== "string" ||
+    typeof bandId !== "string" ||
     typeof startId !== "string" ||
     typeof length !== "string" ||
     Number.isNaN(parseInt(length))
@@ -158,9 +167,10 @@ export const getStaticProps: GetStaticProps<{
 
   const ssg = generateSSGHelper();
 
-  await ssg.pool.getHighlightBundle.prefetch({
+  await ssg.pool.getWristbandHighlightBundle.prefetch({
     poolId: id,
     amount: bundleLength,
+    bandId,
     cursor: addExt(startId),
   });
 
@@ -168,6 +178,7 @@ export const getStaticProps: GetStaticProps<{
     props: {
       trpcState: ssg.dehydrate(),
       id,
+      bandId,
       length,
       startId,
     },

@@ -37,6 +37,8 @@ model Highlight {
   pool                   HighlightPool? @relation(fields: [poolId], references: [id], onDelete: Cascade)
   upvotes                User[]         @relation("Upvotes")
   addedBy                User[]         @relation("AddedHighlights")
+
+  @@index(timestampUTC)
 }
 
 // Necessary for Next auth
