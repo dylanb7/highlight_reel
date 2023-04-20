@@ -85,6 +85,13 @@ export const packageHighlights = async (
       id: rawHighlight.id,
     });
 
+    const thumbnailUrl = rawHighlight.thumbnail
+      ? await fetchS3Highlight({
+          s3bucket: bucket,
+          id: rawHighlight.thumbnail,
+        })
+      : undefined;
+
     highlights.push({
       ...rawHighlight,
       id: removeExt(rawHighlight.id),
@@ -92,6 +99,7 @@ export const packageHighlights = async (
       bookmarked: rawHighlight.addedBy.length > 0,
       upvoted: rawHighlight.upvotes.length > 0,
       url,
+      thumbnailUrl,
     });
   }
   return highlights;

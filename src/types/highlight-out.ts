@@ -2,6 +2,7 @@ import type { Highlight, User } from "@prisma/client";
 
 export type HighlightVideo = BaseHighlight & {
   url: string;
+  thumbnailUrl?: string;
 };
 
 export type HighlightThumbnail = BaseHighlight & {
@@ -14,6 +15,7 @@ export type BaseHighlight = {
   timestampUTC: bigint | null;
   aspectRatioNumerator: number | null;
   aspectRatioDenominator: number | null;
+  wristbandId: string | null;
   upvotes: number;
   bookmarked: boolean;
   upvoted: boolean;

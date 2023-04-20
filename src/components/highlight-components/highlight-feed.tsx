@@ -7,6 +7,7 @@ import {
   ChevronUpIcon,
 } from "@radix-ui/react-icons";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/router";
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
@@ -20,10 +21,12 @@ import dynamic from "next/dynamic";
 import dayjs from "dayjs";
 import * as reltiveTime from "dayjs/plugin/relativeTime";
 import * as utc from "dayjs/plugin/utc";
+import LocalizedFormat from "dayjs/plugin/localizedFormat";
 import { removeExt } from "../../utils/highlightUtils";
 
 dayjs.extend(reltiveTime.default);
 dayjs.extend(utc.default);
+dayjs.extend(LocalizedFormat);
 
 const ReactPlayer = dynamic(() => import("react-player/lazy"), { ssr: false });
 
@@ -162,6 +165,12 @@ export const ContinuousFeed: React.FC<{
       next={goNext}
       prev={goPrev}
       highlight={highlight}
+      nextHighlight={
+        hasNext ? highlights.at(current ?? 0 + 1)?.thumbnailUrl : undefined
+      }
+      previousHighlight={
+        hasPrev ? highlights.at(current ?? 0 - 1)?.thumbnailUrl : undefined
+      }
       fetching={fetching ?? false}
       backPath={backPath}
       from={from}
@@ -238,6 +247,12 @@ export const IndexedFeed: React.FC<{
       prev={prev}
       fetching={fetching ?? false}
       backPath={backPath}
+      nextHighlight={
+        hasNext() ? highlights.at(index + 1)?.thumbnailUrl : undefined
+      }
+      previousHighlight={
+        hasPrev() ? highlights.at(index - 1)?.thumbnailUrl : undefined
+      }
     />
   );
 };
@@ -249,6 +264,8 @@ const BaseCompontent: React.FC<{
   prev: () => void;
   fetching: boolean;
   highlight?: HighlightVideo;
+  nextHighlight?: string;
+  previousHighlight?: string;
   backPath: string;
   from?: string;
   progress?: string;
@@ -261,10 +278,18 @@ const BaseCompontent: React.FC<{
   backPath,
   from,
   progress,
+  nextHighlight,
+  previousHighlight,
 }) => {
   const relativeTime = useMemo(() => {
     if (!highlight || !highlight.timestampUTC) return undefined;
     return dayjs().to(dayjs.unix(Number(highlight.timestampUTC)).utc().local());
+  }, [highlight]);
+
+  const dateTime = useMemo(() => {
+    if (!highlight || !highlight.timestampUTC) return undefined;
+    const date = dayjs.unix(Number(highlight.timestampUTC)).utc().local();
+    return date.format("lll");
   }, [highlight]);
 
   const aspect = useMemo(() => {
@@ -287,47 +312,185 @@ const BaseCompontent: React.FC<{
     );
 
   return (
-    <div className="flex flex-col items-center justify-start px-4 md:px-8">
-      <div className="flex w-full flex-row justify-start gap-2">
-        <IconStyleLink url={backPath}>
-          <ChevronLeftIcon className={twIcons(6, 2)} />
-        </IconStyleLink>
+    <div className="flex flex-col items-center justify-start px-2 md:px-8">
+      <div className="flex w-full flex-row items-center justify-start gap-2">
+        <div className="py-2">
+          <IconStyleLink url={backPath}>
+            <ChevronLeftIcon className={twIcons(8, 2)} />
+          </IconStyleLink>
+        </div>
         <h3 className="py-3 text-xl font-semibold text-slate-900 dark:text-white">
           {from ? `${from} - ` : ""}
           {relativeTime && <span>{relativeTime}</span>}
         </h3>
       </div>
-      <div className="w-full grow overflow-hidden">
-        <AspectRatio.Root ratio={aspect}>
-          <Player url={highlight.url} />
-        </AspectRatio.Root>
-      </div>
-      <ActionRow highlight={highlight} />
-      <div className="flex w-full flex-row items-center justify-start gap-3 py-3">
-        {progress && (
-          <h2 className="py-3 text-xl font-semibold text-slate-900 dark:text-white">
-            {progress}
-          </h2>
-        )}
-        <div className="flex flex-col">
-          <IconButton
-            disabled={!hasPrev()}
-            onClick={() => {
-              prev();
-            }}
-          >
-            <ChevronUpIcon className={twIcons(6, 0)} />
-          </IconButton>
-
-          <IconButton
-            disabled={!hasNext()}
-            onClick={() => {
-              next();
-            }}
-          >
-            <ChevronDownIcon className={twIcons(6, 0)} />
-          </IconButton>
+      <div className="flex h-full w-full flex-col gap-3 sm:flex-row">
+        <div className="flex h-full w-full flex-col divide-y divide-black overflow-clip rounded-md border border-black dark:divide-white dark:border-white">
+          <div className="w-full grow overflow-hidden">
+            <AspectRatio.Root ratio={aspect}>
+              <Player url={highlight.url} />
+            </AspectRatio.Root>
+          </div>
+          <ActionRow highlight={highlight} />
         </div>
+        <div className="flex flex-row items-center justify-center gap-3 p-3 sm:flex-col">
+          {progress && (
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
+              {progress}
+            </h2>
+          )}
+          <ThumbnailStack
+            prev={previousHighlight}
+            current={highlight.thumbnailUrl}
+            next={nextHighlight}
+            aspect={aspect}
+            goNext={next}
+            goPrev={prev}
+            hasNext={hasNext}
+            hasPrev={hasPrev}
+          />
+          <div className="grow" />
+          {highlight && (
+            <div className="flex flex-col items-end justify-start">
+              <h2 className="text-sm text-slate-900 dark:text-white ">
+                Captured By:
+              </h2>
+              {highlight.wristbandId && (
+                <IconStyleLink
+                  url={`/reels/${highlight?.poolId}/band/${highlight.wristbandId}`}
+                >
+                  <h2 className="px-2 text-lg font-bold text-slate-900 underline dark:text-white">
+                    Band
+                  </h2>
+                </IconStyleLink>
+              )}
+
+              <IconStyleLink url={`/reels/${highlight?.poolId}`}>
+                <h2 className="px-2 text-lg font-bold text-slate-900 underline dark:text-white">
+                  Reel
+                </h2>
+              </IconStyleLink>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {dateTime && (
+        <p className="text-lg font-bold text-slate-900 dark:text-white">
+          {dateTime}
+        </p>
+      )}
+    </div>
+  );
+};
+
+const ThumbnailStack: React.FC<{
+  prev?: string;
+  current?: string;
+  next?: string;
+  aspect: number;
+  goNext: () => void;
+  goPrev: () => void;
+  hasPrev: () => boolean;
+  hasNext: () => boolean;
+}> = ({ prev, current, next, aspect, goNext, goPrev, hasPrev, hasNext }) => {
+  const smallHeight = 60;
+
+  const bigHeight = smallHeight * 1.15;
+
+  const smallWidth = smallHeight * aspect;
+
+  const bigWidth = bigHeight * aspect;
+
+  const placeholder = (width: number, height: number) => (
+    <div
+      className={`bg-gray-200 dark:bg-slate-700`}
+      style={{ width: width, height: height }}
+    />
+  );
+
+  return (
+    <div className="flex flex-row">
+      <div className="relative w-32" style={{ height: bigHeight * 1.6 }}>
+        {hasPrev() && (
+          <div
+            onClick={() => {
+              goPrev();
+            }}
+            className={
+              "absolute inset-x-0 top-0 mx-auto overflow-clip rounded-md border border-black opacity-75 hover:-top-2 dark:border-white"
+            }
+            style={{ width: smallWidth, height: smallHeight }}
+          >
+            {prev ? (
+              <Image
+                src={prev}
+                unoptimized
+                alt={"Highlight"}
+                width={smallWidth}
+                height={smallHeight}
+              />
+            ) : (
+              placeholder(smallWidth, smallHeight)
+            )}
+          </div>
+        )}
+        <div
+          className="absolute inset-0 z-10 m-auto overflow-clip rounded-md border border-black dark:border-white"
+          style={{ width: bigWidth, height: bigHeight }}
+        >
+          {current ? (
+            <Image
+              src={current}
+              unoptimized
+              alt={"Highlight"}
+              width={bigWidth}
+              height={bigHeight}
+            />
+          ) : (
+            placeholder(bigWidth, bigHeight)
+          )}
+        </div>
+        {hasNext() && (
+          <div
+            onClick={() => {
+              goNext();
+            }}
+            className="absolute inset-x-0 bottom-0 mx-auto overflow-clip rounded-md border border-black opacity-75 hover:-bottom-2 dark:border-white"
+            style={{ width: smallWidth, height: smallHeight }}
+          >
+            {next ? (
+              <Image
+                src={next}
+                unoptimized
+                alt={"Highlight"}
+                width={smallWidth}
+                height={smallHeight}
+              />
+            ) : (
+              placeholder(smallWidth, smallHeight)
+            )}
+          </div>
+        )}
+      </div>
+      <div className="flex flex-col justify-center gap-2 pl-2">
+        <IconButton
+          disabled={!hasPrev()}
+          onClick={() => {
+            goPrev();
+          }}
+        >
+          <ChevronUpIcon className={twIcons(8, 0)} />
+        </IconButton>
+
+        <IconButton
+          disabled={!hasNext()}
+          onClick={() => {
+            goNext();
+          }}
+        >
+          <ChevronDownIcon className={twIcons(8, 0)} />
+        </IconButton>
       </div>
     </div>
   );
@@ -340,7 +503,7 @@ const IconStyleLink: React.FC<React.PropsWithChildren<{ url: string }>> = ({
   return (
     <Link
       href={url}
-      className="flex items-center justify-center rounded-lg transition-all hover:bg-indigo-500/10 active:bg-indigo-500/30 disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none dark:hover:bg-slate-700/10 dark:active:bg-slate-700/30"
+      className="flex items-center justify-center rounded-lg transition-all hover:bg-indigo-500/20 active:bg-indigo-500/30 disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none dark:hover:bg-slate-700/50 dark:active:bg-slate-700/30"
     >
       {children}
     </Link>

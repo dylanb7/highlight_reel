@@ -25,7 +25,7 @@ export const ActionRow: React.FC<{ highlight: HighlightVideo }> = ({
   const feedContext = useFeedContext();
 
   return (
-    <div className="flex h-12 w-full flex-row items-center justify-between rounded-sm px-3 shadow-sm shadow-gray-300 transition-opacity dark:shadow-slate-900">
+    <div className="flex h-12 w-full flex-row items-center justify-between px-3 shadow-sm shadow-gray-300 transition-opacity dark:shadow-slate-900">
       <p className="grow truncate text-sm text-slate-900 dark:text-white">
         {highlight.upvotes + (highlight.upvotes == 1 ? " upvote" : " upvotes")}
       </p>

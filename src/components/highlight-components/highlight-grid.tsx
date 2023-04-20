@@ -11,7 +11,6 @@ import { useGridContext } from "../contexts/grid-context";
 import dayjs from "dayjs";
 import * as utc from "dayjs/plugin/utc";
 import type { UrlObject } from "url";
-import { useRouter } from "next/router";
 
 dayjs.extend(utc.default);
 
@@ -159,8 +158,6 @@ const ImageComponent: React.FC<{
   const [loading, setLoading] = useState(true);
 
   const gridContext = useGridContext();
-
-  const { query } = useRouter();
 
   const aspect =
     highlight.aspectRatioNumerator && highlight.aspectRatioDenominator
