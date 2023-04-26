@@ -67,9 +67,66 @@ export const ActionRow: React.FC<{ highlight: HighlightVideo }> = ({
   );
 };
 
-export const ActionRowCompact: React.FC<{ highlight: HighlightThumbnail }> = ({
-  highlight,
-}) => {
+export const ActionRowCompactFeed: React.FC<{
+  highlight: HighlightVideo;
+}> = ({ highlight }) => {
+  const { data: session } = useSession();
+
+  const noUser = !session || !session.user;
+
+  const feedContext = useFeedContext();
+
+  return (
+    <div className="flex w-full flex-row items-center justify-end gap-2 overflow-x-scroll rounded-sm px-3 pb-1 pt-1">
+      <div className="flex flex-row gap-1 rounded-full border border-slate-900 px-1 dark:border-white">
+        <h1 className="px-2 text-sm text-slate-900 dark:text-white">
+          {highlight.upvotes}
+        </h1>
+        <Separator.Root
+          className="w-px bg-slate-900 dark:bg-white"
+          decorative
+          orientation="vertical"
+        />
+        <IconButton
+          onClick={() => {
+            feedContext.like(highlight.id);
+          }}
+          disabled={noUser || feedContext.disabled}
+        >
+          {highlight.upvoted ? (
+            <HeartFilledIcon className={twIcons()} />
+          ) : (
+            <HeartIcon className={twIcons()} />
+          )}
+        </IconButton>
+      </div>
+      <IconButton
+        onClick={() => {
+          feedContext.bookmark(highlight.id);
+        }}
+        disabled={noUser || feedContext.disabled}
+      >
+        {highlight.bookmarked ? (
+          <BookmarkFilledIcon className={twIcons()} />
+        ) : (
+          <BookmarkIcon className={twIcons()} />
+        )}
+      </IconButton>
+      <IconButton
+        onClick={() => {
+          //TODO: add share functionality
+          return;
+        }}
+      >
+        <Share2Icon className={twIcons()} />
+      </IconButton>
+    </div>
+  );
+};
+
+export const ActionRowCompact: React.FC<{
+  highlight: HighlightThumbnail;
+}> = ({ highlight }) => {
   const { data: session } = useSession();
 
   const noUser = !session || !session.user;
@@ -77,7 +134,7 @@ export const ActionRowCompact: React.FC<{ highlight: HighlightThumbnail }> = ({
   const gridContext = useGridContext();
 
   return (
-    <div className="flex w-full flex-row items-center justify-end gap-2 overflow-x-scroll rounded-sm bg-white/70 py-1 px-3 dark:bg-slate-900/70">
+    <div className="flex w-full flex-row items-center justify-end gap-2 overflow-x-scroll rounded-sm bg-gradient-to-t from-slate-900 px-3 pb-1 pt-2">
       <div className="flex flex-row gap-1 rounded-full border border-slate-900 px-1 dark:border-white">
         <h1 className="px-2 text-sm text-slate-900 dark:text-white">
           {highlight.upvotes}

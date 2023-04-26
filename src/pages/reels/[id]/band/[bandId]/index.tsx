@@ -21,6 +21,7 @@ import type { HighlightThumbnail } from "../../../../../types/highlight-out";
 import { generateSSGHelper } from "../../../../../utils/ssgHelper";
 import { api } from "../../../../../utils/trpc";
 import { PoolInfo } from "../../../../../components/pool-components/pool-info";
+import PageWrap from "../../../../../components/layout/page-wrap";
 
 const PoolView: NextPage<{ poolId: string; bandId: string }> = ({
   poolId,
@@ -29,7 +30,7 @@ const PoolView: NextPage<{ poolId: string; bandId: string }> = ({
   const { data: poolInfo } = api.pool.getPoolById.useQuery(poolId);
 
   return (
-    <>
+    <PageWrap>
       <Head>
         <title>{`Reel - ${poolInfo?.name ?? "Loading"} - ${bandId}`}</title>
       </Head>
@@ -40,7 +41,7 @@ const PoolView: NextPage<{ poolId: string; bandId: string }> = ({
         <WristBands poolId={poolId} />
         <LoadFeed poolId={poolId} bandId={bandId} />
       </div>
-    </>
+    </PageWrap>
   );
 };
 

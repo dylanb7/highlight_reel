@@ -15,6 +15,7 @@ import { PoolButtonProvider } from "../components/contexts/follow-pool-context";
 import type { PoolInfo } from "../types/pool-out";
 import type { ButtonContext } from "../components/contexts/button-types";
 import type { NextPage } from "next";
+import PageWrap from "../components/layout/page-wrap";
 
 const UnauthedContent = () => {
   return (
@@ -271,10 +272,18 @@ const HomePage: NextPage = () => {
   const { data: session } = useSession();
 
   if (!session) {
-    return <UnauthedContent />;
+    return (
+      <PageWrap>
+        <UnauthedContent />
+      </PageWrap>
+    );
   }
 
-  return <AuthedContent />;
+  return (
+    <PageWrap>
+      <AuthedContent />
+    </PageWrap>
+  );
 };
 
 export default HomePage;

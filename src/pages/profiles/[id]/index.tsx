@@ -1,4 +1,5 @@
 import type { NextPage, GetServerSideProps } from "next";
+import PageWrap from "../../../components/layout/page-wrap";
 import { LoadingSpinner } from "../../../components/misc/loading";
 import { ProfileComponent } from "../../../components/profile-components";
 import { generateSSGHelper } from "../../../utils/ssgHelper";
@@ -16,7 +17,11 @@ const ProfileView: NextPage<{ userId: string }> = ({ userId }) => {
       </div>
     );
 
-  return <ProfileComponent profile={profile} />;
+  return (
+    <PageWrap>
+      <ProfileComponent profile={profile} />
+    </PageWrap>
+  );
 };
 
 export const getServerSideProps: GetServerSideProps<{

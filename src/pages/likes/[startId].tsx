@@ -118,11 +118,11 @@ const FeedWithStart: NextPage<{ startId: string }> = ({ startId }) => {
         backPath={`/?tab=profile}`}
         hasNext={hasNextPage ?? false}
         hasPrev={hasPreviousPage ?? false}
-        fetchNext={async () => {
+        next={async () => {
           return (await fetchNextPage()).data?.pages.at(-1)?.highlights.at(0)
             ?.id;
         }}
-        fetchPrev={async () => {
+        prev={async () => {
           return (await fetchPreviousPage()).data?.pages.at(0)?.highlights.at(0)
             ?.id;
         }}

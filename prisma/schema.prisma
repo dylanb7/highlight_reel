@@ -1,12 +1,13 @@
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["referentialIntegrity"]
+  previewFeatures = ["jsonProtocol"]
 }
 
 datasource db {
   provider             = "mysql"
   url                  = env("DATABASE_URL")
-  referentialIntegrity = "prisma"
+  relationMode         = "prisma"
+
 }
 
 model HighlightPool {
@@ -38,7 +39,7 @@ model Highlight {
   upvotes                User[]         @relation("Upvotes")
   addedBy                User[]         @relation("AddedHighlights")
 
-  @@index(timestampUTC)
+  @@index([timestampUTC])
 }
 
 // Necessary for Next auth

@@ -17,12 +17,13 @@ import {
 } from "../../../components/contexts/action-types";
 import { WristBands } from "../../../components/pool-components/wristband-row";
 import { PoolInfo } from "../../../components/pool-components/pool-info";
+import PageWrap from "../../../components/layout/page-wrap";
 
 const PoolView: NextPage<{ poolId: string }> = ({ poolId }) => {
   const { data: poolInfo } = api.pool.getPoolById.useQuery(poolId);
 
   return (
-    <>
+    <PageWrap>
       <Head>
         <title>{`Reel - ${poolInfo?.name ?? "Loading"}`}</title>
       </Head>
@@ -33,7 +34,7 @@ const PoolView: NextPage<{ poolId: string }> = ({ poolId }) => {
         <WristBands poolId={poolId} />
         <LoadFeed poolId={poolId} />
       </div>
-    </>
+    </PageWrap>
   );
 };
 
