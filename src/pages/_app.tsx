@@ -5,7 +5,6 @@ import { SessionProvider } from "next-auth/react";
 import { api } from "../utils/trpc";
 
 import "../styles/globals.css";
-import PageWrap from "../components/layout/page-wrap";
 
 import Head from "next/head";
 

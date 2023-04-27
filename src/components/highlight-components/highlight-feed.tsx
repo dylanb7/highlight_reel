@@ -316,23 +316,23 @@ const BaseCompontent: React.FC<
       </div>
     );
 
-  if (isMobile)
-    return (
-      <MobilePlayer
-        aspect={aspect}
-        relativeTime={relativeTime}
-        hasNext={hasNext}
-        hasPrev={hasPrev}
-        next={next}
-        prev={prev}
-        progress={progress}
-        highlight={highlight}
-        previousHighlight={previousHighlight}
-        nextHighlight={nextHighlight}
-        backPath={backPath}
-      />
-    );
-
+  return (
+    <MobilePlayer
+      aspect={aspect}
+      relativeTime={relativeTime}
+      hasNext={hasNext}
+      hasPrev={hasPrev}
+      from={from}
+      next={next}
+      prev={prev}
+      progress={progress}
+      highlight={highlight}
+      previousHighlight={previousHighlight}
+      nextHighlight={nextHighlight}
+      backPath={backPath}
+    />
+  );
+  /*
   return (
     <div className="flex flex-col items-center justify-start px-2 md:px-8">
       <BackNav backPath={backPath} from={from} relativeTime={relativeTime} />
@@ -343,33 +343,27 @@ const BaseCompontent: React.FC<
           <ActionRow highlight={highlight} />
         </div>
         <div className="flex flex-row items-center justify-center gap-3 p-3 sm:flex-col">
+          <div className="shrink">
+            <Time highlight={highlight} />
+          </div>
           {progress && (
             <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
               {progress}
             </h2>
           )}
-          <ThumbnailStack
-            prevThumbnail={previousHighlight}
-            current={highlight.thumbnailUrl}
-            nextThumbnail={nextHighlight}
-            aspect={aspect}
-            next={next}
-            prev={prev}
+          <ArrowNav
             hasNext={hasNext}
             hasPrev={hasPrev}
+            next={next}
+            prev={prev}
           />
-          <div className="grow" />
-          {highlight.poolId && (
-            <Source
-              poolId={highlight.poolId}
-              wristbandId={highlight.wristbandId}
-            />
-          )}
         </div>
       </div>
-      <Time highlight={highlight} />
+      {highlight.poolId && (
+        <Source poolId={highlight.poolId} wristbandId={highlight.wristbandId} />
+      )}
     </div>
-  );
+  );*/
 };
 
 const MobilePlayer: React.FC<
@@ -390,8 +384,6 @@ const MobilePlayer: React.FC<
   hasPrev,
   next,
   prev,
-  nextHighlight,
-  previousHighlight,
   backPath,
   from,
   progress,
@@ -413,44 +405,50 @@ const MobilePlayer: React.FC<
   const [info, setInfo] = useState(false);
 
   return (
-    <div className="relative inset-0 overflow-clip">
-      {landscape && (
-        <div
-          className={`absolute inset-y-0 right-0 w-1/3 ${
-            info ? "translate-x-0" : "translate-x-full"
-          } z-50 flex transform flex-col items-start justify-start gap-4 bg-white p-4 dark:bg-slate-900`}
-        >
-          <IconButton
-            onClick={() => {
-              setInfo(false);
-            }}
+    <div className="relative flex h-full w-full flex-col items-start justify-start">
+      <div className="fixed inset-x-0 top-0 z-50 flex h-8 items-center border-b border-gray-300 bg-white p-4 shadow-sm dark:bg-slate-900">
+        <Link href={"/"}>
+          <p className="text-xl font-bold text-slate-900 dark:text-white">
+            H<span className="text-indigo-500">R</span>
+          </p>
+        </Link>
+      </div>
+      <div className="relative bottom-0 top-8 w-full overflow-clip">
+        {landscape && (
+          <div
+            className={`absolute inset-y-0 right-0 w-1/3 ${
+              info ? "translate-x-0" : "translate-x-full"
+            } z-50 flex transform flex-col items-start justify-start gap-4 bg-white p-4 dark:bg-slate-900`}
           >
-            <Cross1Icon className={twIcons(6, 0)} />
-          </IconButton>
-          <div className="w-full shrink">
-            <Time highlight={highlight} />
-          </div>
-
-          {highlight.poolId && (
-            <div className="self-center">
-              <Source
-                poolId={highlight.poolId}
-                wristbandId={highlight.wristbandId}
-              />
+            <IconButton
+              onClick={() => {
+                setInfo(false);
+              }}
+            >
+              <Cross1Icon className={twIcons(6, 0)} />
+            </IconButton>
+            <div className="w-full shrink">
+              <Time highlight={highlight} />
             </div>
-          )}
-        </div>
-      )}
-      {!landscape && (
-        <BackNav backPath={backPath} from={from} relativeTime={relativeTime} />
-      )}
-      <Player
-        url={highlight.url}
-        aspect={aspect}
-        hasGutter={false}
-        highlight={landscape ? highlight : undefined}
-      />
-      {landscape && (
+
+            {highlight.poolId && (
+              <div className="self-center">
+                <Source
+                  poolId={highlight.poolId}
+                  wristbandId={highlight.wristbandId}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        <Player
+          url={highlight.url}
+          aspect={aspect}
+          hasGutter={false}
+          highlight={landscape ? highlight : undefined}
+        />
+
         <div className="absolute top-0 flex w-full flex-row items-center justify-between bg-gradient-to-b from-slate-900 px-2">
           <BackNav
             backPath={backPath}
@@ -459,70 +457,70 @@ const MobilePlayer: React.FC<
             iconSize={6}
           />
 
-          <IconButton
-            onClick={() => {
-              setInfo(true);
-            }}
-          >
-            <InfoCircledIcon className={twIcons(6, 0)} />
-          </IconButton>
-        </div>
-      )}
-      {landscape && (
-        <div className="absolute right-2 top-1/2 flex -translate-y-1/2 flex-row items-center justify-center gap-1 rounded-md bg-slate-900/50 p-1">
-          {progress && (
-            <h2 className="self-center text-xl font-semibold text-slate-900 dark:text-white">
-              {progress}
-            </h2>
+          {landscape && (
+            <IconButton
+              onClick={() => {
+                setInfo(true);
+              }}
+            >
+              <InfoCircledIcon className={twIcons(6, 0)} />
+            </IconButton>
           )}
-          <ArrowNav
-            hasNext={hasNext}
-            hasPrev={hasPrev}
-            next={next}
-            prev={prev}
-          />
         </div>
-      )}
-      {!landscape && (
-        <div className="flex h-full w-full flex-col gap-4 pb-4">
-          <ActionRow highlight={highlight} />
-          <div className="flex flex-row items-center justify-between px-4">
-            <div className="shrink">
-              <Time highlight={highlight} />
-            </div>
-            <div className="flex flex-row items-start justify-start gap-2">
-              {progress && (
-                <h2 className="self-center text-xl font-semibold text-slate-900 dark:text-white">
-                  {progress}
-                </h2>
-              )}
-              <ThumbnailStack
-                aspect={aspect}
-                hasNext={hasNext}
-                hasPrev={hasPrev}
-                next={next}
-                prev={prev}
-                current={highlight.thumbnailUrl}
-                nextThumbnail={nextHighlight}
-                prevThumbnail={previousHighlight}
-              />
-            </div>
-          </div>
 
-          {highlight.poolId && (
-            <div className="self-center">
-              <Source
-                poolId={highlight.poolId}
-                wristbandId={highlight.wristbandId}
-              />
+        {landscape && (
+          <div className="absolute right-2 top-1/2 flex -translate-y-1/2 flex-row items-center justify-center gap-1 rounded-md bg-slate-900/50 p-1">
+            {progress && (
+              <h2 className="self-center text-xl font-semibold text-slate-900 dark:text-white">
+                {progress}
+              </h2>
+            )}
+            <ArrowNav
+              hasNext={hasNext}
+              hasPrev={hasPrev}
+              next={next}
+              prev={prev}
+            />
+          </div>
+        )}
+        {!landscape && (
+          <div className="flex h-full w-full flex-col gap-4 pb-4">
+            <ActionRow highlight={highlight} />
+            <div className="flex flex-row items-center justify-between px-4">
+              <div className="shrink">
+                <Time highlight={highlight} />
+              </div>
+              <div className="flex flex-row items-start justify-start gap-2">
+                {progress && (
+                  <h2 className="self-center text-xl font-semibold text-slate-900 dark:text-white">
+                    {progress}
+                  </h2>
+                )}
+                <ArrowNav
+                  hasNext={hasNext}
+                  hasPrev={hasPrev}
+                  next={next}
+                  prev={prev}
+                />
+              </div>
             </div>
-          )}
-        </div>
-      )}
+
+            {highlight.poolId && (
+              <div className="self-center">
+                <Source
+                  poolId={highlight.poolId}
+                  wristbandId={highlight.wristbandId}
+                />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const ThumbnailStack: React.FC<
   {
     prevThumbnail?: string;
@@ -689,20 +687,20 @@ const Time: React.FC<{ highlight: HighlightVideo }> = ({ highlight }) => {
   }, [highlight]);
 
   return (
-    <div className="mx-auto flex h-full w-full flex-row items-start justify-center gap-8 lg:gap-12">
+    <div className="mx-auto flex h-full w-full flex-row items-start justify-center gap-8 ">
       <p className="text-center text-lg font-bold text-slate-900 dark:text-white">
         {dateTime?.at(0) ?? ""}
-
-        <h1 className="text-sm font-semibold text-slate-500 dark:text-gray-300">
+        <br />
+        <span className="text-sm font-semibold text-slate-500 dark:text-gray-300">
           {dateTime?.at(1) ?? ""}
-        </h1>
+        </span>
       </p>
       <p className="text-center text-lg font-bold text-slate-900 dark:text-white">
         {dateTime?.at(2) ?? ""}
-
-        <h1 className="text-sm font-semibold text-slate-500 dark:text-gray-300">
+        <br />
+        <span className="text-sm font-semibold text-slate-500 dark:text-gray-300">
           {dateTime?.at(3) ?? ""}
-        </h1>
+        </span>
       </p>
     </div>
   );
@@ -761,7 +759,7 @@ const Player: React.FC<{
       onMouseLeave={() => setFocused(false)}
       className="relative mx-auto"
       style={{
-        maxHeight: hasGutter ? "calc(100vh - 16rem)" : "100vh",
+        maxHeight: hasGutter ? "calc(100vh - 16rem)" : "calc(100vh - 2rem)",
         maxWidth: "100%",
         objectFit: "contain",
         aspectRatio: aspect,

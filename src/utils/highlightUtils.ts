@@ -39,7 +39,7 @@ export const packageHighlightsPaginated = async (
 
   let nextCursor: typeof cursor | undefined = undefined;
 
-  if (rawHighlights.length > amount) {
+  if (rawHighlights.length > amount && rawHighlights.length > 0) {
     const extra = rawHighlights.pop();
     nextCursor = extra?.id;
   }
