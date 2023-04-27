@@ -32,10 +32,7 @@ export const packageHighlightsPaginated = async (
   highlightsRecieved: HighlightReturn,
   cursor: string | null | undefined
 ) => {
-  const rawHighlights =
-    highlightsRecieved === null || highlightsRecieved === undefined
-      ? []
-      : highlightsRecieved;
+  const rawHighlights = highlightsRecieved ?? [];
 
   let nextCursor: typeof cursor | undefined = undefined;
 
@@ -76,10 +73,7 @@ export const addExt = (id: string) => id + ".mp4";
 export const packageHighlights = async (
   highlightsRecieved: HighlightReturn
 ) => {
-  const rawHighlights =
-    highlightsRecieved === null || highlightsRecieved === undefined
-      ? []
-      : highlightsRecieved;
+  const rawHighlights = highlightsRecieved ?? [];
 
   const highlights: HighlightVideo[] = [];
 
@@ -116,10 +110,7 @@ export const packageThumbnailsPaginated = async (
   highlightsRecieved: HighlightReturn,
   cursor: string | null | undefined
 ) => {
-  const rawHighlights =
-    highlightsRecieved === null || highlightsRecieved === undefined
-      ? []
-      : highlightsRecieved;
+  const rawHighlights = highlightsRecieved ?? [];
 
   let nextCursor: typeof cursor | undefined = undefined;
 

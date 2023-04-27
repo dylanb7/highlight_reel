@@ -497,7 +497,7 @@ export const poolRouter = router({
       z.object({
         poolId: z.string().cuid(),
         bandId: z.string(),
-        cursor: z.string(),
+        cursor: z.string().nullish(),
         amount: z.number(),
       })
     )
