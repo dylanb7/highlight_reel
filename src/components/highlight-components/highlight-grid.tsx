@@ -38,9 +38,9 @@ export const dayGrouping: GroupingStrategy = (highlights) => {
   const dayMap = new Map<string, HighlightThumbnail[]>();
 
   for (const highlight of highlights) {
-    if (!highlight.timestampUTC) continue;
+    if (!highlight.timestampUtc) continue;
     const key = dayjs
-      .unix(Number(highlight.timestampUTC))
+      .unix(Number(highlight.timestampUtc))
       .utc()
       .local()
       .format("MMM DD, YYYY");

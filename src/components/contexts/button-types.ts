@@ -1,6 +1,6 @@
-type ButtonActions = (arg0: string) => void;
+type ButtonActions = (arg0: any) => void;
 
-type ButtonState = (arg0: string) => {
+type ButtonState = (arg0: any) => {
   follows: boolean;
   pending: boolean;
   disabled: boolean;

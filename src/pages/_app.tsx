@@ -1,26 +1,22 @@
 import { type AppType } from "next/app";
-import { type Session } from "next-auth";
-import { SessionProvider } from "next-auth/react";
 
 import { api } from "../utils/trpc";
 
 import "../styles/globals.css";
 
 import Head from "next/head";
+import { ClerkProvider } from "@clerk/nextjs";
 
-const MyApp: AppType<{ session: Session | null }> = ({
-  Component,
-  pageProps: { session, ...pageProps },
-}) => {
+const MyApp: AppType = ({ Component, pageProps: { ...pageProps } }) => {
   return (
-    <SessionProvider session={session}>
+    <ClerkProvider>
       <Head>
         <title>Highlight Reel</title>
         <meta name="description" content="💭" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <Component {...pageProps} />
-    </SessionProvider>
+    </ClerkProvider>
   );
 };
 

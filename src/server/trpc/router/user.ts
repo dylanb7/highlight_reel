@@ -1,36 +1,42 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import type { ProfileInfo, UserInfo } from "../../../types/user-out";
 import { z } from "zod";
 import { router, protectedProcedure, publicProcedure } from "../trpc";
-import { poolFromQuery } from "../../../types/pool-out";
+import type { PoolInfo } from "../../../types/pool-out";
+import type { highlightCursor } from "../../../utils/highlightUtils";
 import {
   addExt,
-  addUnathedProps,
+  decodeCursor,
   packageHighlightsPaginated,
   packageThumbnailsPaginated,
-  removeExt,
 } from "../../../utils/highlightUtils";
 import type { HighlightReturn } from "../../../types/highlight-out";
-import type { User } from "@prisma/client";
-import { infiniteHighlightQuery } from "../../../utils/prismaUtils";
+
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import type { User } from "../../db/schema";
+import { bookmarkedHighlightToUser, highlight } from "../../db/schema";
+import {
+  follows,
+  highlightPool,
+  poolsToFollowers,
+  poolsToRequested,
+  requests,
+  upvotedHighlightToUser,
+  users,
+} from "../../db/schema";
+import {
+  cursorWhereArgs,
+  orderByArgs,
+  publicToBool,
+  userWhereArgs,
+} from "../../../utils/drizzleHelpers";
 
 export const userRouter = router({
-  fromId: protectedProcedure
-    .input(z.string().cuid())
-    .query(({ ctx, input }) => {
-      return ctx.prisma.user.findUnique({
-        where: {
-          id: input,
-        },
-        include: {
-          _count: {
-            select: {
-              following: true,
-              followedBy: true,
-            },
-          },
-        },
-      });
-    }),
+  fromId: protectedProcedure.input(z.string()).query(async ({ ctx, input }) => {
+    return ctx.db.query.users.findFirst({
+      where: eq(users.id, input),
+    });
+  }),
 
   finishProfile: protectedProcedure
     .input(
@@ -40,209 +46,184 @@ export const userRouter = router({
       })
     )
     .mutation(({ ctx, input }) => {
-      return ctx.prisma.user.update({
-        where: {
-          id: ctx.session.user.id,
-        },
-        data: {
-          public: input.public,
-          username: input.username,
-        },
-      });
+      return ctx.db
+        .update(users)
+        .set({ public: input.public ? 1 : 0, username: input.username })
+        .where(eq(users.id, ctx.auth.userId));
     }),
 
   profileQuery: publicProcedure
-    .input(z.string().cuid())
+    .input(z.string())
     .query(async ({ ctx, input }) => {
-      const ref = ctx.session?.user?.id;
-      const owns = input === ref;
-
-      if (ref && owns) {
-        const ret = await ctx.prisma.user.findUnique({
-          where: {
-            id: input,
-          },
-          include: {
-            _count: {
-              select: {
-                following: true,
-                followedBy: true,
-              },
-            },
-            pools: {
-              include: {
-                _count: {
-                  select: {
-                    followers: true,
-                    highlights: true,
-                  },
-                },
-                followers: {
-                  where: {
-                    id: ref,
-                  },
-                },
-                pending: {
-                  where: {
-                    id: ref,
-                  },
-                },
-              },
-            },
-            modPools: {
-              include: {
-                _count: {
-                  select: {
-                    followers: true,
-                    highlights: true,
-                  },
-                },
-                followers: {
-                  where: {
-                    id: ref,
-                  },
-                },
-                pending: {
-                  where: {
-                    id: ref,
-                  },
-                },
-              },
-            },
-            ownedPools: {
-              include: {
-                _count: {
-                  select: {
-                    followers: true,
-                    highlights: true,
-                  },
-                },
-                followers: {
-                  where: {
-                    id: ref,
-                  },
-                },
-                pending: {
-                  where: {
-                    id: ref,
-                  },
-                },
-              },
+      const ref = ctx.auth?.userId;
+      const profile = await ctx.db.query.users.findFirst({
+        where: eq(users.id, input),
+        with: {
+          followers: {
+            columns: {
+              followerId: true,
             },
           },
-        });
-        return ret
-          ? <ProfileInfo>{
-              ...ret,
-              following: ret._count.following,
-              followedBy: ret._count.followedBy,
-              follows: false,
-              requested: false,
-              pools: ret.pools.map(poolFromQuery),
-              modPools: ret.modPools.map(poolFromQuery),
-              ownedPools: ret.ownedPools.map(poolFromQuery),
-            }
-          : undefined;
-      }
-
-      if (ref) {
-        const ret = await ctx.prisma.user.findUnique({
-          where: {
-            id: input,
+          follows: {
+            columns: {
+              followedId: true,
+            },
           },
-          include: {
-            _count: {
-              select: {
-                following: true,
-                followedBy: true,
-              },
-            },
-            followedBy: {
-              where: {
-                id: ref,
-              },
-            },
-            pending: {
-              where: {
-                id: ref,
-              },
-            },
-            pools: {
-              include: {
-                _count: {
-                  select: {
-                    followers: true,
-                    highlights: true,
-                  },
-                },
-                followers: {
-                  where: {
-                    id: ref,
-                  },
-                },
+          ...(ref
+            ? {
                 pending: {
-                  where: {
-                    id: ref,
-                  },
+                  where: eq(requests.requesterId, ref),
+                  limit: 1,
                 },
-              },
-            },
-          },
-        });
-        return ret
-          ? <ProfileInfo>{
-              ...ret,
-              following: ret._count.following,
-              followedBy: ret._count.followedBy,
-              follows: ret.followedBy.length > 0,
-              requested: ret.pending.length > 0,
-              pools: ret.pools.map(poolFromQuery),
-              modPools: [],
-              ownedPools: [],
-            }
-          : undefined;
-      }
-
-      const ret = await ctx.prisma.user.findUnique({
-        where: {
-          id: input,
+              }
+            : {}),
         },
-        include: {
-          _count: {
-            select: {
-              following: true,
-              followedBy: true,
+      });
+      return profile
+        ? <ProfileInfo>{
+            ...profile,
+            following: profile.follows.length,
+            followedBy: profile.followers.length,
+            ...(ref
+              ? {
+                  followInfo: {
+                    requested: profile.pending?.length > 0 ?? false,
+                    follows: profile.followers.find(
+                      (follower) => follower.followerId === ref
+                    )
+                      ? true
+                      : false,
+                  },
+                }
+              : {}),
+            isPublic: publicToBool(profile.public),
+          }
+        : undefined;
+    }),
+
+  profilePoolsQuery: publicProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+        type: z.enum(["followed", "modded", "owned"]),
+        cursor: z.string(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const ref = ctx.auth?.userId;
+      const owns = input.userId === ref;
+      if (input.type !== "followed" && !owns) return undefined;
+      const innerPoolSelect = {
+        columns: {},
+        with: {
+          pool: {
+            with: {
+              poolFollowers: {},
+              highlights: {
+                columns: { id: true },
+              },
+              ...(!owns && ref
+                ? {
+                    poolRequests: {
+                      limit: 1,
+                      where: eq(poolsToRequested.userId, ref),
+                      columns: { poolId: true },
+                    },
+                  }
+                : {}),
             },
           },
-
-          pools: {
-            include: {
-              _count: {
-                select: {
-                  followers: true,
-                  highlights: true,
-                },
-              },
+        },
+        orderBy: asc(poolsToFollowers.updatedAt),
+      };
+      if (input.type === "followed") {
+        const pools = await ctx.db.query.users.findFirst({
+          where: eq(users.id, input.userId),
+          columns: {},
+          with: {
+            followedPools: innerPoolSelect,
+          },
+        });
+        return (
+          pools?.followedPools.map<PoolInfo>((followed) => ({
+            ...followed.pool,
+            highlightCount: followed.pool.highlights.length,
+            followerCount: followed.pool.poolFollowers.length,
+            followInfo: {
+              follows: followed.pool.poolFollowers.find(
+                (user) => user.userId === ref
+              )
+                ? true
+                : false,
+              requested: followed.pool.poolRequests?.length > 0 ?? false,
             },
+            isPublic: publicToBool(followed.pool.public),
+          })) ?? []
+        );
+      }
+      if (input.type === "modded") {
+        const pools = await ctx.db.query.users.findFirst({
+          where: eq(users.id, input.userId),
+          columns: {},
+          with: {
+            moddedPools: innerPoolSelect,
+          },
+        });
+        return (
+          pools?.moddedPools.map<PoolInfo>((modded) => ({
+            ...modded.pool,
+            highlightCount: modded.pool.highlights.length,
+            followerCount: modded.pool.poolFollowers.length,
+            followInfo: {
+              follows: modded.pool.poolFollowers.find(
+                (user) => user.userId === ref
+              )
+                ? true
+                : false,
+              requested: modded.pool.poolRequests?.length > 0 ?? false,
+            },
+            isPublic: publicToBool(modded.pool.public),
+          })) ?? []
+        );
+      }
+      const pools = await ctx.db.query.users.findFirst({
+        where: eq(users.id, input.userId),
+        columns: {},
+        with: {
+          ownedPools: {
+            with: {
+              poolFollowers: {},
+              highlights: {
+                columns: { id: true },
+              },
+              ...(!owns && ref
+                ? {
+                    poolRequests: {
+                      limit: 1,
+                      where: eq(poolsToRequested.userId, ref),
+                      columns: { poolId: true },
+                    },
+                  }
+                : {}),
+            },
+            orderBy: asc(highlightPool.createdAt),
           },
         },
       });
-      return ret
-        ? <ProfileInfo>{
-            ...ret,
-            following: ret._count.following,
-            followedBy: ret._count.followedBy,
-            follows: false,
-            requested: false,
-            pools: ret.pools
-              .map((value) => {
-                return { ...value, followers: [], pending: [] };
-              })
-              .map(poolFromQuery),
-            modPools: [],
-            ownedPools: [],
-          }
-        : undefined;
+      return (
+        pools?.ownedPools.map<PoolInfo>((owned) => ({
+          ...owned,
+          highlightCount: owned.highlights.length,
+          followerCount: owned.poolFollowers.length,
+          followInfo: {
+            follows: owned.poolFollowers.find((user) => user.userId === ref)
+              ? true
+              : false,
+            requested: owned.poolRequests?.length > 0 ?? false,
+          },
+          isPublic: publicToBool(owned.public),
+        })) ?? []
+      );
     }),
 
   toggleHighlight: protectedProcedure
@@ -253,30 +234,22 @@ export const userRouter = router({
       })
     )
     .mutation(({ ctx, input }) => {
-      const userId = ctx.session.user.id;
+      const userId = ctx.auth.userId;
       const extId = addExt(input.highlightId);
+
       if (input.add) {
-        return ctx.prisma.user.update({
-          where: { id: userId },
-          data: {
-            highlights: {
-              connect: {
-                id: extId,
-              },
-            },
-          },
-        });
+        return ctx.db
+          .insert(upvotedHighlightToUser)
+          .values({ highlightId: extId, userId: userId });
       }
-      return ctx.prisma.user.update({
-        where: { id: userId },
-        data: {
-          highlights: {
-            disconnect: {
-              id: extId,
-            },
-          },
-        },
-      });
+      return ctx.db
+        .delete(upvotedHighlightToUser)
+        .where(
+          and(
+            eq(upvotedHighlightToUser.highlightId, extId),
+            eq(upvotedHighlightToUser.userId, userId)
+          )
+        );
     }),
 
   upvoteHighlight: protectedProcedure
@@ -286,515 +259,628 @@ export const userRouter = router({
         like: z.boolean().nullish(),
       })
     )
-    .mutation(({ ctx, input }) => {
-      const userId = ctx.session.user.id;
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.auth.userId;
       const extId = addExt(input.highlightId);
       if (input.like) {
-        return ctx.prisma.user.update({
-          where: {
-            id: userId,
-          },
-          data: {
-            upvotes: {
-              connect: {
-                id: extId,
-              },
-            },
-          },
-        });
+        return ctx.db
+          .insert(upvotedHighlightToUser)
+          .values({ userId: userId, highlightId: extId });
       }
-      return ctx.prisma.user.update({
-        where: {
-          id: userId,
-        },
-        data: {
-          upvotes: {
-            disconnect: {
-              id: extId,
-            },
-          },
-        },
-      });
+      return await ctx.db
+        .delete(upvotedHighlightToUser)
+        .where(
+          and(
+            eq(upvotedHighlightToUser.userId, userId),
+            eq(upvotedHighlightToUser.highlightId, extId)
+          )
+        );
     }),
 
   addPool: protectedProcedure
     .input(
       z.object({
-        poolId: z.string().cuid(),
+        poolId: z.number(),
         isPublic: z.boolean(),
       })
     )
-    .mutation(({ ctx, input }) => {
-      const userId = ctx.session.user.id;
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.auth.userId;
       const { poolId, isPublic } = input;
       if (isPublic) {
-        return ctx.prisma.user.update({
-          where: { id: userId },
-          data: {
-            pools: {
-              connect: {
-                id: poolId,
-              },
-            },
-          },
-        });
+        return await ctx.db
+          .insert(poolsToFollowers)
+          .values({ poolId: poolId, userId });
       }
-      return ctx.prisma.user.update({
-        where: { id: userId },
-        data: {
-          poolRequests: {
-            connect: {
-              id: poolId,
-            },
-          },
-        },
-      });
+      return await ctx.db
+        .insert(poolsToRequested)
+        .values({ poolId: poolId, userId });
     }),
 
   removePool: protectedProcedure
     .input(
       z.object({
-        poolId: z.string().cuid(),
+        poolId: z.number(),
         requested: z.boolean(),
       })
     )
-    .mutation(({ ctx, input }) => {
-      const userId = ctx.session.user.id;
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.auth.userId;
       if (input.requested) {
-        return ctx.prisma.user.update({
-          where: { id: userId },
-          data: {
-            poolRequests: {
-              disconnect: {
-                id: input.poolId,
-              },
-            },
-          },
-        });
+        return ctx.db
+          .delete(poolsToRequested)
+          .where(
+            and(
+              eq(poolsToRequested.userId, userId),
+              eq(poolsToRequested.poolId, input.poolId)
+            )
+          );
       }
-      return ctx.prisma.user.update({
-        where: { id: userId },
-        data: {
-          pools: {
-            disconnect: {
-              id: input.poolId,
-            },
-          },
-        },
-      });
+      return ctx.db
+        .delete(poolsToFollowers)
+        .where(
+          and(
+            eq(poolsToFollowers.userId, userId),
+            eq(poolsToFollowers.poolId, input.poolId)
+          )
+        );
     }),
 
   getFollowers: publicProcedure
-    .input(
-      z.object({
-        userId: z.string().cuid(),
-      })
-    )
+    .input(z.string())
     .query(async ({ ctx, input }) => {
-      const ref = ctx.session?.user?.id;
-      if (ref) {
-        const res = await ctx.prisma.user.findUnique({
-          where: {
-            id: input.userId,
-          },
-          select: {
-            followedBy: {
-              include: {
-                followedBy: {
-                  where: {
-                    id: ref,
-                  },
-                },
-                pending: {
-                  where: {
-                    id: ref,
-                  },
+      const ref = ctx.auth?.userId;
+      const res = await ctx.db.query.users.findFirst({
+        where: eq(users.id, input),
+        columns: {},
+        with: {
+          followers: {
+            with: {
+              follower: {
+                with: {
+                  ...(ref
+                    ? {
+                        followers: {
+                          where: (table, { eq }) => eq(table.followerId, ref),
+                          limit: 1,
+                        },
+                      }
+                    : {}),
+                  ...(ref
+                    ? {
+                        pending: {
+                          where: (table, { eq }) => eq(table.requesterId, ref),
+                          limit: 1,
+                        },
+                      }
+                    : {}),
                 },
               },
             },
+            orderBy: asc(users.id),
           },
-        });
-        return res
-          ? res.followedBy.map<UserInfo>((val) => {
-              return {
-                ...val,
-                follows: val.followedBy.length > 0,
-                requested: val.pending.length > 0,
-              };
-            })
-          : [];
-      }
-      const res = await ctx.prisma.user.findUnique({
-        where: {
-          id: input.userId,
-        },
-        select: {
-          followedBy: true,
         },
       });
-      return res
-        ? res.followedBy.map<UserInfo>((val) => {
-            return {
-              ...val,
-              follows: false,
-              requested: false,
-            };
-          })
-        : [];
+      return (
+        res?.followers.map<UserInfo>((val) => ({
+          ...val.follower,
+          ...(res
+            ? {
+                followInfo: {
+                  follows: val.follower?.followers.length > 0 ?? false,
+                  requested: val.follower?.pending.length > 0 ?? false,
+                },
+              }
+            : {}),
+          isPublic: publicToBool(val.follower.public),
+        })) ?? []
+      );
     }),
 
   getFollowing: publicProcedure
-    .input(
-      z.object({
-        userId: z.string().cuid(),
-      })
-    )
+    .input(z.string())
     .query(async ({ ctx, input }) => {
-      const ref = ctx.session?.user?.id;
-      if (ref) {
-        const res = await ctx.prisma.user.findUnique({
-          where: {
-            id: input.userId,
-          },
-          select: {
-            following: {
-              include: {
-                followedBy: {
-                  where: {
-                    id: ref,
-                  },
-                },
-                pending: {
-                  where: {
-                    id: ref,
-                  },
+      const ref = ctx.auth?.userId;
+      const res = await ctx.db.query.users.findFirst({
+        where: eq(users.id, input),
+        columns: {},
+        with: {
+          follows: {
+            with: {
+              follower: {
+                with: {
+                  ...(ref
+                    ? {
+                        followers: {
+                          where: (table, { eq }) => eq(table.followerId, ref),
+                          limit: 1,
+                        },
+                      }
+                    : {}),
+                  ...(ref
+                    ? {
+                        pending: {
+                          where: (table, { eq }) => eq(table.requesterId, ref),
+                          limit: 1,
+                        },
+                      }
+                    : {}),
                 },
               },
             },
+            orderBy: asc(users.id),
           },
-        });
-        return res
-          ? res.following.map<UserInfo>((val) => {
-              return {
-                ...val,
-                follows: val.followedBy.length > 0,
-                requested: val.pending.length > 0,
-              };
-            })
-          : [];
-      }
-      const res = await ctx.prisma.user.findUnique({
-        where: {
-          id: input.userId,
-        },
-        select: {
-          following: true,
         },
       });
-      return res
-        ? res.following.map<UserInfo>((val) => {
-            return {
-              ...val,
-              follows: false,
-              requested: false,
-            };
-          })
-        : [];
+      return (
+        res?.follows.map<UserInfo>((val) => ({
+          ...val.follower,
+          ...(res
+            ? {
+                followInfo: {
+                  follows: val.follower?.followers.length > 0 ?? false,
+                  requested: val.follower?.pending.length > 0 ?? false,
+                },
+              }
+            : {}),
+          isPublic: publicToBool(val.follower.public),
+        })) ?? []
+      );
     }),
 
-  getPending: protectedProcedure.query(({ ctx }) => {
-    return ctx.prisma.user.findUnique({
-      where: {
-        id: ctx.session.user.id,
-      },
-      select: {
-        pending: true,
-      },
-    });
+  getPending: protectedProcedure.query(async ({ ctx }) => {
+    return (
+      (
+        await ctx.db.query.users.findFirst({
+          where: eq(users.id, ctx.auth.userId),
+          columns: {},
+          with: {
+            pending: {
+              columns: {},
+              with: { requester: {} },
+            },
+          },
+        })
+      )?.pending.map<User>((val) => val.requester) ?? []
+    );
   }),
 
   followUser: protectedProcedure
     .input(
       z.object({
-        followId: z.string().cuid(),
+        followId: z.string(),
         public: z.boolean(),
       })
     )
-    .mutation(({ ctx, input }) => {
-      const userId = ctx.session.user.id;
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.auth.userId;
       if (input.public) {
-        return ctx.prisma.user.update({
-          where: { id: userId },
-          data: {
-            following: {
-              connect: {
-                id: input.followId,
-              },
-            },
-          },
-        });
+        return await ctx.db
+          .insert(follows)
+          .values({ followerId: userId, followedId: input.followId });
       }
-
-      return ctx.prisma.user.update({
-        where: { id: userId },
-        data: {
-          sentFollows: {
-            connect: {
-              id: input.followId,
-            },
-          },
-        },
-      });
+      return await ctx.db
+        .insert(requests)
+        .values({ requesterId: userId, requestedId: input.followId });
     }),
 
   unfollowUser: protectedProcedure
     .input(
       z.object({
-        followId: z.string().cuid(),
+        followId: z.string(),
         requested: z.boolean(),
       })
     )
     .mutation(({ ctx, input }) => {
-      const userId = ctx.session.user.id;
+      const userId = ctx.auth.userId;
       if (input.requested) {
-        return ctx.prisma.user.update({
-          where: { id: userId },
-          data: {
-            sentFollows: {
-              disconnect: {
-                id: input.followId,
-              },
-            },
-          },
-        });
+        return ctx.db
+          .delete(requests)
+          .where(
+            and(
+              eq(requests.requesterId, userId),
+              eq(requests.requestedId, input.followId)
+            )
+          );
       }
-      return ctx.prisma.user.update({
-        where: { id: userId },
-        data: {
-          following: {
-            disconnect: {
-              id: input.followId,
-            },
-          },
-        },
-      });
+      return ctx.db
+        .delete(follows)
+        .where(
+          and(
+            eq(follows.followerId, userId),
+            eq(follows.followedId, input.followId)
+          )
+        );
     }),
 
   userFollowAction: protectedProcedure
     .input(
       z.object({
-        followId: z.string().cuid(),
+        followId: z.string(),
         accepts: z.boolean(),
       })
     )
-    .mutation(({ ctx, input }) => {
-      const userId = ctx.session.user.id;
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.auth.userId;
       if (input.accepts) {
-        return ctx.prisma.user.update({
-          where: { id: userId },
-          data: {
-            pending: {
-              disconnect: {
-                id: input.followId,
-              },
-            },
-            followedBy: {
-              connect: {
-                id: input.followId,
-              },
-            },
-          },
+        return await ctx.db.transaction(async (tx) => {
+          await tx
+            .delete(requests)
+            .where(
+              and(
+                eq(requests.requesterId, userId),
+                eq(requests.requestedId, input.followId)
+              )
+            );
+          await tx
+            .insert(follows)
+            .values({ followerId: userId, followedId: input.followId });
         });
       }
-      return ctx.prisma.user.update({
-        where: { id: userId },
-        data: {
-          pending: {
-            disconnect: {
-              id: input.followId,
-            },
-          },
-        },
-      });
+      return await ctx.db
+        .delete(requests)
+        .where(
+          and(
+            eq(requests.requesterId, userId),
+            eq(requests.requestedId, input.followId)
+          )
+        );
     }),
 
   getUserBookmarksPaginated: publicProcedure
     .input(
       z.object({
-        userId: z.string().cuid(),
+        userId: z.string(),
         cursor: z.string().nullish(),
         amount: z.number(),
       })
     )
     .query(async ({ ctx, input }) => {
-      const currentId = ctx.session?.user?.id;
+      const currentId = ctx.auth?.userId;
+
       const { userId, cursor, amount } = input;
-      let ret: HighlightReturn;
+
+      const parsedCursor: highlightCursor | undefined = cursor
+        ? decodeCursor(cursor)
+        : undefined;
+
+      const usersSelect = ctx.db
+        .select({ data: users.id })
+        .from(users)
+        .where(userWhereArgs(currentId, userId, ctx.db));
+
+      const highlightSelect = await ctx.db
+        .select({ highlight })
+        .from(bookmarkedHighlightToUser)
+        .innerJoin(
+          highlight,
+          eq(bookmarkedHighlightToUser.highlightId, highlight.id)
+        )
+        .where(
+          and(
+            inArray(bookmarkedHighlightToUser.userId, usersSelect),
+            cursorWhereArgs(parsedCursor)
+          )
+        )
+        .orderBy(...orderByArgs(parsedCursor))
+        .limit(amount + 1);
+
+      const hasNext = highlightSelect.length === amount + 1;
+
+      if (hasNext) highlightSelect.pop();
+
+      const highlightIds = highlightSelect.map<string>(
+        (val) => val.highlight.id
+      );
 
       if (currentId) {
-        ret = (
-          await ctx.prisma.user.findFirst({
-            where: {
-              OR: [
-                {
-                  public: true,
-                },
-                {
-                  followedBy: {
-                    some: {
-                      id: currentId,
-                    },
-                  },
-                },
-                {
-                  id: currentId,
-                },
-              ],
-              AND: {
-                id: userId,
-              },
-            },
-            select: {
-              highlights: infiniteHighlightQuery({
-                cursor,
-                amount,
-                rightPad: 1,
-              }),
-            },
+        const highlightAdditions = await ctx.db
+          .select({
+            highlightId: upvotedHighlightToUser.highlightId,
+            upvoteId: upvotedHighlightToUser.userId,
+            bookmarkId: bookmarkedHighlightToUser.userId,
           })
-        )?.highlights;
-      } else {
-        const rawPool = await ctx.prisma.user.findFirst({
-          where: {
-            id: userId,
-            public: true,
-          },
-          select: {
-            username: true,
-            highlights: infiniteHighlightQuery({
-              cursor,
-              amount,
-              includeBookmarked: false,
-              includeLiked: false,
-              rightPad: 1,
-            }),
-          },
-        });
+          .from(upvotedHighlightToUser)
+          .where(inArray(upvotedHighlightToUser.highlightId, highlightIds))
+          .leftJoin(
+            bookmarkedHighlightToUser,
+            and(
+              eq(
+                upvotedHighlightToUser.highlightId,
+                bookmarkedHighlightToUser.highlightId
+              ),
+              eq(bookmarkedHighlightToUser.userId, currentId)
+            )
+          );
 
-        ret = addUnathedProps(rawPool?.highlights);
+        const cleaned = highlightAdditions.reduce<
+          Record<string, { added: boolean; upvoted: boolean; upvotes: number }>
+        >((acc, row) => {
+          if (!acc[row.highlightId]) {
+            acc[row.highlightId] = { added: false, upvoted: false, upvotes: 0 };
+          }
+
+          acc[row.highlightId]!.upvotes += 1;
+
+          if (row.upvoteId === currentId) {
+            acc[row.highlightId]!.upvoted = true;
+          }
+
+          if (row.bookmarkId === currentId) {
+            acc[row.highlightId]!.added = true;
+          }
+
+          return acc;
+        }, {});
+
+        const fullHighlights = highlightSelect.map<HighlightReturn>(
+          (highlight) => {
+            const additions = cleaned[highlight.highlight.id];
+            return {
+              ...highlight.highlight,
+              upvotes: additions?.upvotes ?? 0,
+              bookmarked: additions?.added ?? false,
+              upvoted: additions?.upvoted ?? false,
+            };
+          }
+        );
+        return packageThumbnailsPaginated(
+          fullHighlights,
+          hasNext,
+          parsedCursor?.dir
+        );
       }
 
-      return packageThumbnailsPaginated(amount, ret, cursor);
+      const highlightAdditions = await ctx.db
+        .select({
+          id: upvotedHighlightToUser.highlightId,
+          upvotes: sql<number>`count(${upvotedHighlightToUser.userId})`,
+        })
+        .from(upvotedHighlightToUser)
+        .where(inArray(upvotedHighlightToUser.highlightId, highlightIds));
+
+      const highlightAdditionsMap = new Map<string, number>();
+
+      for (const addition of highlightAdditions) {
+        highlightAdditionsMap.set(addition.id, addition.upvotes);
+      }
+
+      const fullHighlights = highlightSelect.map<HighlightReturn>(
+        (highlight) => {
+          const additions = highlightAdditionsMap.get(highlight.highlight.id);
+          return {
+            ...highlight.highlight,
+            upvotes: additions ?? 0,
+            bookmarked: false,
+            upvoted: false,
+          };
+        }
+      );
+      return packageThumbnailsPaginated(
+        fullHighlights,
+        hasNext,
+        parsedCursor?.dir
+      );
     }),
 
   getBookmarkVideosPaginated: publicProcedure
     .input(
       z.object({
         profileId: z.string().cuid(),
-        initialCursor: z.string().nullish(),
+        initialCursor: z.number().nullish(),
         cursor: z.string().nullish(),
       })
     )
     .query(async ({ ctx, input }) => {
-      const userId = ctx.session?.user?.id;
+      const currentId = ctx.auth?.userId;
+
       const { profileId, cursor, initialCursor } = input;
+
       const amount = 1;
-      let ret: {
-        highlights: HighlightReturn;
-        username: string | null | undefined;
-      } | null;
-      if (userId) {
-        ret = await ctx.prisma.user.findFirst({
-          where: {
-            OR: [
-              {
-                public: true,
-              },
-              {
-                followedBy: {
-                  some: {
-                    id: userId,
-                  },
-                },
-              },
-            ],
-            AND: {
-              id: profileId,
-            },
-          },
-          select: {
-            username: true,
-            highlights: infiniteHighlightQuery({
-              cursor,
-              initialCursor,
-              amount,
-              rightPad: 1,
-            }),
-          },
-        });
-      } else {
-        const rawPool = await ctx.prisma.user.findFirst({
-          where: {
-            id: profileId,
-            public: true,
-          },
-          select: {
-            username: true,
-            highlights: infiniteHighlightQuery({
-              cursor,
-              initialCursor,
-              amount,
-              includeBookmarked: false,
-              includeLiked: false,
-              rightPad: 1,
-            }),
-          },
-        });
-        ret = {
-          highlights: addUnathedProps(rawPool?.highlights),
-          username: rawPool?.username,
-        };
+
+      const parsedCursor: highlightCursor | undefined = cursor
+        ? decodeCursor(cursor)
+        : undefined;
+
+      const usersSelect = ctx.db
+        .select({ data: users.id })
+        .from(users)
+        .where(userWhereArgs(currentId, profileId, ctx.db));
+
+      const highlightSelect = await ctx.db
+        .select({ highlight })
+        .from(bookmarkedHighlightToUser)
+        .innerJoin(
+          highlight,
+          eq(bookmarkedHighlightToUser.highlightId, highlight.id)
+        )
+        .where(
+          and(
+            inArray(bookmarkedHighlightToUser.userId, usersSelect),
+            cursorWhereArgs(parsedCursor, initialCursor)
+          )
+        )
+        .orderBy(...orderByArgs(parsedCursor))
+        .limit(amount + 1);
+
+      const hasNext = highlightSelect.length === amount + 1;
+
+      if (hasNext) highlightSelect.pop();
+
+      const highlightIds = highlightSelect.map<string>(
+        (val) => val.highlight.id
+      );
+
+      if (currentId) {
+        const highlightAdditions = await ctx.db
+          .select({
+            highlightId: upvotedHighlightToUser.highlightId,
+            upvoteId: upvotedHighlightToUser.userId,
+            bookmarkId: bookmarkedHighlightToUser.userId,
+          })
+          .from(upvotedHighlightToUser)
+          .where(inArray(upvotedHighlightToUser.highlightId, highlightIds))
+          .leftJoin(
+            bookmarkedHighlightToUser,
+            and(
+              eq(
+                upvotedHighlightToUser.highlightId,
+                bookmarkedHighlightToUser.highlightId
+              ),
+              eq(bookmarkedHighlightToUser.userId, currentId)
+            )
+          );
+
+        const cleaned = highlightAdditions.reduce<
+          Record<string, { added: boolean; upvoted: boolean; upvotes: number }>
+        >((acc, row) => {
+          if (!acc[row.highlightId]) {
+            acc[row.highlightId] = { added: false, upvoted: false, upvotes: 0 };
+          }
+
+          acc[row.highlightId]!.upvotes += 1;
+
+          if (row.upvoteId === currentId) {
+            acc[row.highlightId]!.upvoted = true;
+          }
+
+          if (row.bookmarkId === currentId) {
+            acc[row.highlightId]!.added = true;
+          }
+
+          return acc;
+        }, {});
+
+        const fullHighlights = highlightSelect.map<HighlightReturn>(
+          (highlight) => {
+            const additions = cleaned[highlight.highlight.id];
+            return {
+              ...highlight.highlight,
+              upvotes: additions?.upvotes ?? 0,
+              bookmarked: additions?.added ?? false,
+              upvoted: additions?.upvoted ?? false,
+            };
+          }
+        );
+        return packageHighlightsPaginated(
+          fullHighlights,
+          hasNext,
+          parsedCursor?.dir
+        );
       }
-      return {
-        name: ret?.username,
-        ...(await packageHighlightsPaginated(amount, ret?.highlights, cursor)),
-      };
+
+      const highlightAdditions = await ctx.db
+        .select({
+          id: upvotedHighlightToUser.highlightId,
+          upvotes: sql<number>`count(${upvotedHighlightToUser.userId})`,
+        })
+        .from(upvotedHighlightToUser)
+        .where(inArray(upvotedHighlightToUser.highlightId, highlightIds));
+
+      const highlightAdditionsMap = new Map<string, number>();
+
+      for (const addition of highlightAdditions) {
+        highlightAdditionsMap.set(addition.id, addition.upvotes);
+      }
+
+      const fullHighlights = highlightSelect.map<HighlightReturn>(
+        (highlight) => {
+          const additions = highlightAdditionsMap.get(highlight.highlight.id);
+          return {
+            ...highlight.highlight,
+            upvotes: additions ?? 0,
+            bookmarked: false,
+            upvoted: false,
+          };
+        }
+      );
+      return packageHighlightsPaginated(
+        fullHighlights,
+        hasNext,
+        parsedCursor?.dir
+      );
     }),
 
   getUserBookmarkedVideosPaginated: protectedProcedure
     .input(
       z.object({
-        initialCursor: z.string().nullish(),
+        initialCursor: z.number().nullish(),
         cursor: z.string().nullish(),
       })
     )
     .query(async ({ ctx, input }) => {
-      const userId = ctx.session.user.id;
+      const userId = ctx.auth.userId;
       const { cursor, initialCursor } = input;
       const amount = 1;
 
-      const ret = await ctx.prisma.user.findFirst({
-        where: {
-          id: userId,
-        },
-        select: {
-          highlights: infiniteHighlightQuery({
-            cursor,
-            initialCursor,
-            amount,
-            includeBookmarked: false,
-            rightPad: 1,
-          }),
-        },
-      });
+      const parsedCursor: highlightCursor | undefined = cursor
+        ? decodeCursor(cursor)
+        : undefined;
 
-      const addedBookmarks = ret?.highlights
-        ? ret.highlights.map((highlight) => {
-            return { ...highlight, addedBy: [<User>{ id: userId }] };
-          })
-        : null;
+      const highlightSelect = await ctx.db
+        .select({ highlight })
+        .from(bookmarkedHighlightToUser)
+        .innerJoin(
+          highlight,
+          eq(bookmarkedHighlightToUser.highlightId, highlight.id)
+        )
+        .where(
+          and(
+            eq(bookmarkedHighlightToUser.userId, userId),
+            cursorWhereArgs(parsedCursor, initialCursor)
+          )
+        )
+        .orderBy(...orderByArgs(parsedCursor))
+        .limit(amount + 1);
 
-      return packageHighlightsPaginated(amount, addedBookmarks, cursor);
+      const hasNext = highlightSelect.length === amount + 1;
+
+      if (hasNext) highlightSelect.pop();
+
+      const highlightIds = highlightSelect.map<string>(
+        (val) => val.highlight.id
+      );
+
+      const highlightAdditions = await ctx.db
+        .select({
+          highlightId: upvotedHighlightToUser.highlightId,
+          upvoteId: upvotedHighlightToUser.userId,
+        })
+        .from(upvotedHighlightToUser)
+        .where(inArray(upvotedHighlightToUser.highlightId, highlightIds));
+
+      const cleaned = highlightAdditions.reduce<
+        Record<string, { upvoted: boolean; upvotes: number }>
+      >((acc, row) => {
+        if (!acc[row.highlightId]) {
+          acc[row.highlightId] = { upvoted: false, upvotes: 0 };
+        }
+
+        acc[row.highlightId]!.upvotes += 1;
+
+        if (row.upvoteId === userId) {
+          acc[row.highlightId]!.upvoted = true;
+        }
+
+        return acc;
+      }, {});
+
+      const fullHighlights = highlightSelect.map<HighlightReturn>(
+        (highlight) => {
+          const additions = cleaned[highlight.highlight.id];
+          return {
+            ...highlight.highlight,
+            upvotes: additions?.upvotes ?? 0,
+            bookmarked: true,
+            upvoted: additions?.upvoted ?? false,
+          };
+        }
+      );
+      return packageHighlightsPaginated(
+        fullHighlights,
+        hasNext,
+        parsedCursor?.dir
+      );
     }),
 
   getUserLikesPaginated: protectedProcedure
@@ -805,129 +891,180 @@ export const userRouter = router({
       })
     )
     .query(async ({ ctx, input }) => {
-      const userId = ctx.session.user.id;
+      const userId = ctx.auth.userId;
       const { cursor, amount } = input;
 
-      const ret = await ctx.prisma.user.findUnique({
-        where: {
-          id: userId,
-        },
-        select: {
-          upvotes: infiniteHighlightQuery({
-            cursor,
-            amount,
-            includeLiked: false,
-            rightPad: 1,
-          }),
-        },
-      });
+      const parsedCursor: highlightCursor | undefined = cursor
+        ? decodeCursor(cursor)
+        : undefined;
 
-      const addedUpvotes = ret?.upvotes
-        ? ret.upvotes.map((highlight) => {
-            return { ...highlight, upvotes: [<User>{ id: userId }] };
-          })
-        : null;
+      const highlightSelect = await ctx.db
+        .select({ highlight })
+        .from(upvotedHighlightToUser)
+        .innerJoin(
+          highlight,
+          eq(upvotedHighlightToUser.highlightId, highlight.id)
+        )
+        .where(
+          and(
+            eq(upvotedHighlightToUser.userId, userId),
+            cursorWhereArgs(parsedCursor)
+          )
+        )
+        .orderBy(...orderByArgs(parsedCursor))
+        .limit(amount + 1);
 
-      return packageThumbnailsPaginated(amount, addedUpvotes, cursor);
+      const hasNext = highlightSelect.length === amount + 1;
+
+      if (hasNext) highlightSelect.pop();
+
+      const highlightIds = highlightSelect.map<string>(
+        (val) => val.highlight.id
+      );
+
+      const highlightAdditions = await ctx.db
+        .select({
+          highlightId: upvotedHighlightToUser.highlightId,
+          upvoteId: upvotedHighlightToUser.userId,
+          bookmarkId: bookmarkedHighlightToUser.userId,
+        })
+        .from(upvotedHighlightToUser)
+        .where(inArray(upvotedHighlightToUser.highlightId, highlightIds))
+        .leftJoin(
+          bookmarkedHighlightToUser,
+          and(
+            eq(
+              upvotedHighlightToUser.highlightId,
+              bookmarkedHighlightToUser.highlightId
+            ),
+            eq(bookmarkedHighlightToUser.userId, userId)
+          )
+        );
+
+      const cleaned = highlightAdditions.reduce<
+        Record<string, { added: boolean; upvotes: number }>
+      >((acc, row) => {
+        if (!acc[row.highlightId]) {
+          acc[row.highlightId] = { added: false, upvotes: 0 };
+        }
+
+        acc[row.highlightId]!.upvotes += 1;
+
+        if (row.bookmarkId === userId) {
+          acc[row.highlightId]!.added = true;
+        }
+
+        return acc;
+      }, {});
+
+      const fullHighlights = highlightSelect.map<HighlightReturn>(
+        (highlight) => {
+          const additions = cleaned[highlight.highlight.id];
+          return {
+            ...highlight.highlight,
+            upvotes: additions?.upvotes ?? 0,
+            bookmarked: true,
+            upvoted: true,
+          };
+        }
+      );
+      return packageThumbnailsPaginated(
+        fullHighlights,
+        hasNext,
+        parsedCursor?.dir
+      );
     }),
 
   getLikedVideosPaginated: protectedProcedure
     .input(
       z.object({
-        initialCursor: z.string().nullish(),
+        initialCursor: z.number().nullish(),
         cursor: z.string().nullish(),
       })
     )
     .query(async ({ ctx, input }) => {
-      const userId = ctx.session.user.id;
+      const userId = ctx.auth.userId;
       const { cursor, initialCursor } = input;
       const amount = 1;
 
-      const ret = await ctx.prisma.user.findUnique({
-        where: {
-          id: userId,
-        },
-        select: {
-          upvotes: infiniteHighlightQuery({
-            initialCursor,
-            cursor,
-            amount,
-            rightPad: 1,
-            includeLiked: false,
-          }),
-        },
-      });
+      const parsedCursor: highlightCursor | undefined = cursor
+        ? decodeCursor(cursor)
+        : undefined;
 
-      const addedUpvotes = ret?.upvotes
-        ? ret.upvotes.map((highlight) => {
-            return { ...highlight, upvotes: [<User>{ id: userId }] };
-          })
-        : null;
+      const highlightSelect = await ctx.db
+        .select({ highlight })
+        .from(upvotedHighlightToUser)
+        .innerJoin(
+          highlight,
+          eq(upvotedHighlightToUser.highlightId, highlight.id)
+        )
+        .where(
+          and(
+            eq(upvotedHighlightToUser.userId, userId),
+            cursorWhereArgs(parsedCursor, initialCursor)
+          )
+        )
+        .orderBy(...orderByArgs(parsedCursor))
+        .limit(amount + 1);
 
-      return packageHighlightsPaginated(amount, addedUpvotes, cursor);
+      const hasNext = highlightSelect.length === amount + 1;
+
+      if (hasNext) highlightSelect.pop();
+
+      const highlightIds = highlightSelect.map<string>(
+        (val) => val.highlight.id
+      );
+
+      const highlightAdditions = await ctx.db
+        .select({
+          highlightId: upvotedHighlightToUser.highlightId,
+          upvoteId: upvotedHighlightToUser.userId,
+          bookmarkId: bookmarkedHighlightToUser.userId,
+        })
+        .from(upvotedHighlightToUser)
+        .where(inArray(upvotedHighlightToUser.highlightId, highlightIds))
+        .leftJoin(
+          bookmarkedHighlightToUser,
+          and(
+            eq(
+              upvotedHighlightToUser.highlightId,
+              bookmarkedHighlightToUser.highlightId
+            ),
+            eq(bookmarkedHighlightToUser.userId, userId)
+          )
+        );
+
+      const cleaned = highlightAdditions.reduce<
+        Record<string, { added: boolean; upvotes: number }>
+      >((acc, row) => {
+        if (!acc[row.highlightId]) {
+          acc[row.highlightId] = { added: false, upvotes: 0 };
+        }
+
+        acc[row.highlightId]!.upvotes += 1;
+
+        if (row.bookmarkId === userId) {
+          acc[row.highlightId]!.added = true;
+        }
+
+        return acc;
+      }, {});
+
+      const fullHighlights = highlightSelect.map<HighlightReturn>(
+        (highlight) => {
+          const additions = cleaned[highlight.highlight.id];
+          return {
+            ...highlight.highlight,
+            upvotes: additions?.upvotes ?? 0,
+            bookmarked: additions?.added ?? false,
+            upvoted: true,
+          };
+        }
+      );
+      return packageHighlightsPaginated(
+        fullHighlights,
+        hasNext,
+        parsedCursor?.dir
+      );
     }),
-
-  getFirstBookmarkId: publicProcedure
-    .input(z.string().cuid())
-    .query(async ({ ctx, input }) => {
-      const ret = await ctx.prisma.user.findUnique({
-        where: { id: input },
-        select: {
-          highlights: {
-            orderBy: {
-              timestampUTC: "desc",
-            },
-            select: {
-              id: true,
-            },
-            take: 1,
-          },
-        },
-      });
-      const first = ret?.highlights.at(0) ?? undefined;
-      if (!first) return undefined;
-      return removeExt(first.id);
-    }),
-
-  getFirstUserBookmarkId: protectedProcedure.query(async ({ ctx }) => {
-    const userId = ctx.session.user.id;
-    const ret = await ctx.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        highlights: {
-          orderBy: {
-            timestampUTC: "desc",
-          },
-          select: {
-            id: true,
-          },
-          take: 1,
-        },
-      },
-    });
-    const first = ret?.highlights.at(0) ?? undefined;
-    if (!first) return undefined;
-    return removeExt(first.id);
-  }),
-
-  getFirstUserLikeId: protectedProcedure.query(async ({ ctx }) => {
-    const userId = ctx.session.user.id;
-    const ret = await ctx.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        upvotes: {
-          orderBy: {
-            timestampUTC: "desc",
-          },
-          select: {
-            id: true,
-          },
-          take: 1,
-        },
-      },
-    });
-    const first = ret?.upvotes.at(0) ?? undefined;
-    if (!first) return undefined;
-    return first.id;
-  }),
 });

@@ -292,8 +292,8 @@ const BaseCompontent: React.FC<
   previousHighlight,
 }) => {
   const relativeTime = useMemo(() => {
-    if (!highlight || !highlight.timestampUTC) return undefined;
-    return dayjs().to(dayjs.unix(Number(highlight.timestampUTC)).utc().local());
+    if (!highlight || !highlight.timestampUtc) return undefined;
+    return dayjs().to(dayjs.unix(Number(highlight.timestampUtc)).utc().local());
   }, [highlight]);
 
   const aspect = useMemo(() => {
@@ -676,8 +676,8 @@ const ArrowNav: React.FC<{ iconSize?: number } & NavProps> = ({
 
 const Time: React.FC<{ highlight: HighlightVideo }> = ({ highlight }) => {
   const dateTime = useMemo(() => {
-    if (!highlight.timestampUTC) return undefined;
-    const date = dayjs.unix(Number(highlight.timestampUTC)).utc().local();
+    if (!highlight.timestampUtc) return undefined;
+    const date = dayjs.unix(Number(highlight.timestampUtc)).utc().local();
     return [
       date.format("MMM DD"),
       date.format("YYYY"),
@@ -705,7 +705,7 @@ const Time: React.FC<{ highlight: HighlightVideo }> = ({ highlight }) => {
   );
 };
 
-const Source: React.FC<{ poolId: string; wristbandId?: string | null }> = ({
+const Source: React.FC<{ poolId: number; wristbandId?: string | null }> = ({
   poolId,
   wristbandId,
 }) => {
@@ -714,7 +714,11 @@ const Source: React.FC<{ poolId: string; wristbandId?: string | null }> = ({
       <p className="text-lg font-bold text-slate-900 dark:text-white">
         Captured By:
         {wristbandId && (
-          <IconStyleLink url={`/reels/${poolId}/band/${wristbandId}`}>
+          <IconStyleLink
+            url={`/reels/${encodeURIComponent(
+              poolId
+            )}/band/${encodeURIComponent(wristbandId)}`}
+          >
             <h2 className="underline">Band</h2>
           </IconStyleLink>
         )}

@@ -6,7 +6,7 @@ import { removeExt } from "../../../../../../utils/highlightUtils";
 import { generateSSGHelper } from "../../../../../../utils/ssgHelper";
 import { api } from "../../../../../../utils/trpc";
 
-const Redirect: NextPage<{ id: string; bandId: string }> = ({ id, bandId }) => {
+const Redirect: NextPage<{ id: number; bandId: string }> = ({ id, bandId }) => {
   const { data, isLoading, isFetched } =
     api.pool.getFirstWristbandHighlight.useQuery({ poolId: id, bandId });
 

@@ -4,12 +4,7 @@ import * as ScrollArea from "@radix-ui/react-scroll-area";
 import * as Separator from "@radix-ui/react-separator";
 import Link from "next/link";
 import { useState } from "react";
-import type {
-  FetchInfo,
-  PoolUserFetch,
-  UserFetch,
-  UserInfo,
-} from "../types/user-out";
+import type { FetchInfo, UserInfo } from "../types/user-out";
 import { api } from "../utils/trpc";
 import type { ButtonContext } from "./contexts/button-types";
 import { ProfileButtonProvider } from "./contexts/follow-profile-context";
@@ -67,13 +62,13 @@ const usersToMap = (users: UserInfo[] | undefined) => {
   return userMap;
 };
 
-const PoolRowFetch: React.FC<{ fetch: PoolUserFetch; dismiss: () => void }> = ({
+const PoolRowFetch: React.FC<{ fetch: number; dismiss: () => void }> = ({
   fetch,
   dismiss,
 }) => {
   const utils = api.useContext();
 
-  const queryKey = fetch.poolId;
+  const queryKey = fetch;
 
   const { data: users, isLoading } =
     api.pool.getPoolFollowers.useQuery(queryKey);
@@ -87,13 +82,15 @@ const PoolRowFetch: React.FC<{ fetch: PoolUserFetch; dismiss: () => void }> = ({
         const prev = utils.pool.getPoolFollowers.getData(queryKey);
         const updated = userMap.get(variables.followId);
         if (prev && updated) {
-          const isPublic = updated.public ?? false;
+          const isPublic = updated.isPublic;
           const newValues = [...prev];
           const toUpdate = newValues.findIndex((ele) => ele.id === updated.id);
           newValues[toUpdate] = {
             ...updated,
-            follows: isPublic,
-            requested: !isPublic,
+            followInfo: {
+              follows: isPublic,
+              requested: !isPublic,
+            },
           };
           utils.pool.getPoolFollowers.setData(queryKey, newValues);
         }
@@ -118,8 +115,10 @@ const PoolRowFetch: React.FC<{ fetch: PoolUserFetch; dismiss: () => void }> = ({
           const toUpdate = newValues.findIndex((ele) => ele.id === updated.id);
           newValues[toUpdate] = {
             ...updated,
-            follows: false,
-            requested: false,
+            followInfo: {
+              follows: false,
+              requested: false,
+            },
           };
           utils.pool.getPoolFollowers.setData(queryKey, newValues);
         }
@@ -136,24 +135,24 @@ const PoolRowFetch: React.FC<{ fetch: PoolUserFetch; dismiss: () => void }> = ({
   const buttonContext: ButtonContext = {
     action: (id) => {
       const user = userMap.get(id);
-      if (!user || !fetch.refId) return;
-      if (user.follows || user.requested) {
+      if (!user) return;
+      if (user.followInfo?.follows || user.followInfo?.requested) {
         unfollow({
           followId: user.id,
-          requested: user.requested,
+          requested: user.followInfo?.requested ?? false,
         });
       } else {
         follow({
           followId: user.id,
-          public: user.public ?? false,
+          public: user.isPublic ?? false,
         });
       }
     },
     state: (id) => {
       const user = userMap.get(id);
       return {
-        follows: user?.follows ?? false,
-        pending: user?.requested ?? false,
+        follows: user?.followInfo?.follows ?? false,
+        pending: user?.followInfo?.requested ?? false,
         disabled: following || unfollowing,
       };
     },
@@ -166,25 +165,13 @@ const PoolRowFetch: React.FC<{ fetch: PoolUserFetch; dismiss: () => void }> = ({
   );
 };
 
-const UserRowFetch: React.FC<{ fetch: UserFetch; dismiss: () => void }> = ({
-  fetch,
-  dismiss,
-}) => {
-  if (fetch.following)
-    return <FollowingFetch fetch={fetch} dismiss={dismiss} />;
-  return <FollowersFetch fetch={fetch} dismiss={dismiss} />;
-};
-
-const FollowersFetch: React.FC<{ fetch: UserFetch; dismiss: () => void }> = ({
+const FollowersFetch: React.FC<{ fetch: string; dismiss: () => void }> = ({
   fetch,
   dismiss,
 }) => {
   const utils = api.useContext();
 
-  const queryKey = {
-    userId: fetch.userId,
-    refId: fetch.refId,
-  };
+  const queryKey = fetch;
 
   const { data: users, isLoading } = api.user.getFollowers.useQuery(queryKey);
 
@@ -197,13 +184,15 @@ const FollowersFetch: React.FC<{ fetch: UserFetch; dismiss: () => void }> = ({
         const prev = utils.user.getFollowers.getData(queryKey);
         const updated = userMap.get(variables.followId);
         if (prev && updated) {
-          const isPublic = updated.public ?? false;
+          const isPublic = updated.isPublic ?? false;
           const newValues = [...prev];
           const toUpdate = newValues.findIndex((ele) => ele.id === updated.id);
           newValues[toUpdate] = {
             ...updated,
-            follows: isPublic,
-            requested: !isPublic,
+            followInfo: {
+              follows: isPublic,
+              requested: !isPublic,
+            },
           };
           utils.user.getFollowers.setData(queryKey, newValues);
         }
@@ -228,8 +217,10 @@ const FollowersFetch: React.FC<{ fetch: UserFetch; dismiss: () => void }> = ({
           const toUpdate = newValues.findIndex((ele) => ele.id === updated.id);
           newValues[toUpdate] = {
             ...updated,
-            follows: false,
-            requested: false,
+            followInfo: {
+              follows: false,
+              requested: false,
+            },
           };
           utils.user.getFollowers.setData(queryKey, newValues);
         }
@@ -246,24 +237,24 @@ const FollowersFetch: React.FC<{ fetch: UserFetch; dismiss: () => void }> = ({
   const buttonContext: ButtonContext = {
     action: (id) => {
       const user = userMap.get(id);
-      if (!user || !fetch.refId) return;
-      if (user.follows || user.requested) {
+      if (!user) return;
+      if (user.followInfo?.follows || user.followInfo?.requested) {
         unfollow({
           followId: user.id,
-          requested: user.requested,
+          requested: user.followInfo?.requested ?? false,
         });
       } else {
         follow({
           followId: user.id,
-          public: user.public ?? false,
+          public: user.isPublic,
         });
       }
     },
     state: (id) => {
       const user = userMap.get(id);
       return {
-        follows: user?.follows ?? false,
-        pending: user?.requested ?? false,
+        follows: user?.followInfo?.follows ?? false,
+        pending: user?.followInfo?.requested ?? false,
         disabled: following || unfollowing,
       };
     },
@@ -276,16 +267,13 @@ const FollowersFetch: React.FC<{ fetch: UserFetch; dismiss: () => void }> = ({
   );
 };
 
-const FollowingFetch: React.FC<{ fetch: UserFetch; dismiss: () => void }> = ({
+const FollowingFetch: React.FC<{ fetch: string; dismiss: () => void }> = ({
   fetch,
   dismiss,
 }) => {
   const utils = api.useContext();
 
-  const queryKey = {
-    userId: fetch.userId,
-    refId: fetch.refId,
-  };
+  const queryKey = fetch;
 
   const { data: users, isLoading } = api.user.getFollowing.useQuery(queryKey);
 
@@ -298,13 +286,15 @@ const FollowingFetch: React.FC<{ fetch: UserFetch; dismiss: () => void }> = ({
         const prev = utils.user.getFollowing.getData(queryKey);
         const updated = userMap.get(variables.followId);
         if (prev && updated) {
-          const isPublic = updated.public ?? false;
+          const isPublic = updated.isPublic ?? false;
           const newValues = [...prev];
           const toUpdate = newValues.findIndex((ele) => ele.id === updated.id);
           newValues[toUpdate] = {
             ...updated,
-            follows: isPublic,
-            requested: !isPublic,
+            followInfo: {
+              follows: isPublic,
+              requested: !isPublic,
+            },
           };
           utils.user.getFollowing.setData(queryKey, newValues);
         }
@@ -329,8 +319,10 @@ const FollowingFetch: React.FC<{ fetch: UserFetch; dismiss: () => void }> = ({
           const toUpdate = newValues.findIndex((ele) => ele.id === updated.id);
           newValues[toUpdate] = {
             ...updated,
-            follows: false,
-            requested: false,
+            followInfo: {
+              follows: false,
+              requested: false,
+            },
           };
           utils.user.getFollowing.setData(queryKey, newValues);
         }
@@ -347,24 +339,24 @@ const FollowingFetch: React.FC<{ fetch: UserFetch; dismiss: () => void }> = ({
   const buttonContext: ButtonContext = {
     action: (id) => {
       const user = userMap.get(id);
-      if (!user || !fetch.refId) return;
-      if (user.follows || user.requested) {
+      if (!user) return;
+      if (user.followInfo?.follows || user.followInfo?.requested) {
         unfollow({
           followId: user.id,
-          requested: user.requested,
+          requested: user.followInfo?.requested ?? false,
         });
       } else {
         follow({
           followId: user.id,
-          public: user.public ?? false,
+          public: user.isPublic,
         });
       }
     },
     state: (id) => {
       const user = userMap.get(id);
       return {
-        follows: user?.follows ?? false,
-        pending: user?.requested ?? false,
+        follows: user?.followInfo?.follows ?? false,
+        pending: user?.followInfo?.requested ?? false,
         disabled: following || unfollowing,
       };
     },
@@ -412,9 +404,19 @@ export const ProfileList: React.FC<{
             />
             <ScrollArea.Root className="overflow-hidden">
               <ScrollArea.Viewport className="h-full max-h-80 w-full pr-3">
-                {open && fetch.userFetch && (
-                  <UserRowFetch fetch={fetch.userFetch} dismiss={dismiss} />
-                )}
+                {open &&
+                  fetch.userFetch &&
+                  (fetch.userFetch.following ? (
+                    <FollowingFetch
+                      fetch={fetch.userFetch.id}
+                      dismiss={dismiss}
+                    />
+                  ) : (
+                    <FollowersFetch
+                      fetch={fetch.userFetch.id}
+                      dismiss={dismiss}
+                    />
+                  ))}
                 {open && fetch.poolFetch && (
                   <PoolRowFetch fetch={fetch.poolFetch} dismiss={dismiss} />
                 )}

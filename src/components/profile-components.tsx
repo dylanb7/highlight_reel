@@ -5,12 +5,15 @@ import * as Collapsible from "@radix-ui/react-collapsible";
 import { useMemo, useState } from "react";
 import { PoolComponent } from "./highlight-pool-card";
 import { ProfileList } from "./profile-scroll-components";
-import { useSession } from "next-auth/react";
 import { ProfileFollowButton } from "./follow-profile";
 import type { PoolInfo } from "../types/pool-out";
 
-import type { ProfileInfo, UserInfo } from "../types/user-out";
-import { ProfilePoolButtonProvider } from "./contexts/follow-pool-context";
+import type {
+  ProfileInfo,
+  ProfilePoolsInfo,
+  UserInfo,
+} from "../types/user-out";
+
 import { ProfileButtonProvider } from "./contexts/follow-profile-context";
 import type { ButtonContext } from "./contexts/button-types";
 import { api } from "../utils/trpc";
@@ -23,6 +26,7 @@ import {
   bookmarkActionUpdate,
   likeActionUpdate,
 } from "./contexts/action-types";
+import { useAuth } from "@clerk/nextjs";
 
 export const PoolScroll: React.FC<{
   pools: PoolInfo[];
@@ -84,7 +88,7 @@ export const ProfileData: React.FC<{
     following: number;
   };
 }> = ({ user }) => {
-  const { data: session } = useSession();
+  const auth = useAuth();
 
   const utils = api.useContext();
 
@@ -96,11 +100,13 @@ export const ProfileData: React.FC<{
         await utils.user.profileQuery.cancel(queryKey);
         const prev = utils.user.profileQuery.getData(queryKey);
         if (prev) {
-          const isPublic = prev.public ?? false;
+          const isPublic = prev.isPublic ?? false;
           utils.user.profileQuery.setData(queryKey, {
             ...prev,
-            follows: isPublic,
-            requested: !isPublic,
+            followInfo: {
+              follows: isPublic,
+              requested: !isPublic,
+            },
           });
         }
         return { prev };
@@ -121,8 +127,10 @@ export const ProfileData: React.FC<{
         if (prev) {
           utils.user.profileQuery.setData(queryKey, {
             ...prev,
-            follows: false,
-            requested: false,
+            followInfo: {
+              follows: false,
+              requested: false,
+            },
           });
         }
         return { prev };
@@ -137,23 +145,22 @@ export const ProfileData: React.FC<{
 
   const buttonContext: ButtonContext = {
     action: () => {
-      if (!session || !session.user) return;
-      if (user.follows || user.requested) {
+      if (user.followInfo?.follows || user.followInfo?.requested) {
         unfollow({
           followId: user.id,
-          requested: user.requested,
+          requested: user.followInfo?.requested ?? false,
         });
       } else {
         follow({
           followId: user.id,
-          public: user.public ?? false,
+          public: user.isPublic ?? false,
         });
       }
     },
     state: () => {
       return {
-        follows: user.follows,
-        pending: user.requested,
+        follows: user.followInfo?.follows ?? false,
+        pending: user.followInfo?.requested ?? false,
         disabled: following || unfollowing,
       };
     },
@@ -165,7 +172,7 @@ export const ProfileData: React.FC<{
         <p className="text-2xl font-semibold text-slate-900 dark:text-white">
           {user.username}
         </p>
-        {session?.user?.id !== user.id && (
+        {auth.userId !== user.id && (
           <ProfileButtonProvider value={buttonContext}>
             <ProfileFollowButton profileId={user.id} />
           </ProfileButtonProvider>
@@ -181,11 +188,7 @@ export const ProfileData: React.FC<{
           text={"Following: " + user.following}
           header={"Following"}
           fetch={{
-            userFetch: {
-              userId: user.id,
-              refId: session?.user?.id,
-              following: true,
-            },
+            userFetch: { id: user.id, following: true },
           }}
         />
 
@@ -198,11 +201,7 @@ export const ProfileData: React.FC<{
           text={"Followers: " + user.followedBy}
           header={"Followers"}
           fetch={{
-            userFetch: {
-              userId: user.id,
-              refId: session?.user?.id,
-              following: false,
-            },
+            userFetch: { id: user.id, following: false },
           }}
         />
       </div>
@@ -212,8 +211,10 @@ export const ProfileData: React.FC<{
 
 export const ProfileBookmarks: React.FC<{
   id: string;
-  isOwner: boolean;
-}> = ({ id, isOwner }) => {
+}> = ({ id }) => {
+  const user = useAuth();
+  const isOwner = id === user.userId;
+
   const loadAmount = 6;
 
   const queryKey = {
@@ -324,37 +325,33 @@ export const ProfileBookmarks: React.FC<{
 };
 
 export const ProfileComponent: React.FC<{
-  profile: ProfileInfo;
+  profile: ProfilePoolsInfo;
 }> = ({ profile }) => {
-  const { data: session } = useSession();
-
-  const owner = profile.id === session?.user?.id;
-
   return (
     <ProfilePoolButtonProvider userId={profile.id} profile={profile}>
       <div className="flex flex-col justify-start gap-1 pt-10">
         <ProfileData user={{ ...profile }} />
         <PoolScroll
-          pools={profile.pools}
+          pools={profile.followed}
           title={"Followed Reels"}
           initialOpen={true}
         />
-        {owner && (
+        {profile.owned && (
           <PoolScroll
-            pools={profile.ownedPools}
+            pools={profile.owned ?? []}
             title={"Owned Reels"}
             initialOpen={false}
           />
         )}
-        {owner && (
+        {profile.modded && (
           <PoolScroll
-            pools={profile.modPools}
+            pools={profile.modded ?? []}
             title={"Mod Reels"}
             initialOpen={false}
           />
         )}
-        <ProfileBookmarks id={profile.id} isOwner={owner} />
+        <ProfileBookmarks id={profile.id} />
       </div>
-    </ProfilePoolButtonProvider>
+    </ProfileButtonProvider>
   );
 };

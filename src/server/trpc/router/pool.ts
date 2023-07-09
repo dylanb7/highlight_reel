@@ -1,82 +1,113 @@
 import { z } from "zod";
 import type { HighlightReturn } from "../../../types/highlight-out";
 
-import type { PoolInfo } from "../../../types/pool-out";
+import type { PoolFollowing, PoolInfo } from "../../../types/pool-out";
 import type { UserInfo } from "../../../types/user-out";
 import {
-  addUnathedProps,
+  decodeCursor,
   packageHighlights,
   packageHighlightsPaginated,
   packageThumbnailsPaginated,
 } from "../../../utils/highlightUtils";
-import {
-  canViewPool,
-  infiniteHighlightQuery,
-} from "../../../utils/prismaUtils";
 
 import { router, protectedProcedure, publicProcedure } from "../trpc";
+import type { NewHighlightPool } from "../../db/schema";
+import {
+  bookmarkedHighlightToUser,
+  highlight,
+  highlightPool,
+  poolsToFollowers,
+  poolsToRequested,
+  users,
+} from "../../db/schema";
+import {
+  and,
+  desc,
+  eq,
+  exists,
+  ilike,
+  like,
+  lt,
+  lte,
+  notExists,
+  sql,
+} from "drizzle-orm";
+import {
+  canViewPool,
+  cursorWhereArgs,
+  orderByArgs,
+  publicToBool,
+} from "../../../utils/drizzleHelpers";
 
 export const poolRouter = router({
   getPoolById: publicProcedure
-    .input(z.string().cuid())
+    .input(z.number())
     .query(async ({ ctx, input }) => {
-      const userId = ctx.session?.user?.id;
+      const userId = ctx.auth?.userId;
       if (userId) {
-        const pool = await ctx.prisma.highlightPool.findUnique({
-          where: { id: input },
-          include: {
-            _count: {
-              select: {
-                highlights: true,
-                followers: true,
+        const poolInfo = await ctx.db.query.highlightPool.findFirst({
+          where: eq(highlightPool.id, input),
+          with: {
+            poolFollowers: {
+              columns: {
+                userId: true,
               },
             },
 
-            followers: {
-              where: {
-                id: userId,
-              },
+            poolRequests: {
+              where: eq(poolsToRequested.userId, userId),
+              limit: 1,
             },
-            pending: {
-              where: {
-                id: userId,
+
+            highlights: {
+              columns: {
+                id: true,
               },
             },
           },
         });
-        return pool
+        return poolInfo
           ? <PoolInfo>{
-              ...pool,
+              ...poolInfo,
               followInfo: {
-                follows: pool.followers.length > 0,
-                requested: pool.pending.length > 0,
+                follows: poolInfo.poolFollowers.find(
+                  (val) => val.userId === userId
+                )
+                  ? true
+                  : false,
+                requested: poolInfo.poolRequests.length > 0,
               },
-              followerCount: pool._count.followers,
-              highlightCount: pool._count.highlights,
+              highlightCount: poolInfo.highlights.length,
+              followerCount: poolInfo.poolFollowers.length,
+              isPublic: publicToBool(poolInfo.public),
             }
           : undefined;
       }
-      const pool = await ctx.prisma.highlightPool.findUnique({
-        where: { id: input },
-        include: {
-          _count: {
-            select: {
-              highlights: true,
-              followers: true,
+      const poolInfo = await ctx.db.query.highlightPool.findFirst({
+        where: eq(highlightPool.id, input),
+        with: {
+          poolFollowers: {
+            columns: {
+              userId: true,
+            },
+          },
+          highlights: {
+            columns: {
+              id: true,
             },
           },
         },
       });
-
-      return pool
+      return poolInfo
         ? <PoolInfo>{
-            ...pool,
+            ...poolInfo,
             followInfo: {
               follows: false,
               requested: false,
             },
-            followerCount: pool._count.followers,
-            highlightCount: pool._count.highlights,
+            isPublic: publicToBool(poolInfo.public),
+            highlightCount: poolInfo.highlights.length,
+            followerCount: poolInfo.poolFollowers.length,
           }
         : undefined;
     }),
@@ -90,162 +121,140 @@ export const poolRouter = router({
       })
     )
     .mutation(({ ctx, input }) => {
-      return ctx.prisma.highlightPool.create({
-        data: {
-          owner: {
-            connect: {
-              id: input.ownerId,
-            },
-          },
-          public: input.public,
-          name: input.poolName,
-        },
-      });
+      const newPool: NewHighlightPool = {
+        name: input.poolName,
+        public: input.public ? 1 : 0,
+        ownerId: input.ownerId,
+      };
+
+      return ctx.db.insert(highlightPool).values(newPool);
     }),
 
   poolSearch: publicProcedure
     .input(z.string())
     .query(async ({ ctx, input }) => {
-      const userId = ctx.session?.user?.id;
+      const userId = ctx.auth?.userId;
+      const searchLimit = 15;
       if (userId) {
-        return ctx.prisma.highlightPool.findMany({
-          where: {
-            name: {
-              contains: input,
+        const res = await ctx.db.query.highlightPool.findMany({
+          where: ilike(highlightPool.name, input),
+          with: {
+            poolFollowers: {
+              where: eq(poolsToFollowers.userId, userId),
+              limit: 1,
+            },
+            poolRequests: {
+              where: eq(poolsToRequested.userId, userId),
+              limit: 1,
             },
           },
-          include: {
-            followers: {
-              where: {
-                id: userId,
-              },
-            },
-          },
+          limit: searchLimit,
         });
-      }
-      const pools = await ctx.prisma.highlightPool.findMany({
-        where: {
-          name: {
-            contains: input,
+        return res.map<PoolFollowing>((poolData) => ({
+          ...poolData,
+          followInfo: {
+            follows: poolData.poolFollowers.length > 0,
+            requested: poolData.poolRequests.length > 0,
           },
+        }));
+      }
+      return (
+        await ctx.db.query.highlightPool.findMany({
+          where: like(highlightPool.name, input),
+          limit: searchLimit,
+        })
+      ).map<PoolFollowing>((poolData) => ({
+        ...poolData,
+        followInfo: {
+          follows: false,
+          requested: false,
         },
-      });
-      return pools
-        ? pools.map((pool) => {
-            return { ...pool, followers: [] };
-          })
-        : [];
+      }));
     }),
 
   getPublicPoolsPaginated: publicProcedure
     .input(
       z.object({
-        cursor: z.string().cuid().nullish(),
+        cursor: z.date().nullish(),
         amount: z.number(),
       })
     )
     .query(async ({ ctx, input }) => {
-      const userId = ctx.session?.user?.id;
+      const userId = ctx.auth?.userId;
       const { cursor, amount } = input;
-      if (userId) {
-        const pools = await ctx.prisma.highlightPool.findMany({
-          take: amount + 1,
-          cursor: cursor ? { id: cursor } : undefined,
-          where: {
-            public: true,
-            followers: {
-              none: {
-                id: userId,
-              },
-            },
-          },
-          include: {
-            _count: {
-              select: {
-                highlights: true,
-                followers: true,
-              },
-            },
-            followers: {
-              where: {
-                id: userId,
-              },
-            },
-            pending: {
-              where: {
-                id: userId,
-              },
-            },
-          },
-          orderBy: {
-            followers: {
-              _count: "desc",
-            },
-          },
-        });
-        let nextCursor: typeof cursor | undefined = undefined;
-        if (pools.length > input.amount && pools.length > 0) {
-          const extra = pools.pop();
-          nextCursor = extra?.id;
-        }
+      const res = await ctx.db.query.highlightPool.findMany({
+        where: () => {
+          if (!userId && !cursor) return eq(highlightPool.public, 1);
+          if (!userId) {
+            const date = new Date(cursor!);
 
-        const info: PoolInfo[] = pools.map<PoolInfo>((pool) => {
-          return {
-            ...pool,
-            followInfo: {
-              follows: pool.followers.length > 0,
-              requested: pool.pending.length > 0,
-            },
+            return and(
+              eq(highlightPool.public, 1),
+              lt(highlightPool.createdAt, date)
+            );
+          }
+          const userFollows = ctx.db
+            .select()
+            .from(poolsToFollowers)
+            .where(
+              and(
+                eq(poolsToFollowers.poolId, highlightPool.id),
+                eq(poolsToFollowers.userId, userId!)
+              )
+            );
 
-            followerCount: pool._count.followers,
-            highlightCount: pool._count.highlights,
-          };
-        });
-        return {
-          info,
-          nextCursor,
-        };
-      }
-      const pools = await ctx.prisma.highlightPool.findMany({
-        take: amount + 1,
-        cursor: cursor ? { id: cursor } : undefined,
-        where: {
-          public: true,
+          if (cursor) {
+            return and(
+              eq(highlightPool.public, 1),
+              lt(highlightPool.createdAt, cursor),
+              notExists(userFollows)
+            );
+          }
+          return and(eq(highlightPool.public, 1), notExists(userFollows));
         },
-        include: {
-          _count: {
-            select: {
-              highlights: true,
-              followers: true,
+        with: {
+          highlights: {
+            columns: {
+              id: true,
             },
           },
-        },
-        orderBy: {
-          followers: {
-            _count: "desc",
+          poolFollowers: {
+            columns: {
+              userId: true,
+            },
           },
+          ...(userId
+            ? {
+                poolRequests: {
+                  where: eq(poolsToRequested.userId, userId),
+                  limit: 1,
+                },
+              }
+            : {}),
         },
+        orderBy: [desc(highlightPool.createdAt)],
+        limit: amount + 1,
       });
-      let nextCursor: typeof cursor | undefined = undefined;
-      if (pools.length > input.amount && pools.length > 0) {
-        const extra = pools.pop();
-        nextCursor = extra?.id;
-      }
 
-      const info: PoolInfo[] = pools.map<PoolInfo>((pool) => {
+      const hasNext = res.length > amount;
+      if (hasNext) res.pop();
+      const poolsInfo: PoolInfo[] = res.map<PoolInfo>((pool) => {
         return {
           ...pool,
           followInfo: {
-            follows: false,
-            requested: false,
+            follows: pool.poolFollowers.find((val) => val.userId === userId)
+              ? true
+              : false,
+            requested: pool.poolRequests ? pool.poolRequests.length > 0 : false,
           },
-
-          followerCount: pool._count.followers,
-          highlightCount: pool._count.highlights,
+          isPublic: publicToBool(pool.public),
+          followerCount: pool.poolFollowers.length,
+          highlightCount: pool.highlights.length,
         };
       });
+      const nextCursor = hasNext ? poolsInfo[-1]?.createdAt : undefined;
       return {
-        info,
+        poolsInfo,
         nextCursor,
       };
     }),
@@ -253,366 +262,457 @@ export const poolRouter = router({
   getPoolHighlightsPaginated: publicProcedure
     .input(
       z.object({
-        poolId: z.string().cuid(),
+        poolId: z.number(),
         cursor: z.string().nullish(),
+        initialCursor: z.number().nullish(),
         amount: z.number(),
       })
     )
     .query(async ({ ctx, input }) => {
-      const userId = ctx.session?.user?.id;
-      const { poolId, cursor, amount } = input;
-      let ret: HighlightReturn;
-      if (userId) {
-        ret = (
-          await ctx.prisma.highlightPool.findFirst({
-            where: {
-              OR: [
-                {
-                  public: true,
+      const userId = ctx.auth?.userId;
+      const { poolId, cursor, amount, initialCursor } = input;
+
+      const parsedCursor = cursor ? decodeCursor(cursor) : undefined;
+
+      const pool = await ctx.db.query.highlightPool.findFirst({
+        where: canViewPool(userId, poolId, ctx.db),
+        columns: { name: true },
+        with: {
+          highlights: {
+            where: cursorWhereArgs(parsedCursor, initialCursor),
+            orderBy: orderByArgs(parsedCursor),
+            limit: amount + 1,
+            with: {
+              userUpvotes: {
+                columns: {
+                  userId: true,
                 },
-                {
-                  followers: {
-                    some: {
-                      id: userId,
-                    },
-                  },
-                },
-              ],
-              AND: {
-                id: poolId,
               },
+              ...(userId
+                ? {
+                    userBookmarks: {
+                      where: eq(bookmarkedHighlightToUser.userId, userId),
+                    },
+                  }
+                : {}),
             },
-            select: {
-              highlights: infiniteHighlightQuery({
-                cursor,
-                amount,
-                rightPad: 1,
-              }),
-            },
-          })
-        )?.highlights;
-      } else {
-        const rawPool = await ctx.prisma.highlightPool.findFirst({
-          where: {
-            id: poolId,
-            public: true,
           },
-          select: {
-            highlights: infiniteHighlightQuery({
-              cursor,
-              amount,
-              includeBookmarked: false,
-              includeLiked: false,
-              rightPad: 1,
-            }),
-          },
-        });
-        ret = addUnathedProps(rawPool?.highlights);
-      }
-      return packageThumbnailsPaginated(amount, ret, cursor);
+        },
+      });
+
+      const highlights = pool?.highlights;
+
+      const hasNext = highlights ? highlights.length > amount : false;
+      if (hasNext) highlights?.pop();
+
+      const highlightReturns =
+        highlights?.map<HighlightReturn>((highlight) => ({
+          ...highlight,
+          upvotes: highlight.userUpvotes.length,
+          upvoted: highlight.userUpvotes.find(
+            (upvote) => upvote.userId === userId
+          )
+            ? true
+            : false,
+          bookmarked: highlight.userBookmarks
+            ? highlight.userBookmarks.length > 0
+            : false,
+        })) ?? [];
+
+      return packageThumbnailsPaginated(
+        highlightReturns,
+        hasNext,
+        parsedCursor?.dir
+      );
     }),
 
   getHighlightBundle: publicProcedure
     .input(
       z.object({
-        poolId: z.string().cuid(),
-        cursor: z.string(),
+        poolId: z.number(),
+        cursor: z.number(),
         amount: z.number(),
       })
     )
     .query(async ({ ctx, input }) => {
-      const userId = ctx.session?.user?.id;
+      const userId = ctx.auth?.userId;
       const { poolId, cursor, amount } = input;
-      let ret: { highlights: HighlightReturn; name: string | null } | null =
-        await ctx.prisma.highlightPool.findFirst({
-          where: canViewPool(poolId, userId),
-          select: {
-            name: true,
-            highlights: infiniteHighlightQuery({ cursor, amount, userId }),
-          },
-        });
-
-      if (!userId && ret) {
-        ret = {
-          name: ret.name,
-          highlights: addUnathedProps(ret.highlights),
-        };
-      }
-
-      return {
-        name: ret?.name ?? null,
-        highlights: await packageHighlights(ret?.highlights),
-      };
-    }),
-
-  getFirstHighlightId: publicProcedure
-    .input(z.string().cuid())
-    .query(async ({ ctx, input }) => {
-      const ret = await ctx.prisma.highlightPool.findUnique({
-        where: { id: input },
-        select: {
+      const bundle = await ctx.db.query.highlightPool.findFirst({
+        where: canViewPool(userId, poolId, ctx.db),
+        columns: { name: true },
+        with: {
           highlights: {
-            orderBy: {
-              timestampUTC: "desc",
+            where: and(lte(highlight.timestampUtc, cursor)),
+            orderBy: [desc(highlight.timestampUtc)],
+            limit: amount,
+            with: {
+              userUpvotes: {
+                columns: {
+                  userId: true,
+                },
+              },
+              ...(userId
+                ? {
+                    userBookmarks: {
+                      where: eq(bookmarkedHighlightToUser.userId, userId),
+                    },
+                  }
+                : {}),
             },
-            select: {
-              id: true,
-            },
-            take: 1,
           },
         },
       });
-      const first = ret?.highlights.at(0) ?? undefined;
-      if (!first) return undefined;
-      return first.id;
+      return {
+        name: bundle?.name,
+        highlights: await packageHighlights(
+          bundle?.highlights.map((highlight) => ({
+            ...highlight,
+            upvotes: highlight.userUpvotes.length,
+            upvoted: highlight.userUpvotes.find(
+              (upvote) => upvote.userId === userId
+            )
+              ? true
+              : false,
+            bookmarked: highlight.userBookmarks
+              ? highlight.userBookmarks.length > 0
+              : false,
+          }))
+        ),
+      };
     }),
 
   getHighlightVideosPaginated: publicProcedure
     .input(
       z.object({
-        poolId: z.string().cuid(),
-        initialCursor: z.string().nullish(),
+        poolId: z.number(),
+        initialCursor: z.number().nullish(),
         cursor: z.string().nullish(),
       })
     )
     .query(async ({ ctx, input }) => {
-      const userId = ctx.session?.user?.id;
+      const userId = ctx.auth?.userId;
       const { poolId, cursor, initialCursor } = input;
+
       const amount = 1;
-      const ret: {
-        highlights: HighlightReturn;
-        name: string | null;
-      } | null = await ctx.prisma.highlightPool.findFirst({
-        where: canViewPool(poolId, userId),
-        select: {
-          name: true,
-          highlights: infiniteHighlightQuery({
-            initialCursor,
-            cursor,
-            amount,
-            userId,
-            rightPad: 1,
-          }),
+
+      const parsedCursor = cursor ? decodeCursor(cursor) : undefined;
+
+      const pool = await ctx.db.query.highlightPool.findFirst({
+        where: canViewPool(userId, poolId, ctx.db),
+        columns: { name: true },
+        with: {
+          highlights: {
+            where: cursorWhereArgs(parsedCursor, initialCursor),
+            orderBy: orderByArgs(parsedCursor),
+            limit: amount + 1,
+            with: {
+              userUpvotes: {
+                columns: {
+                  userId: true,
+                },
+              },
+              ...(userId
+                ? {
+                    userBookmarks: {
+                      where: eq(bookmarkedHighlightToUser.userId, userId),
+                    },
+                  }
+                : {}),
+            },
+          },
         },
       });
-      if (!userId && ret) {
-        ret.highlights = addUnathedProps(ret.highlights);
-      }
+
+      const highlights = pool?.highlights;
+
+      const hasNext = highlights ? highlights.length > amount : false;
+      if (hasNext) highlights?.pop();
+
+      const highlightReturns =
+        highlights?.map<HighlightReturn>((highlight) => ({
+          ...highlight,
+          upvotes: highlight.userUpvotes.length,
+          upvoted: highlight.userUpvotes.find(
+            (upvote) => upvote.userId === userId
+          )
+            ? true
+            : false,
+          bookmarked: highlight.userBookmarks
+            ? highlight.userBookmarks.length > 0
+            : false,
+        })) ?? [];
 
       return {
-        name: ret?.name,
-        ...(await packageHighlightsPaginated(amount, ret?.highlights, cursor)),
+        name: pool?.name,
+        ...packageHighlightsPaginated(
+          highlightReturns,
+          hasNext,
+          parsedCursor?.dir
+        ),
       };
     }),
 
   getWristbands: publicProcedure
-    .input(z.string().cuid())
+    .input(z.number())
     .query(async ({ ctx, input }) => {
-      const res = await ctx.prisma.highlightPool.findUnique({
-        where: {
-          id: input,
-        },
-        select: {
-          highlights: {
-            select: {
-              wristbandId: true,
-            },
-            distinct: ["wristbandId"],
-          },
-        },
-      });
-      return res
-        ? res.highlights.map((highlight) => highlight.wristbandId)
-        : [];
+      const bands = await ctx.db
+        .selectDistinct({ bandId: highlight.wristbandId })
+        .from(highlight)
+        .where(eq(highlight.poolId, input));
+
+      const bandValues: string[] = [];
+
+      for (const band of bands) {
+        if (band.bandId) bandValues.push(band.bandId);
+      }
+
+      return bandValues;
     }),
 
   getWristbandHighlightsPaginated: publicProcedure
     .input(
       z.object({
-        poolId: z.string().cuid(),
+        poolId: z.number(),
         wristbandId: z.string(),
+        initialCursor: z.number().nullish(),
         cursor: z.string().nullish(),
         amount: z.number(),
       })
     )
     .query(async ({ ctx, input }) => {
-      const userId = ctx.session?.user?.id;
-      const { poolId, wristbandId, cursor, amount } = input;
-      const ret = await ctx.prisma.highlightPool.findFirst({
-        where: canViewPool(poolId, userId),
-        select: {
-          highlights: infiniteHighlightQuery({
-            amount,
-            wristbandId,
-            cursor,
-            rightPad: 1,
-          }),
+      const userId = ctx.auth?.userId;
+      const { poolId, wristbandId, cursor, amount, initialCursor } = input;
+
+      const parsedCursor = cursor ? decodeCursor(cursor) : undefined;
+
+      const pool = await ctx.db.query.highlightPool.findFirst({
+        where: canViewPool(userId, poolId, ctx.db),
+        columns: { name: true },
+        with: {
+          highlights: {
+            where: and(
+              eq(highlight.wristbandId, wristbandId),
+              cursorWhereArgs(parsedCursor, initialCursor)
+            ),
+            orderBy: orderByArgs(parsedCursor),
+            limit: amount + 1,
+            with: {
+              userUpvotes: {
+                columns: {
+                  userId: true,
+                },
+              },
+              ...(userId
+                ? {
+                    userBookmarks: {
+                      where: eq(bookmarkedHighlightToUser.userId, userId),
+                    },
+                  }
+                : {}),
+            },
+          },
         },
       });
 
-      return packageThumbnailsPaginated(amount, ret?.highlights, cursor);
+      const highlights = pool?.highlights;
+
+      const hasNext = highlights ? highlights.length > amount : false;
+      if (hasNext) highlights?.pop();
+
+      const highlightReturns =
+        highlights?.map<HighlightReturn>((highlight) => ({
+          ...highlight,
+          upvotes: highlight.userUpvotes.length,
+          upvoted: highlight.userUpvotes.find(
+            (upvote) => upvote.userId === userId
+          )
+            ? true
+            : false,
+          bookmarked: highlight.userBookmarks
+            ? highlight.userBookmarks.length > 0
+            : false,
+        })) ?? [];
+
+      return packageThumbnailsPaginated(
+        highlightReturns,
+        hasNext,
+        parsedCursor?.dir
+      );
     }),
 
   getWristbandVideosPaginated: publicProcedure
     .input(
       z.object({
-        poolId: z.string().cuid(),
+        poolId: z.number(),
         wristbandId: z.string(),
-        initialCursor: z.string().nullish(),
+        initialCursor: z.number().nullish(),
         cursor: z.string().nullish(),
       })
     )
     .query(async ({ ctx, input }) => {
-      const userId = ctx.session?.user?.id;
+      const userId = ctx.auth?.userId;
       const { poolId, wristbandId, cursor, initialCursor } = input;
+
       const amount = 1;
-      let ret: { highlights: HighlightReturn; name: string | null } | null =
-        await ctx.prisma.highlightPool.findFirst({
-          where: canViewPool(poolId, userId),
-          select: {
-            name: true,
-            highlights: infiniteHighlightQuery({
-              amount,
-              wristbandId,
-              cursor,
-              initialCursor,
-              rightPad: 1,
-            }),
+
+      const parsedCursor = cursor ? decodeCursor(cursor) : undefined;
+
+      const pool = await ctx.db.query.highlightPool.findFirst({
+        where: canViewPool(userId, poolId, ctx.db),
+        columns: { name: true },
+        with: {
+          highlights: {
+            where: and(
+              eq(highlight.wristbandId, wristbandId),
+              cursorWhereArgs(parsedCursor, initialCursor)
+            ),
+            orderBy: orderByArgs(parsedCursor),
+            limit: amount + 1,
+            with: {
+              userUpvotes: {
+                columns: {
+                  userId: true,
+                },
+              },
+              ...(userId
+                ? {
+                    userBookmarks: {
+                      where: eq(bookmarkedHighlightToUser.userId, userId),
+                    },
+                  }
+                : {}),
+            },
           },
-        });
-      if (!userId && ret) {
-        ret = {
-          name: ret.name,
-          highlights: addUnathedProps(ret.highlights),
-        };
-      }
+        },
+      });
+
+      const highlights = pool?.highlights;
+
+      const hasNext = highlights ? highlights.length > amount : false;
+      if (hasNext) highlights?.pop();
+
+      const highlightReturns =
+        highlights?.map<HighlightReturn>((highlight) => ({
+          ...highlight,
+          upvotes: highlight.userUpvotes.length,
+          upvoted: highlight.userUpvotes.find(
+            (upvote) => upvote.userId === userId
+          )
+            ? true
+            : false,
+          bookmarked: highlight.userBookmarks
+            ? highlight.userBookmarks.length > 0
+            : false,
+        })) ?? [];
       return {
-        name: ret?.name,
-        ...(await packageHighlightsPaginated(amount, ret?.highlights, cursor)),
+        name: pool?.name,
+        ...packageHighlightsPaginated(
+          highlightReturns,
+          hasNext,
+          parsedCursor?.dir
+        ),
       };
     }),
 
   getWristbandHighlightBundle: publicProcedure
     .input(
       z.object({
-        poolId: z.string().cuid(),
+        poolId: z.number(),
         bandId: z.string(),
-        cursor: z.string().nullish(),
+        cursor: z.number(),
         amount: z.number(),
       })
     )
     .query(async ({ ctx, input }) => {
-      const userId = ctx.session?.user?.id;
+      const userId = ctx.auth?.userId;
       const { poolId, cursor, amount, bandId } = input;
-      let ret: { highlights: HighlightReturn; name: string | null } | null =
-        await ctx.prisma.highlightPool.findFirst({
-          where: canViewPool(poolId, userId),
-          select: {
-            name: true,
-            highlights: infiniteHighlightQuery({
-              cursor,
-              amount,
-              userId,
-              wristbandId: bandId,
-            }),
+      const bundle = await ctx.db.query.highlightPool.findFirst({
+        where: canViewPool(userId, poolId, ctx.db),
+        columns: { name: true },
+        with: {
+          highlights: {
+            where: and(
+              eq(highlight.wristbandId, bandId),
+              lte(highlight.timestampUtc, cursor)
+            ),
+            orderBy: [desc(highlight.timestampUtc)],
+            limit: amount,
+            with: {
+              userUpvotes: {
+                columns: {
+                  userId: true,
+                },
+              },
+              ...(userId
+                ? {
+                    userBookmarks: {
+                      where: eq(bookmarkedHighlightToUser.userId, userId),
+                    },
+                  }
+                : {}),
+            },
           },
-        });
-
-      if (!userId && ret) {
-        ret = {
-          name: ret.name,
-          highlights: addUnathedProps(ret.highlights),
-        };
-      }
-
+        },
+      });
       return {
-        name: ret?.name ?? null,
-        highlights: await packageHighlights(ret?.highlights),
+        name: bundle?.name,
+        highlights: await packageHighlights(
+          bundle?.highlights.map((highlight) => ({
+            ...highlight,
+            upvotes: highlight.userUpvotes.length,
+            upvoted: highlight.userUpvotes.find(
+              (upvote) => upvote.userId === userId
+            )
+              ? true
+              : false,
+            bookmarked: highlight.userBookmarks
+              ? highlight.userBookmarks.length > 0
+              : false,
+          }))
+        ),
       };
     }),
 
-  getFirstWristbandHighlight: publicProcedure
-    .input(z.object({ poolId: z.string().cuid(), bandId: z.string() }))
-    .query(async ({ ctx, input }) => {
-      const ret = await ctx.prisma.highlightPool.findUnique({
-        where: { id: input.poolId },
-        select: {
-          highlights: {
-            where: {
-              wristbandId: input.bandId,
-            },
-            select: {
-              id: true,
-            },
-            take: 1,
-          },
-        },
-      });
-      if (!ret) return undefined;
-      return ret.highlights.at(0)?.id;
-    }),
-
   getPoolFollowers: publicProcedure
-    .input(z.string().cuid())
+    .input(z.number())
     .query(async ({ ctx, input }) => {
-      const ref = ctx.session?.user?.id;
-      if (ref) {
-        const res = await ctx.prisma.highlightPool.findUnique({
-          where: {
-            id: input,
-          },
-          select: {
-            followers: {
-              include: {
-                followedBy: {
-                  where: {
-                    id: ref,
-                  },
-                },
-                pending: {
-                  where: {
-                    id: ref,
-                  },
-                },
-              },
+      const ref = ctx.auth?.userId;
+      const res = await ctx.db.query.poolsToFollowers.findMany({
+        where: eq(highlightPool.id, input),
+        columns: {},
+        with: {
+          user: {
+            with: {
+              ...(ref
+                ? {
+                    followers: {
+                      where: (table, { eq }) => eq(table.followerId, ref),
+                      limit: 1,
+                    },
+                  }
+                : {}),
+              ...(ref
+                ? {
+                    pending: {
+                      where: (table, { eq }) => eq(table.requesterId, ref),
+                      limit: 1,
+                    },
+                  }
+                : {}),
             },
           },
-        });
-        if (!res) return [];
-        return res.followers.map<UserInfo>((val) => {
-          return {
-            ...val,
-            follows: val.followedBy.length > 0,
-            requested: val.pending.length > 0,
-          };
-        });
-      }
-      const res = await ctx.prisma.highlightPool.findUnique({
-        where: {
-          id: input,
-        },
-        select: {
-          followers: true,
         },
       });
-      if (!res) return [];
-      return res.followers.map<UserInfo>((val) => {
-        return {
-          ...val,
-          follows: false,
-          requested: false,
-        };
-      });
+      return res.map<UserInfo>(
+        (val) =>
+          <UserInfo>{
+            ...val.user,
+            followInfo: {
+              follows: val.user.followers?.length > 0 ?? false,
+              requested: val.user.pending?.length > 0 ?? false,
+            },
+            isPublic: publicToBool(val.user.public),
+          }
+      );
     }),
 });
-
-/*
-count relations
-include: {
-    _count: {
-        select: {
-            upvotes: true
-        }
-    }
-},
-*/

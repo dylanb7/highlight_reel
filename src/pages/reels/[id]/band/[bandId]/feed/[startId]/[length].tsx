@@ -9,7 +9,7 @@ import { generateSSGHelper } from "../../../../../../../utils/ssgHelper";
 import { api } from "../../../../../../../utils/trpc";
 
 const GroupedFeed: NextPage<{
-  id: string;
+  id: number;
   bandId: string;
   startId: string;
   length: string;

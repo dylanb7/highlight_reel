@@ -1,4 +1,4 @@
-import type { NextPage, GetStaticProps } from "next";
+import type { NextPage, GetStaticProps, GetServerSideProps } from "next";
 import Head from "next/head";
 
 import { useMemo } from "react";
@@ -22,11 +22,11 @@ import { generateSSGHelper } from "../../../../../utils/ssgHelper";
 import { api } from "../../../../../utils/trpc";
 import { PoolInfo } from "../../../../../components/pool-components/pool-info";
 import PageWrap from "../../../../../components/layout/page-wrap";
+import { ParsedUrlQuery } from "querystring";
 
-const PoolView: NextPage<{ poolId: string; bandId: string }> = ({
-  poolId,
-  bandId,
-}) => {
+type PoolViewBandProps = { poolId: number; bandId: string };
+
+const PoolView: NextPage<PoolViewBandProps> = ({ poolId, bandId }) => {
   const { data: poolInfo } = api.pool.getPoolById.useQuery(poolId);
 
   return (
@@ -46,7 +46,7 @@ const PoolView: NextPage<{ poolId: string; bandId: string }> = ({
 };
 
 const LoadFeed: React.FC<{
-  poolId: string;
+  poolId: number;
   bandId: string;
 }> = ({ poolId, bandId }) => {
   const loadAmount = 6;
@@ -62,6 +62,7 @@ const LoadFeed: React.FC<{
   const { data, isLoading, hasNextPage, fetchNextPage } =
     api.pool.getWristbandHighlightsPaginated.useInfiniteQuery(queryKey, {
       getNextPageParam: (lastPage) => lastPage.nextCursor,
+      getPreviousPageParam: (firstPage) => firstPage.prevCursor,
     });
   const highlights = useMemo(() => {
     return data?.pages.flatMap((page) => page.highlights) ?? [];
@@ -129,7 +130,9 @@ const LoadFeed: React.FC<{
   if (isLoading) return <LoadingSpinner loadingType={"Loading Highlights"} />;
 
   const actions: GridActions = {
-    basePath: `reels/${poolId}/band/${bandId}/feed`,
+    basePath: `reels/${encodeURIComponent(poolId)}/band/${encodeURIComponent(
+      bandId
+    )}/feed`,
     fetchMore: () => {
       fetchNextPage();
     },
@@ -154,11 +157,11 @@ const LoadFeed: React.FC<{
   );
 };
 
-export const getStaticProps: GetStaticProps<{
-  poolId: string;
-  bandId: string;
-}> = async (props) => {
+export const getServerSideProps: GetServerSideProps<PoolViewBandProps> = async (
+  props
+) => {
   const { params } = props;
+
   if (
     !params ||
     !params.id ||
@@ -171,7 +174,12 @@ export const getStaticProps: GetStaticProps<{
     };
   }
 
-  const poolId = params.id;
+  const poolId = Number(params.id);
+
+  if (Number.isNaN(poolId))
+    return {
+      notFound: true,
+    };
 
   const bandId = params.bandId;
 

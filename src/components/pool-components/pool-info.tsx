@@ -1,14 +1,13 @@
-import { useSession } from "next-auth/react";
+import { useAuth } from "@clerk/nextjs";
 import { api } from "../../utils/trpc";
 import type { ButtonContext } from "../contexts/button-types";
-import { PoolButtonProvider } from "../contexts/follow-pool-context";
+
 import { PoolMessageCard, PoolData } from "../highlight-pool-card";
 import { LoadingSpinner } from "../misc/loading";
 import SignInComponent from "../misc/sign-in";
+import { PoolButtonProvider } from "../contexts/follow-pool-context";
 
-export const PoolInfo: React.FC<{ poolId: string }> = ({ poolId }) => {
-  const { data: session } = useSession();
-
+export const PoolInfo: React.FC<{ poolId: number }> = ({ poolId }) => {
   const util = api.useContext();
 
   const { data: poolInfo, isLoading } = api.pool.getPoolById.useQuery(poolId);
@@ -21,8 +20,8 @@ export const PoolInfo: React.FC<{ poolId: string }> = ({ poolId }) => {
         util.pool.getPoolById.setData(poolId, {
           ...prev,
           followInfo: {
-            follows: prev.public,
-            requested: !prev.public,
+            follows: prev.isPublic,
+            requested: !prev.isPublic,
           },
         });
       }
@@ -65,25 +64,24 @@ export const PoolInfo: React.FC<{ poolId: string }> = ({ poolId }) => {
     requested: poolInfo?.followInfo?.requested ?? false,
   };
 
-  const hasSession = session && session.user;
+  const auth = useAuth();
 
-  const privateNoSession = poolInfo && !poolInfo.public && !hasSession;
+  const privateNoSession = poolInfo && !poolInfo.public && !auth.userId;
 
   const privateNoFollow =
-    poolInfo && !poolInfo.public && !followInfo.follows && hasSession;
+    poolInfo && !poolInfo.public && !followInfo.follows && auth.userId;
 
   const buttonContext: ButtonContext = {
     action: () => {
-      if (!session || !session.user || !poolInfo) return;
       if (followInfo.follows || followInfo.requested) {
         remove({
           poolId: poolId,
-          requested: poolInfo.followInfo?.requested ?? false,
+          requested: poolInfo?.followInfo?.requested ?? false,
         });
       } else {
         add({
           poolId: poolId,
-          isPublic: poolInfo.public,
+          isPublic: poolInfo?.isPublic ?? false,
         });
       }
     },

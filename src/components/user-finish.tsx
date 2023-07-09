@@ -4,7 +4,6 @@ import React from "react";
 import { useState } from "react";
 import { z, type ZodError } from "zod";
 import { api } from "../utils/trpc";
-import { useSession } from "next-auth/react";
 import { Field, Form, Formik } from "formik";
 
 const profileSchema = z.object({
@@ -18,8 +17,6 @@ const profileSchema = z.object({
 });
 
 export const UserFinish: React.FC = () => {
-  const { data: session } = useSession();
-
   const [success, setSuccess] = useState(false);
 
   const [error, setError] = useState("");
@@ -56,10 +53,6 @@ export const UserFinish: React.FC = () => {
       if (!err) {
         setError("Invalid Input");
       }
-      return;
-    }
-    if (!session || !session.user) {
-      setError("User Logged Out");
       return;
     }
     setError("");

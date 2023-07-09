@@ -1,36 +1,21 @@
-import type { HighlightPool, User } from "@prisma/client";
+import type { HighlightPool } from "../server/db/schema";
 
 export type FollowInfo = {
   follows: boolean;
   requested: boolean;
 };
 
+export type PoolFollowing = HighlightPool & {
+  followInfo?: FollowInfo;
+};
+
 export type PoolInfo = HighlightPool & {
   followInfo?: FollowInfo;
   highlightCount: number;
   followerCount: number;
+  isPublic: boolean;
 };
 
-export type PoolReturn = HighlightPool & {
-  _count: {
-    highlights: number;
-    followers: number;
-  };
-  pending: User[];
-  followers: User[];
-};
-
-export const poolFromQuery: (data: PoolReturn) => PoolInfo = (data) => {
-  return <PoolInfo>{
-    ...data,
-    highlightCount: data._count.highlights,
-    followerCount: data._count.followers,
-    followInfo: {
-      follows: data.followers.length > 0,
-      requested: data.pending.length > 0,
-    },
-  };
-};
 /*{
   ...data,
   followerCount: data._count.followers,

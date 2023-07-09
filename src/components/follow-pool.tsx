@@ -1,10 +1,11 @@
-import { useSession } from "next-auth/react";
 import * as Popover from "@radix-ui/react-popover";
 import { useState } from "react";
 import SignInComponent from "./misc/sign-in";
+
+import { useAuth } from "@clerk/nextjs";
 import { usePoolButtonContext } from "./contexts/follow-pool-context";
 
-const ButtonStyle: React.FC<{ poolId: string }> = ({ poolId }) => {
+const ButtonStyle: React.FC<{ poolId: number }> = ({ poolId }) => {
   const { action, state } = usePoolButtonContext();
 
   const buttonState = state(poolId);
@@ -33,13 +34,13 @@ const ButtonStyle: React.FC<{ poolId: string }> = ({ poolId }) => {
 };
 
 export const PoolFollowButton: React.FC<{
-  poolId: string;
+  poolId: number;
 }> = ({ poolId }) => {
-  const { data: session } = useSession();
+  const auth = useAuth();
 
   const [open, setOpen] = useState(false);
 
-  if (session && session.user) {
+  if (auth && auth.userId) {
     return <ButtonStyle poolId={poolId} />;
   }
 

@@ -6,9 +6,10 @@ import * as ScrollArea from "@radix-ui/react-scroll-area";
 import { api } from "../../utils/trpc";
 import { MagnifyingGlassIcon, Cross2Icon } from "@radix-ui/react-icons";
 import { LoadingSpinner } from "../misc/loading";
-import type { HighlightPool, User } from "@prisma/client";
 import Link from "next/link";
 import { useResizeDetector } from "react-resize-detector";
+import { HighlightPool, User } from "../../server/db/schema";
+import { PoolFollowing, PoolInfo } from "../../types/pool-out";
 
 const FetchResults: React.FC<{
   searchTerm: string;
@@ -54,9 +55,7 @@ const FetchResults: React.FC<{
 };
 
 const PoolRow: React.FC<{
-  pool: HighlightPool & {
-    followers: User[];
-  };
+  pool: PoolFollowing;
   setClosed: () => void;
 }> = ({ pool, setClosed }) => {
   return (
@@ -68,7 +67,7 @@ const PoolRow: React.FC<{
       <div className="flex w-full flex-row items-center justify-between p-1 hover:bg-gray-300">
         <p className="pl-1 text-sm font-semibold text-slate-900">{pool.name}</p>
         <div className="rounded-lg bg-slate-900 px-2 py-1 text-center text-xs font-semibold text-white">
-          {pool.followers.length > 0
+          {pool.followInfo?.follows ?? false
             ? "Following"
             : pool.public
             ? "Public"

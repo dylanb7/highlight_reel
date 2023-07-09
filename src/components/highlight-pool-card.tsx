@@ -1,5 +1,4 @@
 import * as Separator from "@radix-ui/react-separator";
-import { useSession } from "next-auth/react";
 import Link from "next/link";
 import type { PoolInfo } from "../types/pool-out";
 import { PoolFollowButton } from "./follow-pool";
@@ -20,8 +19,6 @@ export const PoolMessageCard: React.FC<React.PropsWithChildren> = ({
 export const PoolData: React.FC<{
   pool: PoolInfo;
 }> = ({ pool }) => {
-  const { data: session } = useSession();
-
   return (
     <div className="justify-left flex flex-col">
       <div className="flex flex-row justify-between">
@@ -48,10 +45,7 @@ export const PoolData: React.FC<{
           text={"Followers: " + pool.followerCount}
           header={"Pool Followers"}
           fetch={{
-            poolFetch: {
-              poolId: pool.id,
-              refId: session?.user?.id,
-            },
+            poolFetch: pool.id,
           }}
         />
 
@@ -61,7 +55,7 @@ export const PoolData: React.FC<{
           className="mx-1 w-px bg-gray-300 dark:bg-gray-500"
         />
         <p className="truncate text-xs font-semibold text-slate-500 dark:text-gray-400">
-          Created: {pool.createdAt.toLocaleDateString()}
+          Created: {pool.createdAt?.toLocaleDateString()}
         </p>
       </div>
     </div>

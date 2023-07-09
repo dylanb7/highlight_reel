@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import type { Url } from "url";
 import { api } from "../../utils/trpc";
 
-export const WristBands: React.FC<{ poolId: string }> = ({ poolId }) => {
+export const WristBands: React.FC<{ poolId: number }> = ({ poolId }) => {
   const { query } = useRouter();
 
   const { bandId } = query;

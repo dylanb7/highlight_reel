@@ -13,14 +13,14 @@ import { IconButton, twIcons } from "../misc/icon-button";
 import * as Separator from "@radix-ui/react-separator";
 import { useGridContext } from "../contexts/grid-context";
 import { useFeedContext } from "../contexts/feed-context";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@clerk/nextjs";
 
 export const ActionRow: React.FC<{ highlight: HighlightVideo }> = ({
   highlight,
 }) => {
-  const { data: session } = useSession();
+  const auth = useAuth();
 
-  const noUser = !session || !session.user;
+  const noUser = !auth.userId;
 
   const feedContext = useFeedContext();
 
@@ -70,9 +70,9 @@ export const ActionRow: React.FC<{ highlight: HighlightVideo }> = ({
 export const ActionRowCompactFeed: React.FC<{
   highlight: HighlightVideo;
 }> = ({ highlight }) => {
-  const { data: session } = useSession();
+  const auth = useAuth();
 
-  const noUser = !session || !session.user;
+  const noUser = !auth.userId;
 
   const feedContext = useFeedContext();
 
@@ -127,9 +127,9 @@ export const ActionRowCompactFeed: React.FC<{
 export const ActionRowCompact: React.FC<{
   highlight: HighlightThumbnail;
 }> = ({ highlight }) => {
-  const { data: session } = useSession();
+  const auth = useAuth();
 
-  const noUser = !session || !session.user;
+  const noUser = !auth.userId;
 
   const gridContext = useGridContext();
 

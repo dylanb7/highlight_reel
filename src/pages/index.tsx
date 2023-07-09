@@ -51,11 +51,11 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
   };
 
   const pools = useMemo(() => {
-    return data?.pages.flatMap((page) => page.info) ?? [];
+    return data?.pages.flatMap((page) => page.poolsInfo) ?? [];
   }, [data]);
 
   const poolMap = useMemo(() => {
-    const poolMap = new Map<string, PoolInfo>();
+    const poolMap = new Map<number, PoolInfo>();
 
     for (const pool of pools) {
       poolMap.set(pool.id, pool);
@@ -113,7 +113,7 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
       } else {
         add({
           poolId: poolId,
-          isPublic: poolInfo.public,
+          isPublic: poolInfo.isPublic,
         });
       }
     },

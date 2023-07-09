@@ -1,31 +1,25 @@
-import type { User } from "@prisma/client";
-import type { PoolInfo } from "./pool-out";
+import type { User } from "../server/db/schema";
+import type { FollowInfo, PoolInfo } from "./pool-out";
 
 export type UserInfo = User & {
-  follows: boolean;
-  requested: boolean;
+  followInfo?: FollowInfo;
+  isPublic: boolean;
 };
 
 export type ProfileInfo = UserInfo & {
   following: number;
   followedBy: number;
-  pools: PoolInfo[];
-  modPools: PoolInfo[];
-  ownedPools: PoolInfo[];
 };
 
-export type UserFetch = {
-  userId: string;
-  refId?: string;
-  following: boolean;
-};
-
-export type PoolUserFetch = {
-  poolId: string;
-  refId?: string;
+export type ProfilePoolsInfo = UserInfo & {
+  following: number;
+  followedBy: number;
+  followed: PoolInfo[];
+  modded?: PoolInfo[];
+  owned?: PoolInfo[];
 };
 
 export type FetchInfo = {
-  userFetch?: UserFetch;
-  poolFetch?: PoolUserFetch;
+  userFetch?: { id: string; following: boolean };
+  poolFetch?: number;
 };
