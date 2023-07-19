@@ -15,9 +15,13 @@ module.exports = {
             "files": [
                 ".eslintrc.{js,cjs}"
             ],
-            "parserOptions": {
-                "sourceType": "script"
-            }
+            files: ['*.ts', '*.tsx'], 
+            extends: [
+              'plugin:@typescript-eslint/recommended',
+              'plugin:@typescript-eslint/recommended-requiring-type-checking',
+            ],
+      
+            
         }
     ],
     "parserOptions": {
