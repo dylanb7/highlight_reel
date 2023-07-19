@@ -1,14 +1,10 @@
-import { GetServerSideProps, NextPage } from "next";
+import { type GetServerSideProps, type NextPage } from "next";
 import { getServerHelpers } from "../../utils/ssgHelper";
 import { api } from "../../utils/trpc";
 import { useMemo } from "react";
-import {
-  bookmarkActionUpdate,
-  likeActionUpdate,
-} from "../../components/contexts/action-types";
 import { FeedContextProvider } from "../../components/contexts/feed-context";
 import { ContinuousFeed } from "../../components/highlight-components/highlight-feed";
-import { HighlightVideo } from "../../types/highlight-out";
+import { type HighlightVideo } from "../../types/highlight-out";
 
 const UserLikesFeed: NextPage<{ startTime?: number }> = ({ startTime }) => {
   const util = api.useContext();
@@ -46,14 +42,14 @@ const UserLikesFeed: NextPage<{ startTime?: number }> = ({ startTime }) => {
   const { mutate: bookmark, isLoading: bookmarking } =
     api.user.toggleHighlight.useMutation({
       onSettled() {
-        util.user.getLikedVideosPaginated.invalidate(queryKey);
+        void util.user.getLikedVideosPaginated.invalidate(queryKey);
       },
     });
 
   const { mutate: upvote, isLoading: upvoting } =
     api.user.upvoteHighlight.useMutation({
       onSettled() {
-        util.user.getLikedVideosPaginated.invalidate(queryKey);
+        void util.user.getLikedVideosPaginated.invalidate(queryKey);
       },
     });
 

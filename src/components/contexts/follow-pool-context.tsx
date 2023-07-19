@@ -1,7 +1,4 @@
-import { createContext, useContext, useMemo } from "react";
-import type { PoolInfo } from "../../types/pool-out";
-import type { ProfileInfo, ProfilePoolsInfo } from "../../types/user-out";
-import { api } from "../../utils/trpc";
+import { createContext, useContext, } from "react";
 import type { ButtonContext } from "./button-types";
 import { unauthedContext } from "./button-types";
 

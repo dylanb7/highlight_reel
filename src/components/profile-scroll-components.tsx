@@ -54,7 +54,7 @@ const UserRows: React.FC<{
 };
 
 const usersToMap = (users: UserInfo[] | undefined) => {
-  const userMap: Map<string, UserInfo> = new Map();
+  const userMap = new Map<string, UserInfo>();
   if (!users) return userMap;
   for (const user of users) {
     userMap.set(user.id, user);
@@ -100,7 +100,7 @@ const PoolRowFetch: React.FC<{ fetch: number; dismiss: () => void }> = ({
         utils.pool.getPoolFollowers.setData(queryKey, context?.prev);
       },
       onSettled() {
-        utils.pool.getPoolFollowers.invalidate(queryKey);
+        void utils.pool.getPoolFollowers.invalidate(queryKey);
       },
     });
 
@@ -128,15 +128,16 @@ const PoolRowFetch: React.FC<{ fetch: number; dismiss: () => void }> = ({
         utils.pool.getPoolFollowers.setData(queryKey, context?.prev);
       },
       onSettled() {
-        utils.pool.getPoolFollowers.invalidate(queryKey);
+        void utils.pool.getPoolFollowers.invalidate(queryKey);
       },
     });
 
   const buttonContext: ButtonContext = {
     action: (id) => {
+      if (typeof id !== "string") return;
       const user = userMap.get(id);
       if (!user) return;
-      if (user.followInfo?.follows || user.followInfo?.requested) {
+      if (user.followInfo?.follows ?? user.followInfo?.requested) {
         unfollow({
           followId: user.id,
           requested: user.followInfo?.requested ?? false,
@@ -149,6 +150,11 @@ const PoolRowFetch: React.FC<{ fetch: number; dismiss: () => void }> = ({
       }
     },
     state: (id) => {
+      if (typeof id !== "string") return {
+        follows: false,
+        pending: false,
+        disabled: following || unfollowing,
+      };
       const user = userMap.get(id);
       return {
         follows: user?.followInfo?.follows ?? false,
@@ -202,7 +208,7 @@ const FollowersFetch: React.FC<{ fetch: string; dismiss: () => void }> = ({
         utils.user.getFollowers.setData(queryKey, context?.prev);
       },
       onSettled() {
-        utils.user.getFollowers.invalidate(queryKey);
+        void utils.user.getFollowers.invalidate(queryKey);
       },
     });
 
@@ -230,15 +236,16 @@ const FollowersFetch: React.FC<{ fetch: string; dismiss: () => void }> = ({
         utils.user.getFollowers.setData(queryKey, context?.prev);
       },
       onSettled() {
-        utils.user.getFollowers.invalidate(queryKey);
+        void utils.user.getFollowers.invalidate(queryKey);
       },
     });
 
   const buttonContext: ButtonContext = {
     action: (id) => {
+      if (typeof id !== "string") return;
       const user = userMap.get(id);
       if (!user) return;
-      if (user.followInfo?.follows || user.followInfo?.requested) {
+      if (user.followInfo?.follows ?? user.followInfo?.requested) {
         unfollow({
           followId: user.id,
           requested: user.followInfo?.requested ?? false,
@@ -251,6 +258,11 @@ const FollowersFetch: React.FC<{ fetch: string; dismiss: () => void }> = ({
       }
     },
     state: (id) => {
+      if (typeof id !== "string") return {
+        follows: false,
+        pending: false,
+        disabled: following || unfollowing,
+      };
       const user = userMap.get(id);
       return {
         follows: user?.followInfo?.follows ?? false,
@@ -304,7 +316,7 @@ const FollowingFetch: React.FC<{ fetch: string; dismiss: () => void }> = ({
         utils.user.getFollowing.setData(queryKey, context?.prev);
       },
       onSettled() {
-        utils.user.getFollowing.invalidate(queryKey);
+        void utils.user.getFollowing.invalidate(queryKey);
       },
     });
 
@@ -332,15 +344,16 @@ const FollowingFetch: React.FC<{ fetch: string; dismiss: () => void }> = ({
         utils.user.getFollowing.setData(queryKey, context?.prev);
       },
       onSettled() {
-        utils.user.getFollowing.invalidate(queryKey);
+        void utils.user.getFollowing.invalidate(queryKey);
       },
     });
 
   const buttonContext: ButtonContext = {
     action: (id) => {
+      if (typeof id !== "string") return;
       const user = userMap.get(id);
       if (!user) return;
-      if (user.followInfo?.follows || user.followInfo?.requested) {
+      if (user.followInfo?.follows ?? user.followInfo?.requested) {
         unfollow({
           followId: user.id,
           requested: user.followInfo?.requested ?? false,
@@ -353,6 +366,11 @@ const FollowingFetch: React.FC<{ fetch: string; dismiss: () => void }> = ({
       }
     },
     state: (id) => {
+      if (typeof id !== "string") return {
+        follows: false,
+        pending: false,
+        disabled: following || unfollowing,
+      };
       const user = userMap.get(id);
       return {
         follows: user?.followInfo?.follows ?? false,

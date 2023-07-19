@@ -1,15 +1,15 @@
-type ButtonActions = (arg0: any) => void;
+type ButtonActions = (arg0: string | number) => void;
 
-type ButtonState = (arg0: any) => {
+type ButtonState = (arg0: string | number) => {
   follows: boolean;
   pending: boolean;
   disabled: boolean;
 };
 
-export type ButtonContext = {
+export interface ButtonContext {
   action: ButtonActions;
   state: ButtonState;
-};
+}
 
 const unauthedActions: ButtonActions = () => {
   return;

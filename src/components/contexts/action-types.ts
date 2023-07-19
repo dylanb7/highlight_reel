@@ -1,16 +1,16 @@
 import type { InfiniteData } from "@tanstack/react-query";
 import type { BaseHighlight } from "../../types/highlight-out";
 
-export type VideoActions = {
+export interface VideoActions {
   bookmark: (arg0: string) => void;
   like: (arg0: string) => void;
   disabled: boolean;
-};
+}
 
-export type BaseData<T extends BaseHighlight> = {
+export interface BaseData<T extends BaseHighlight> {
   highlights: T[];
   nextCursor: string | undefined;
-};
+}
 
 export const likeActionUpdate = <
   T extends BaseHighlight,

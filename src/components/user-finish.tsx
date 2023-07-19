@@ -30,11 +30,11 @@ export const UserFinish: React.FC = () => {
       },
       onSuccess() {
         setSuccess(true);
-        utils.user.fromId.invalidate();
+        void utils.user.fromId.invalidate();
       },
     });
 
-  async function submitAction(values: { username: string; status: string }) {
+  function submitAction(values: { username: string; status: string }) {
     const submitObj = {
       text: values.username,
       public: values.status == "Public",
@@ -45,7 +45,8 @@ export const UserFinish: React.FC = () => {
       let err = false;
       JSON.parse((e as ZodError).message, (key, value) => {
         if (key == "message") {
-          setError(value);
+          if (typeof value === "string")
+            setError(value);
           err = true;
           return;
         }

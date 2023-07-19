@@ -1,4 +1,4 @@
-import type { NextPage, GetStaticProps, GetServerSideProps } from "next";
+import type { NextPage, GetServerSideProps } from "next";
 import Head from "next/head";
 
 import { useMemo } from "react";
@@ -100,7 +100,7 @@ const LoadFeed: React.FC<{
         );
       },
       onSettled() {
-        util.pool.getWristbandHighlightsPaginated.invalidate(queryKey);
+        void util.pool.getWristbandHighlightsPaginated.invalidate(queryKey);
       },
     });
 
@@ -125,7 +125,7 @@ const LoadFeed: React.FC<{
         );
       },
       onSettled() {
-        util.pool.getPoolHighlightsPaginated.invalidate();
+        void util.pool.getPoolHighlightsPaginated.invalidate();
       },
     });
 
@@ -136,7 +136,7 @@ const LoadFeed: React.FC<{
       bandId
     )}/feed`,
     fetchMore: () => {
-      fetchNextPage();
+      void fetchNextPage();
     },
     hasMore: () => hasNextPage ?? false,
     bookmark: (id: string) => {
@@ -165,8 +165,7 @@ export const getServerSideProps: GetServerSideProps<PoolViewBandProps> = async (
   const { params } = props;
 
   if (
-    !params ||
-    !params.id ||
+    !params?.id ||
     typeof params.id !== "string" ||
     !params.bandId ||
     typeof params.bandId !== "string"

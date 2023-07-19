@@ -27,7 +27,8 @@ import {
 } from "./contexts/action-types";
 import { useAuth } from "@clerk/nextjs";
 import { useInView } from "react-intersection-observer";
-import { PoolInfo } from "../types/pool-out";
+import { type PoolInfo } from "../types/pool-out";
+import { PoolButtonProvider } from "./contexts/follow-pool-context";
 
 export const PoolScroll: React.FC<{
   profileId: string;
@@ -51,7 +52,7 @@ export const PoolScroll: React.FC<{
     getNextPageParam: (nextPage) => nextPage?.nextCursor,
   });
 
-  const { ref, inView, entry } = useInView({
+  const { ref, inView } = useInView({
     threshold: 0,
   });
 
@@ -72,19 +73,20 @@ export const PoolScroll: React.FC<{
 
   const { mutate: add, isLoading: adding } = api.user.addPool.useMutation({
     onSettled() {
-      util.user.profilePoolsQuery.invalidate(queryKey);
+      void util.user.profilePoolsQuery.invalidate(queryKey);
     },
   });
 
   const { mutate: remove, isLoading: removing } =
     api.user.removePool.useMutation({
       onSettled() {
-        util.user.profilePoolsQuery.invalidate(queryKey);
+        void util.user.profilePoolsQuery.invalidate(queryKey);
       },
     });
 
   const buttonContext: ButtonContext = {
     action: (poolId) => {
+      if (typeof poolId !== "number") return;
       const poolInfo = poolMap.get(poolId);
       if (!poolInfo || !poolInfo.followInfo) return;
       if (poolInfo.followInfo.follows || poolInfo.followInfo.requested) {
@@ -100,6 +102,11 @@ export const PoolScroll: React.FC<{
       }
     },
     state: (poolId) => {
+      if (typeof poolId !== "number") return {
+        follows: false,
+        pending: false,
+        disabled: adding || removing,
+      };
       const poolInfo = poolMap.get(poolId);
       return {
         follows: poolInfo?.followInfo?.follows ?? false,
@@ -111,9 +118,9 @@ export const PoolScroll: React.FC<{
 
   useEffect(() => {
     if (inView && !isLoading && hasNextPage) {
-      fetchNextPage();
+      void fetchNextPage();
     }
-  }, [isLoading, inView, pools, hasNextPage]);
+  }, [isLoading, inView, pools, hasNextPage, fetchNextPage]);
 
   const hasPools = pools && pools.length > 0;
 
@@ -139,10 +146,10 @@ export const PoolScroll: React.FC<{
         <Collapsible.Content className="h-fit radix-state-open:animate-slide-down">
           <ScrollArea.Root className="overflow-hidden">
             <ScrollArea.Viewport className="h-full w-full snap-x scroll-pl-4">
-              {hasPools && (
-                <div className="my-3 flex flex-row gap-4 px-3 pb-1 sm:px-6">
-                  {pools &&
-                    pools.map((pool) => {
+              <PoolButtonProvider value={buttonContext}>
+                {hasPools && (
+                  <div className="my-3 flex flex-row gap-4 px-3 pb-1 sm:px-6">
+                    {pools?.map((pool) => {
                       if (!pool) return <></>;
                       return (
                         <div key={pool.id} className="snap-center">
@@ -150,9 +157,10 @@ export const PoolScroll: React.FC<{
                         </div>
                       );
                     })}
-                  <div ref={ref}>{hasNextPage && <Spinner />}</div>
-                </div>
-              )}
+                    <div ref={ref}>{hasNextPage && <Spinner />}</div>
+                  </div>
+                )}
+              </PoolButtonProvider>
             </ScrollArea.Viewport>
             <ScrollArea.Scrollbar
               orientation="horizontal"
@@ -201,7 +209,7 @@ export const ProfileData: React.FC<{
         utils.user.profileQuery.setData(queryKey, context?.prev);
       },
       onSettled() {
-        utils.user.profileQuery.invalidate(queryKey);
+        void utils.user.profileQuery.invalidate(queryKey);
       },
     });
 
@@ -225,13 +233,13 @@ export const ProfileData: React.FC<{
         utils.user.profileQuery.setData(queryKey, context?.prev);
       },
       onSettled() {
-        utils.user.profileQuery.invalidate(queryKey);
+        void utils.user.profileQuery.invalidate(queryKey);
       },
     });
 
   const buttonContext: ButtonContext = {
     action: () => {
-      if (user.followInfo?.follows || user.followInfo?.requested) {
+      if (user.followInfo?.follows ?? user.followInfo?.requested) {
         unfollow({
           followId: user.id,
           requested: user.followInfo?.requested ?? false,
@@ -349,7 +357,7 @@ export const ProfileBookmarks: React.FC<{
         );
       },
       onSettled() {
-        util.user.getUserBookmarksPaginated.invalidate();
+        void util.user.getUserBookmarksPaginated.invalidate();
       },
     });
 
@@ -374,7 +382,7 @@ export const ProfileBookmarks: React.FC<{
         );
       },
       onSettled() {
-        util.user.getUserBookmarksPaginated.invalidate();
+        void util.user.getUserBookmarksPaginated.invalidate();
       },
     });
 
@@ -383,7 +391,7 @@ export const ProfileBookmarks: React.FC<{
   const actions: GridActions = {
     basePath: isOwner ? "bookmarks" : `profiles/${id}/feed`,
     fetchMore: () => {
-      fetchNextPage();
+      void fetchNextPage();
     },
     hasMore: () => hasNextPage ?? false,
     bookmark: (id: string) => {

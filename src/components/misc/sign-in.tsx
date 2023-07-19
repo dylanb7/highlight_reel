@@ -1,6 +1,6 @@
 import { SignIn, SignOutButton, SignedIn, SignedOut } from "@clerk/nextjs";
 
-const SignInComponent: React.FC<{ isHead?: boolean }> = ({ isHead }) => {
+const SignInComponent: React.FC<{ isHead?: boolean }> = ({ }) => {
   return (
     <>
       <SignedIn>

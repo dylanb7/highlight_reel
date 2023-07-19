@@ -80,7 +80,7 @@ export const userRouter = router({
         },
       });
       return profile
-        ? <ProfileInfo>{
+        ? ({
             ...profile,
             following: profile.follows.length,
             followedBy: profile.followers.length,
@@ -97,7 +97,7 @@ export const userRouter = router({
                 }
               : {}),
             isPublic: publicToBool(profile.public),
-          }
+          } as ProfileInfo)
         : undefined;
     }),
 
@@ -157,7 +157,7 @@ export const userRouter = router({
           | {
               poolId: number;
             }
-          | {}
+          | Record<string, never>
         )[];
       }): PoolInfo => {
         return {

@@ -31,7 +31,7 @@ export const PoolInfo: React.FC<{ poolId: number }> = ({ poolId }) => {
       util.pool.getPoolById.setData(poolId, context?.prev);
     },
     onSettled() {
-      util.pool.getPoolById.invalidate();
+      void util.pool.getPoolById.invalidate();
     },
   });
 
@@ -55,7 +55,7 @@ export const PoolInfo: React.FC<{ poolId: number }> = ({ poolId }) => {
         util.pool.getPoolById.setData(poolId, context?.prev);
       },
       onSettled() {
-        util.pool.getPoolById.invalidate(poolId);
+        void util.pool.getPoolById.invalidate(poolId);
       },
     });
 

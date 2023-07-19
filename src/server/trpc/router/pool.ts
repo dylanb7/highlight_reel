@@ -19,17 +19,7 @@ import {
   poolsToFollowers,
   poolsToRequested,
 } from "../../db/schema";
-import {
-  and,
-  desc,
-  eq,
-  ilike,
-  like,
-  lt,
-  lte,
-  notExists,
-  sql,
-} from "drizzle-orm";
+import { and, desc, eq, ilike, like, lt, lte, notExists } from "drizzle-orm";
 import {
   canViewPool,
   cursorWhereArgs,
@@ -65,7 +55,7 @@ export const poolRouter = router({
           },
         });
         return poolInfo
-          ? <PoolInfo>{
+          ? ({
               ...poolInfo,
               followInfo: {
                 follows: poolInfo.poolFollowers.find(
@@ -78,7 +68,7 @@ export const poolRouter = router({
               highlightCount: poolInfo.highlights.length,
               followerCount: poolInfo.poolFollowers.length,
               isPublic: publicToBool(poolInfo.public),
-            }
+            } as PoolInfo)
           : undefined;
       }
       const poolInfo = await ctx.db.query.highlightPool.findFirst({
@@ -97,7 +87,7 @@ export const poolRouter = router({
         },
       });
       return poolInfo
-        ? <PoolInfo>{
+        ? ({
             ...poolInfo,
             followInfo: {
               follows: false,
@@ -106,7 +96,7 @@ export const poolRouter = router({
             isPublic: publicToBool(poolInfo.public),
             highlightCount: poolInfo.highlights.length,
             followerCount: poolInfo.poolFollowers.length,
-          }
+          } as PoolInfo)
         : undefined;
     }),
 
@@ -195,7 +185,7 @@ export const poolRouter = router({
             .where(
               and(
                 eq(poolsToFollowers.poolId, highlightPool.id),
-                eq(poolsToFollowers.userId, userId!)
+                eq(poolsToFollowers.userId, userId)
               )
             );
 
@@ -440,11 +430,11 @@ export const poolRouter = router({
 
       return {
         name: pool?.name,
-        ...packageHighlightsPaginated(
+        ...(await packageHighlightsPaginated(
           highlightReturns,
           hasNext,
           parsedCursor?.dir
-        ),
+        )),
       };
     }),
 
@@ -602,11 +592,11 @@ export const poolRouter = router({
         })) ?? [];
       return {
         name: pool?.name,
-        ...packageHighlightsPaginated(
+        ...(await packageHighlightsPaginated(
           highlightReturns,
           hasNext,
           parsedCursor?.dir
-        ),
+        )),
       };
     }),
 
@@ -699,16 +689,13 @@ export const poolRouter = router({
           },
         },
       });
-      return res.map<UserInfo>(
-        (val) =>
-          <UserInfo>{
-            ...val.user,
-            followInfo: {
-              follows: val.user.followers?.length > 0 ?? false,
-              requested: val.user.pending?.length > 0 ?? false,
-            },
-            isPublic: publicToBool(val.user.public),
-          }
-      );
+      return res.map<UserInfo>((val) => ({
+        ...val.user,
+        followInfo: {
+          follows: val.user.followers?.length > 0 ?? false,
+          requested: val.user.pending?.length > 0 ?? false,
+        },
+        isPublic: publicToBool(val.user.public),
+      }));
     }),
 });

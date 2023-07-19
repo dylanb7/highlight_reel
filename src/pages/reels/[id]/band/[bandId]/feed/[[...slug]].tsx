@@ -1,11 +1,11 @@
-import { GetServerSideProps, NextPage } from "next";
+import { type GetServerSideProps, type NextPage } from "next";
 import React, { useMemo } from "react";
 import { FeedContextProvider } from "../../../../../../components/contexts/feed-context";
 import {
   ContinuousFeed,
   IndexedFeed,
 } from "../../../../../../components/highlight-components/highlight-feed";
-import { HighlightVideo } from "../../../../../../types/highlight-out";
+import { type HighlightVideo } from "../../../../../../types/highlight-out";
 import { api } from "../../../../../../utils/trpc";
 import { getServerHelpers } from "../../../../../../utils/ssgHelper";
 
@@ -78,14 +78,14 @@ const ContinuousBandFeed: React.FC<BandProps> = ({
   const { mutate: bookmark, isLoading: bookmarking } =
     api.user.toggleHighlight.useMutation({
       onSettled() {
-        util.pool.getWristbandVideosPaginated.invalidate(queryKey);
+        void util.pool.getWristbandVideosPaginated.invalidate(queryKey);
       },
     });
 
   const { mutate: upvote, isLoading: upvoting } =
     api.user.upvoteHighlight.useMutation({
       onSettled() {
-        util.pool.getWristbandVideosPaginated.invalidate(queryKey);
+        void util.pool.getWristbandVideosPaginated.invalidate(queryKey);
       },
     });
 
@@ -166,14 +166,14 @@ const GroupedBandFeed: React.FC<BandProps> = ({
   const { mutate: bookmark, isLoading: bookmarking } =
     api.user.toggleHighlight.useMutation({
       onSettled() {
-        util.pool.getWristbandHighlightBundle.invalidate(queryKey);
+        void util.pool.getWristbandHighlightBundle.invalidate(queryKey);
       },
     });
 
   const { mutate: upvote, isLoading: upvoting } =
     api.user.upvoteHighlight.useMutation({
       onSettled() {
-        util.pool.getWristbandHighlightBundle.invalidate(queryKey);
+        void util.pool.getWristbandHighlightBundle.invalidate(queryKey);
       },
     });
 
@@ -248,7 +248,7 @@ export const getServerSideProps: GetServerSideProps<BandProps> = async (
       initialCursor: Number.isNaN(initialCursor) ? undefined : initialCursor,
     });
   } else {
-    ssg.pool.getWristbandHighlightBundle.prefetch({
+    await ssg.pool.getWristbandHighlightBundle.prefetch({
       poolId,
       cursor: initialCursor ?? 0,
       amount: length,

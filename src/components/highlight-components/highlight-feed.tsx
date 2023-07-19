@@ -37,12 +37,12 @@ dayjs.extend(LocalizedFormat);
 
 const ReactPlayer = dynamic(() => import("react-player/lazy"), { ssr: false });
 
-type NavProps = {
+interface NavProps {
   hasNext: boolean;
   hasPrev: boolean;
   next: () => void;
   prev: () => void;
-};
+}
 
 export const ContinuousFeed: React.FC<{
   highlights: HighlightVideo[];
@@ -63,134 +63,134 @@ export const ContinuousFeed: React.FC<{
   next,
   prev,
 }) => {
-  const { push, query } = useRouter();
+    const { push, query } = useRouter();
 
-  const { startId } = query;
+    const { startId } = query;
 
-  const length = highlights.length;
+    const length = highlights.length;
 
-  useEffect(() => {
-    const initial = highlights.at(0);
-    if (startId === undefined && initial) {
-      push(
-        {
-          query: {
-            ...query,
-            startId: encodeURIComponent(removeExt(initial.id)),
+    useEffect(() => {
+      const initial = highlights.at(0);
+      if (startId === undefined && initial) {
+        void push(
+          {
+            query: {
+              ...query,
+              startId: encodeURIComponent(removeExt(initial.id)),
+            },
           },
-        },
-        undefined,
-        {
-          shallow: true,
-        }
-      );
-    }
-  }, [highlights, push, query, startId]);
-
-  const current = useMemo(() => {
-    if (typeof startId !== "string") return undefined;
-    const index = highlights.findIndex((highlight) => {
-      return removeExt(highlight.id) === startId;
-    });
-    return index == -1 ? undefined : index;
-  }, [highlights, startId]);
-
-  const highlight = useMemo(() => {
-    return current !== undefined ? highlights.at(current) : undefined;
-  }, [current, highlights]);
-
-  const hasCachedNext = current !== undefined && current < length - 1;
-
-  const hasCachedPrev = current !== undefined && current > 0;
-
-  const goNext = async () => {
-    const nextHighlight =
-      current !== undefined ? highlights.at(current + 1) : undefined;
-    if (nextHighlight) {
-      return push(
-        {
-          query: {
-            ...query,
-            startId: encodeURIComponent(removeExt(nextHighlight.id)),
-          },
-        },
-        undefined,
-        {
-          shallow: true,
-        }
-      );
-    }
-    const id = await next();
-    if (!id) return;
-    push(
-      {
-        query: { ...query, startId: encodeURIComponent(removeExt(id)) },
-      },
-      undefined,
-      {
-        shallow: true,
+          undefined,
+          {
+            shallow: true,
+          }
+        );
       }
-    );
-  };
+    }, [highlights, push, query, startId]);
 
-  const goPrev = async () => {
-    const prevHighlight =
-      current !== undefined ? highlights.at(current - 1) : undefined;
-    if (prevHighlight) {
-      return push(
-        {
-          query: {
-            ...query,
-            startId: encodeURIComponent(removeExt(prevHighlight.id)),
+    const current = useMemo(() => {
+      if (typeof startId !== "string") return undefined;
+      const index = highlights.findIndex((highlight) => {
+        return removeExt(highlight.id) === startId;
+      });
+      return index == -1 ? undefined : index;
+    }, [highlights, startId]);
+
+    const highlight = useMemo(() => {
+      return current !== undefined ? highlights.at(current) : undefined;
+    }, [current, highlights]);
+
+    const hasCachedNext = current !== undefined && current < length - 1;
+
+    const hasCachedPrev = current !== undefined && current > 0;
+
+    const goNext = async () => {
+      const nextHighlight =
+        current !== undefined ? highlights.at(current + 1) : undefined;
+      if (nextHighlight) {
+        return push(
+          {
+            query: {
+              ...query,
+              startId: encodeURIComponent(removeExt(nextHighlight.id)),
+            },
           },
+          undefined,
+          {
+            shallow: true,
+          }
+        );
+      }
+      const id = await next();
+      if (!id) return;
+      void push(
+        {
+          query: { ...query, startId: encodeURIComponent(removeExt(id)) },
         },
         undefined,
         {
           shallow: true,
         }
       );
-    }
-    const id = await prev();
-    if (!id) return;
-    push(
-      {
-        query: { ...query, startId: encodeURIComponent(removeExt(id)) },
-      },
-      undefined,
-      {
-        shallow: true,
-      }
-    );
-  };
+    };
 
-  if (length == 0)
+    const goPrev = async () => {
+      const prevHighlight =
+        current !== undefined ? highlights.at(current - 1) : undefined;
+      if (prevHighlight) {
+        return push(
+          {
+            query: {
+              ...query,
+              startId: encodeURIComponent(removeExt(prevHighlight.id)),
+            },
+          },
+          undefined,
+          {
+            shallow: true,
+          }
+        );
+      }
+      const id = await prev();
+      if (!id) return;
+      void push(
+        {
+          query: { ...query, startId: encodeURIComponent(removeExt(id)) },
+        },
+        undefined,
+        {
+          shallow: true,
+        }
+      );
+    };
+
+    if (length == 0)
+      return (
+        <div className="flex justify-center">
+          <h3 className="py-3 text-2xl font-semibold text-slate-900 dark:text-white">
+            Empty Feed
+          </h3>
+        </div>
+      );
+
     return (
-      <div className="flex justify-center">
-        <h3 className="py-3 text-2xl font-semibold text-slate-900 dark:text-white">
-          Empty Feed
-        </h3>
-      </div>
+      <BaseCompontent
+        hasNext={hasCachedNext || hasNext}
+        hasPrev={hasCachedPrev || hasPrev}
+        next={() => { void goNext(); }}
+        prev={() => { void goPrev(); }}
+        highlight={highlight}
+        nextHighlight={
+          hasNext ? highlights.at(current ?? 0 + 1)?.thumbnailUrl : undefined
+        }
+        previousHighlight={
+          hasPrev ? highlights.at(current ?? 0 - 1)?.thumbnailUrl : undefined
+        }
+        fetching={fetching ?? false}
+        backPath={backPath}
+        from={from}
+      />
     );
-
-  return (
-    <BaseCompontent
-      hasNext={hasCachedNext || hasNext}
-      hasPrev={hasCachedPrev || hasPrev}
-      next={goNext}
-      prev={goPrev}
-      highlight={highlight}
-      nextHighlight={
-        hasNext ? highlights.at(current ?? 0 + 1)?.thumbnailUrl : undefined
-      }
-      previousHighlight={
-        hasPrev ? highlights.at(current ?? 0 - 1)?.thumbnailUrl : undefined
-      }
-      fetching={fetching ?? false}
-      backPath={backPath}
-      from={from}
-    />
-  );
-};
+  };
 
 export const IndexedFeed: React.FC<{
   highlights: HighlightVideo[];
@@ -205,7 +205,7 @@ export const IndexedFeed: React.FC<{
 
   const setIndex = useCallback(
     (newValue: number) => {
-      push({ query: { ...query, current: newValue } }, undefined, {
+      void push({ query: { ...query, current: newValue } }, undefined, {
         shallow: true,
       });
     },
@@ -222,7 +222,7 @@ export const IndexedFeed: React.FC<{
   const hasNext = index < length - 1;
 
   const next = () => {
-    if (!hasNext) Promise.resolve(undefined);
+    if (!hasNext) void Promise.resolve(undefined);
     if (index < length - 1) setIndex(index + 1);
     return Promise.resolve(undefined);
   };
@@ -230,7 +230,7 @@ export const IndexedFeed: React.FC<{
   const hasPrev = index > 0;
 
   const prev = () => {
-    if (!hasPrev) Promise.resolve(undefined);
+    if (!hasPrev) void Promise.resolve(undefined);
     setIndex(index - 1);
     return Promise.resolve(undefined);
   };
@@ -255,8 +255,8 @@ export const IndexedFeed: React.FC<{
       progress={progress}
       hasNext={hasNext}
       hasPrev={hasPrev}
-      next={next}
-      prev={prev}
+      next={() => { void next() }}
+      prev={() => { void prev() }}
       fetching={fetching ?? false}
       backPath={backPath}
       nextHighlight={
@@ -291,79 +291,79 @@ const BaseCompontent: React.FC<
   nextHighlight,
   previousHighlight,
 }) => {
-  const relativeTime = useMemo(() => {
-    if (!highlight || !highlight.timestampUtc) return undefined;
-    return dayjs().to(dayjs.unix(Number(highlight.timestampUtc)).utc().local());
-  }, [highlight]);
+    const relativeTime = useMemo(() => {
+      if (!highlight || !highlight.timestampUtc) return undefined;
+      return dayjs().to(dayjs.unix(Number(highlight.timestampUtc)).utc().local());
+    }, [highlight]);
 
-  const aspect = useMemo(() => {
-    if (
-      !highlight ||
-      !highlight.aspectRatioNumerator ||
-      !highlight.aspectRatioDenominator
-    )
-      return 9 / 16;
-    return highlight.aspectRatioDenominator / highlight.aspectRatioNumerator;
-  }, [highlight]);
+    const aspect = useMemo(() => {
+      if (
+        !highlight ||
+        !highlight.aspectRatioNumerator ||
+        !highlight.aspectRatioDenominator
+      )
+        return 9 / 16;
+      return highlight.aspectRatioDenominator / highlight.aspectRatioNumerator;
+    }, [highlight]);
 
-  if (!highlight)
+    if (!highlight)
+      return (
+        <div className="flex justify-center">
+          <h3 className="py-3 text-2xl font-semibold text-slate-900 dark:text-white">
+            Not Found
+          </h3>
+        </div>
+      );
+
     return (
-      <div className="flex justify-center">
-        <h3 className="py-3 text-2xl font-semibold text-slate-900 dark:text-white">
-          Not Found
-        </h3>
-      </div>
+      <MobilePlayer
+        aspect={aspect}
+        relativeTime={relativeTime}
+        hasNext={hasNext}
+        hasPrev={hasPrev}
+        from={from}
+        next={next}
+        prev={prev}
+        progress={progress}
+        highlight={highlight}
+        previousHighlight={previousHighlight}
+        nextHighlight={nextHighlight}
+        backPath={backPath}
+      />
     );
-
-  return (
-    <MobilePlayer
-      aspect={aspect}
-      relativeTime={relativeTime}
-      hasNext={hasNext}
-      hasPrev={hasPrev}
-      from={from}
-      next={next}
-      prev={prev}
-      progress={progress}
-      highlight={highlight}
-      previousHighlight={previousHighlight}
-      nextHighlight={nextHighlight}
-      backPath={backPath}
-    />
-  );
-  /*
-  return (
-    <div className="flex flex-col items-center justify-start px-2 md:px-8">
-      <BackNav backPath={backPath} from={from} relativeTime={relativeTime} />
-      <div className="flex h-full w-full flex-col gap-3 sm:flex-row">
-        <div className="flex h-full w-full flex-col divide-y divide-black overflow-clip rounded-md border border-black dark:divide-white dark:border-white">
-          <Player url={highlight.url} aspect={aspect} hasGutter={true} />
-
-          <ActionRow highlight={highlight} />
-        </div>
-        <div className="flex flex-row items-center justify-center gap-3 p-3 sm:flex-col">
-          <div className="shrink">
-            <Time highlight={highlight} />
+    /*
+    return (
+      <div className="flex flex-col items-center justify-start px-2 md:px-8">
+        <BackNav backPath={backPath} from={from} relativeTime={relativeTime} />
+        <div className="flex h-full w-full flex-col gap-3 sm:flex-row">
+          <div className="flex h-full w-full flex-col divide-y divide-black overflow-clip rounded-md border border-black dark:divide-white dark:border-white">
+            <Player url={highlight.url} aspect={aspect} hasGutter={true} />
+  
+            <ActionRow highlight={highlight} />
           </div>
-          {progress && (
-            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
-              {progress}
-            </h2>
-          )}
-          <ArrowNav
-            hasNext={hasNext}
-            hasPrev={hasPrev}
-            next={next}
-            prev={prev}
-          />
+          <div className="flex flex-row items-center justify-center gap-3 p-3 sm:flex-col">
+            <div className="shrink">
+              <Time highlight={highlight} />
+            </div>
+            {progress && (
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
+                {progress}
+              </h2>
+            )}
+            <ArrowNav
+              hasNext={hasNext}
+              hasPrev={hasPrev}
+              next={next}
+              prev={prev}
+            />
+          </div>
         </div>
+        {highlight.poolId && (
+          <Source poolId={highlight.poolId} wristbandId={highlight.wristbandId} />
+        )}
       </div>
-      {highlight.poolId && (
-        <Source poolId={highlight.poolId} wristbandId={highlight.wristbandId} />
-      )}
-    </div>
-  );*/
-};
+    );*/
+  };
 
 const MobilePlayer: React.FC<
   {
@@ -388,136 +388,135 @@ const MobilePlayer: React.FC<
   progress,
   highlight,
 }) => {
-  const landscape = useSyncExternalStore(
-    (callback) => {
-      window.addEventListener("resize", callback);
-      return () => {
-        window.removeEventListener("resize", callback);
-      };
-    },
-    () => {
-      return window.innerWidth > window.innerHeight ? true : false;
-    },
-    () => false
-  );
+    const landscape = useSyncExternalStore(
+      (callback) => {
+        window.addEventListener("resize", callback);
+        return () => {
+          window.removeEventListener("resize", callback);
+        };
+      },
+      () => {
+        return window.innerWidth > window.innerHeight ? true : false;
+      },
+      () => false
+    );
 
-  const [info, setInfo] = useState(false);
+    const [info, setInfo] = useState(false);
 
-  return (
-    <div className="relative flex h-full w-full flex-col items-start justify-start">
-      <div className="fixed inset-x-0 top-0 z-50 flex h-8 items-center border-b border-gray-300 bg-white p-4 shadow-sm dark:bg-slate-900">
-        <Link href={"/"}>
-          <p className="text-xl font-bold text-slate-900 dark:text-white">
-            H<span className="text-indigo-500">R</span>
-          </p>
-        </Link>
-      </div>
-      <div className="relative bottom-0 top-8 w-full overflow-clip">
-        {landscape && (
-          <div
-            className={`absolute inset-y-0 right-0 w-1/3 ${
-              info ? "translate-x-0" : "translate-x-full"
-            } z-50 flex transform flex-col items-start justify-start gap-4 bg-white p-4 dark:bg-slate-900`}
-          >
-            <IconButton
-              onClick={() => {
-                setInfo(false);
-              }}
-            >
-              <Cross1Icon className={twIcons(6, 0)} />
-            </IconButton>
-            <div className="w-full shrink">
-              <Time highlight={highlight} />
-            </div>
-
-            {highlight.poolId && (
-              <div className="self-center">
-                <Source
-                  poolId={highlight.poolId}
-                  wristbandId={highlight.wristbandId}
-                />
-              </div>
-            )}
-          </div>
-        )}
-
-        <Player
-          url={highlight.url}
-          aspect={aspect}
-          hasGutter={false}
-          highlight={landscape ? highlight : undefined}
-        />
-
-        <div className="absolute top-0 flex w-full flex-row items-center justify-between bg-gradient-to-b from-slate-900 px-2">
-          <BackNav
-            backPath={backPath}
-            from={from}
-            relativeTime={relativeTime}
-            iconSize={6}
-          />
-
-          {landscape && (
-            <IconButton
-              onClick={() => {
-                setInfo(true);
-              }}
-            >
-              <InfoCircledIcon className={twIcons(6, 0)} />
-            </IconButton>
-          )}
+    return (
+      <div className="relative flex h-full w-full flex-col items-start justify-start">
+        <div className="fixed inset-x-0 top-0 z-50 flex h-8 items-center border-b border-gray-300 bg-white p-4 shadow-sm dark:bg-slate-900">
+          <Link href={"/"}>
+            <p className="text-xl font-bold text-slate-900 dark:text-white">
+              H<span className="text-indigo-500">R</span>
+            </p>
+          </Link>
         </div>
-
-        {landscape && (
-          <div className="absolute right-2 top-1/2 flex -translate-y-1/2 flex-row items-center justify-center gap-1 rounded-md bg-slate-900/50 p-1">
-            {progress && (
-              <h2 className="self-center text-xl font-semibold text-slate-900 dark:text-white">
-                {progress}
-              </h2>
-            )}
-            <ArrowNav
-              hasNext={hasNext}
-              hasPrev={hasPrev}
-              next={next}
-              prev={prev}
-            />
-          </div>
-        )}
-        {!landscape && (
-          <div className="flex h-full w-full flex-col gap-4 pb-4">
-            <ActionRow highlight={highlight} />
-            <div className="flex flex-row items-center justify-between px-4">
-              <div className="shrink">
+        <div className="relative bottom-0 top-8 w-full overflow-clip">
+          {landscape && (
+            <div
+              className={`absolute inset-y-0 right-0 w-1/3 ${info ? "translate-x-0" : "translate-x-full"
+                } z-50 flex transform flex-col items-start justify-start gap-4 bg-white p-4 dark:bg-slate-900`}
+            >
+              <IconButton
+                onClick={() => {
+                  setInfo(false);
+                }}
+              >
+                <Cross1Icon className={twIcons(6, 0)} />
+              </IconButton>
+              <div className="w-full shrink">
                 <Time highlight={highlight} />
               </div>
-              <div className="flex flex-row items-start justify-start gap-2">
-                {progress && (
-                  <h2 className="self-center text-xl font-semibold text-slate-900 dark:text-white">
-                    {progress}
-                  </h2>
-                )}
-                <ArrowNav
-                  hasNext={hasNext}
-                  hasPrev={hasPrev}
-                  next={next}
-                  prev={prev}
-                />
-              </div>
-            </div>
 
-            {highlight.poolId && (
-              <div className="self-center">
-                <Source
-                  poolId={highlight.poolId}
-                  wristbandId={highlight.wristbandId}
-                />
-              </div>
+              {highlight.poolId && (
+                <div className="self-center">
+                  <Source
+                    poolId={highlight.poolId}
+                    wristbandId={highlight.wristbandId}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          <Player
+            url={highlight.url}
+            aspect={aspect}
+            hasGutter={false}
+            highlight={landscape ? highlight : undefined}
+          />
+
+          <div className="absolute top-0 flex w-full flex-row items-center justify-between bg-gradient-to-b from-slate-900 px-2">
+            <BackNav
+              backPath={backPath}
+              from={from}
+              relativeTime={relativeTime}
+              iconSize={6}
+            />
+
+            {landscape && (
+              <IconButton
+                onClick={() => {
+                  setInfo(true);
+                }}
+              >
+                <InfoCircledIcon className={twIcons(6, 0)} />
+              </IconButton>
             )}
           </div>
-        )}
+
+          {landscape && (
+            <div className="absolute right-2 top-1/2 flex -translate-y-1/2 flex-row items-center justify-center gap-1 rounded-md bg-slate-900/50 p-1">
+              {progress && (
+                <h2 className="self-center text-xl font-semibold text-slate-900 dark:text-white">
+                  {progress}
+                </h2>
+              )}
+              <ArrowNav
+                hasNext={hasNext}
+                hasPrev={hasPrev}
+                next={next}
+                prev={prev}
+              />
+            </div>
+          )}
+          {!landscape && (
+            <div className="flex h-full w-full flex-col gap-4 pb-4">
+              <ActionRow highlight={highlight} />
+              <div className="flex flex-row items-center justify-between px-4">
+                <div className="shrink">
+                  <Time highlight={highlight} />
+                </div>
+                <div className="flex flex-row items-start justify-start gap-2">
+                  {progress && (
+                    <h2 className="self-center text-xl font-semibold text-slate-900 dark:text-white">
+                      {progress}
+                    </h2>
+                  )}
+                  <ArrowNav
+                    hasNext={hasNext}
+                    hasPrev={hasPrev}
+                    next={next}
+                    prev={prev}
+                  />
+                </div>
+              </div>
+
+              {highlight.poolId && (
+                <div className="self-center">
+                  <Source
+                    poolId={highlight.poolId}
+                    wristbandId={highlight.wristbandId}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const ThumbnailStack: React.FC<
@@ -537,89 +536,89 @@ const ThumbnailStack: React.FC<
   hasPrev,
   hasNext,
 }) => {
-  const smallHeight = 60;
+    const smallHeight = 60;
 
-  const bigHeight = smallHeight * 1.15;
+    const bigHeight = smallHeight * 1.15;
 
-  const smallWidth = smallHeight * aspect;
+    const smallWidth = smallHeight * aspect;
 
-  const bigWidth = bigHeight * aspect;
+    const bigWidth = bigHeight * aspect;
 
-  const placeholder = (width: number, height: number) => (
-    <div
-      className={`bg-gray-200 dark:bg-slate-700`}
-      style={{ width: width, height: height }}
-    />
-  );
+    const placeholder = (width: number, height: number) => (
+      <div
+        className={`bg-gray-200 dark:bg-slate-700`}
+        style={{ width: width, height: height }}
+      />
+    );
 
-  return (
-    <div className="flex flex-row">
-      <div className="relative w-32" style={{ height: bigHeight * 1.6 }}>
-        {hasPrev && (
+    return (
+      <div className="flex flex-row">
+        <div className="relative w-32" style={{ height: bigHeight * 1.6 }}>
+          {hasPrev && (
+            <div
+              onClick={() => {
+                prev();
+              }}
+              className={
+                "absolute inset-x-0 top-0 mx-auto overflow-clip rounded-md border border-black opacity-75 hover:-top-2 dark:border-white"
+              }
+              style={{ width: smallWidth, height: smallHeight }}
+            >
+              {prevThumbnail ? (
+                <Image
+                  src={prevThumbnail}
+                  unoptimized
+                  alt={"Highlight"}
+                  width={smallWidth}
+                  height={smallHeight}
+                />
+              ) : (
+                placeholder(smallWidth, smallHeight)
+              )}
+            </div>
+          )}
           <div
-            onClick={() => {
-              prev();
-            }}
-            className={
-              "absolute inset-x-0 top-0 mx-auto overflow-clip rounded-md border border-black opacity-75 hover:-top-2 dark:border-white"
-            }
-            style={{ width: smallWidth, height: smallHeight }}
+            className="absolute inset-0 z-10 m-auto overflow-clip rounded-md border border-black dark:border-white"
+            style={{ width: bigWidth, height: bigHeight }}
           >
-            {prevThumbnail ? (
+            {current ? (
               <Image
-                src={prevThumbnail}
+                src={current}
                 unoptimized
                 alt={"Highlight"}
-                width={smallWidth}
-                height={smallHeight}
+                width={bigWidth}
+                height={bigHeight}
               />
             ) : (
-              placeholder(smallWidth, smallHeight)
+              placeholder(bigWidth, bigHeight)
             )}
           </div>
-        )}
-        <div
-          className="absolute inset-0 z-10 m-auto overflow-clip rounded-md border border-black dark:border-white"
-          style={{ width: bigWidth, height: bigHeight }}
-        >
-          {current ? (
-            <Image
-              src={current}
-              unoptimized
-              alt={"Highlight"}
-              width={bigWidth}
-              height={bigHeight}
-            />
-          ) : (
-            placeholder(bigWidth, bigHeight)
+          {hasNext && (
+            <div
+              onClick={() => {
+                next();
+              }}
+              className="absolute inset-x-0 bottom-0 mx-auto overflow-clip rounded-md border border-black opacity-75 hover:-bottom-2 dark:border-white"
+              style={{ width: smallWidth, height: smallHeight }}
+            >
+              {nextThumbnail ? (
+                <Image
+                  src={nextThumbnail}
+                  unoptimized
+                  alt={"Highlight"}
+                  width={smallWidth}
+                  height={smallHeight}
+                />
+              ) : (
+                placeholder(smallWidth, smallHeight)
+              )}
+            </div>
           )}
         </div>
-        {hasNext && (
-          <div
-            onClick={() => {
-              next();
-            }}
-            className="absolute inset-x-0 bottom-0 mx-auto overflow-clip rounded-md border border-black opacity-75 hover:-bottom-2 dark:border-white"
-            style={{ width: smallWidth, height: smallHeight }}
-          >
-            {nextThumbnail ? (
-              <Image
-                src={nextThumbnail}
-                unoptimized
-                alt={"Highlight"}
-                width={smallWidth}
-                height={smallHeight}
-              />
-            ) : (
-              placeholder(smallWidth, smallHeight)
-            )}
-          </div>
-        )}
+        <ArrowNav next={next} prev={prev} hasNext={hasNext} hasPrev={hasPrev} />
       </div>
-      <ArrowNav next={next} prev={prev} hasNext={hasNext} hasPrev={hasPrev} />
-    </div>
-  );
-};
+    );
+  };
 
 const BackNav: React.FC<{
   backPath: string;

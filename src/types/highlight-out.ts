@@ -12,7 +12,7 @@ export type HighlightReturn = BaseHighlight & {
   thumbnail: string | null;
 };
 
-export type BaseHighlight = {
+export interface BaseHighlight {
   id: string;
   poolId: number | null;
   timestampUtc: number | null;
@@ -22,9 +22,9 @@ export type BaseHighlight = {
   upvotes: number;
   bookmarked: boolean;
   upvoted: boolean;
-};
+}
 
-export type URLFetch = {
+export interface URLFetch {
   s3bucket: string;
   id: string;
-};
+}

@@ -27,8 +27,8 @@ const ButtonStyle: React.FC<{ poolId: number }> = ({ poolId }) => {
       {buttonState.follows
         ? "Unfollow"
         : buttonState.pending
-        ? "Requested"
-        : "Follow"}
+          ? "Requested"
+          : "Follow"}
     </button>
   );
 };
@@ -40,7 +40,7 @@ export const PoolFollowButton: React.FC<{
 
   const [open, setOpen] = useState(false);
 
-  if (auth && auth.userId) {
+  if (auth?.userId) {
     return <ButtonStyle poolId={poolId} />;
   }
 

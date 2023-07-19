@@ -1,4 +1,4 @@
-import type { GetServerSideProps, GetStaticProps, NextPage } from "next";
+import type { GetServerSideProps, NextPage } from "next";
 import React, { useMemo } from "react";
 import { api } from "../../../utils/trpc";
 import { LoadingSpinner } from "../../../components/misc/loading";
@@ -90,7 +90,7 @@ const LoadFeed: React.FC<{
         );
       },
       onSettled() {
-        util.pool.getPoolHighlightsPaginated.invalidate(queryKey);
+        void util.pool.getPoolHighlightsPaginated.invalidate(queryKey);
       },
     });
 
@@ -115,7 +115,7 @@ const LoadFeed: React.FC<{
         );
       },
       onSettled() {
-        util.pool.getPoolHighlightsPaginated.invalidate(queryKey);
+        void util.pool.getPoolHighlightsPaginated.invalidate(queryKey);
       },
     });
 
@@ -124,7 +124,7 @@ const LoadFeed: React.FC<{
   const actions: GridActions = {
     basePath: `reels/${poolId}/feed`,
     fetchMore: () => {
-      fetchNextPage();
+      void fetchNextPage();
     },
     hasMore: () => hasNextPage ?? false,
     bookmark: (id: string) => {
@@ -151,17 +151,17 @@ export const getServerSideProps: GetServerSideProps<{
   poolId: number;
 }> = async (props) => {
   const { params } = props;
-  if (!params || !params.id || typeof params.id !== "string") {
+  if (!params?.id || typeof params.id !== "string") {
     return {
       notFound: true,
     };
   }
- 
+
   const urlPool = params.id;
 
   const poolId = Number(urlPool)
 
-  if(Number.isNaN(poolId)) {
+  if (Number.isNaN(poolId)) {
     return {
       notFound: true,
     };

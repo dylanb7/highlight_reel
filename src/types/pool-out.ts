@@ -1,9 +1,9 @@
 import type { HighlightPool } from "../server/db/schema";
 
-export type FollowInfo = {
+export interface FollowInfo {
   follows: boolean;
   requested: boolean;
-};
+}
 
 export type PoolFollowing = HighlightPool & {
   followInfo?: FollowInfo;

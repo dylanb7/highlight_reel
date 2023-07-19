@@ -12,7 +12,7 @@ export const WristBands: React.FC<{ poolId: number }> = ({ poolId }) => {
   const { data } = api.pool.getWristbands.useQuery(poolId);
 
   const cleaned: string[] = useMemo(
-    () => (data?.filter((val) => val && val !== "undefined") ?? []) as string[],
+    () => (data?.filter((val) => val && val !== "undefined") ?? []),
     [data]
   );
 

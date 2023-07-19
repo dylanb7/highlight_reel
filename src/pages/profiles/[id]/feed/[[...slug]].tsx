@@ -1,8 +1,8 @@
-import { GetServerSideProps, NextPage } from "next";
+import { type GetServerSideProps, type NextPage } from "next";
 import { useMemo } from "react";
 import { FeedContextProvider } from "../../../../components/contexts/feed-context";
 import { ContinuousFeed } from "../../../../components/highlight-components/highlight-feed";
-import { HighlightVideo } from "../../../../types/highlight-out";
+import { type HighlightVideo } from "../../../../types/highlight-out";
 import { getServerHelpers } from "../../../../utils/ssgHelper";
 import { api } from "../../../../utils/trpc";
 
@@ -46,14 +46,14 @@ const FeedWithStart: NextPage<{ id: string; startTime?: number }> = ({
   const { mutate: bookmark, isLoading: bookmarking } =
     api.user.toggleHighlight.useMutation({
       onSettled() {
-        util.user.getBookmarkVideosPaginated.invalidate(queryKey);
+        void util.user.getBookmarkVideosPaginated.invalidate(queryKey);
       },
     });
 
   const { mutate: upvote, isLoading: upvoting } =
     api.user.upvoteHighlight.useMutation({
       onSettled() {
-        util.user.getBookmarkVideosPaginated.invalidate(queryKey);
+        void util.user.getBookmarkVideosPaginated.invalidate(queryKey);
       },
     });
 

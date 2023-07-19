@@ -14,11 +14,11 @@ import type { UrlObject } from "url";
 
 dayjs.extend(utc.default);
 
-export type HighlightGroup = {
+export interface HighlightGroup {
   highlights: HighlightThumbnail[];
   header: string;
   continuous: boolean;
-};
+}
 
 export type GroupingStrategy = (
   fetch: HighlightThumbnail[]

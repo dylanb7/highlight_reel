@@ -8,8 +8,7 @@ import { MagnifyingGlassIcon, Cross2Icon } from "@radix-ui/react-icons";
 import { LoadingSpinner } from "../misc/loading";
 import Link from "next/link";
 import { useResizeDetector } from "react-resize-detector";
-import { HighlightPool, User } from "../../server/db/schema";
-import { PoolFollowing, PoolInfo } from "../../types/pool-out";
+import { type PoolFollowing } from "../../types/pool-out";
 
 const FetchResults: React.FC<{
   searchTerm: string;
@@ -70,8 +69,8 @@ const PoolRow: React.FC<{
           {pool.followInfo?.follows ?? false
             ? "Following"
             : pool.public
-            ? "Public"
-            : "Private"}
+              ? "Public"
+              : "Private"}
         </div>
       </div>
     </Link>

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-base-to-string */
 import { createNextApiHandler } from "@trpc/server/adapters/next";
 
 import { env } from "../../../env/server.mjs";
@@ -11,6 +12,7 @@ export default createNextApiHandler({
   onError:
     env.NODE_ENV === "development"
       ? ({ path, error }) => {
+          // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
           console.error(`❌ tRPC failed on ${path}: ${error}`);
         }
       : undefined,

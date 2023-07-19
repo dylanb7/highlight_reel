@@ -19,7 +19,7 @@ export type ProfilePoolsInfo = UserInfo & {
   owned?: PoolInfo[];
 };
 
-export type FetchInfo = {
+export interface FetchInfo {
   userFetch?: { id: string; following: boolean };
   poolFetch?: number;
-};
+}

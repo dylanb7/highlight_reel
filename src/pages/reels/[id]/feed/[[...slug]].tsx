@@ -1,11 +1,11 @@
-import { GetServerSideProps, NextPage } from "next";
+import { type GetServerSideProps, type NextPage } from "next";
 import React, { useMemo } from "react";
 import { FeedContextProvider } from "../../../../components/contexts/feed-context";
 import {
   ContinuousFeed,
   IndexedFeed,
 } from "../../../../components/highlight-components/highlight-feed";
-import { HighlightVideo } from "../../../../types/highlight-out";
+import { type HighlightVideo } from "../../../../types/highlight-out";
 import { getServerHelpers } from "../../../../utils/ssgHelper";
 import { api } from "../../../../utils/trpc";
 
@@ -70,14 +70,14 @@ const ContinuousPoolFeed: React.FC<PoolProps> = ({ poolId, initialCursor }) => {
   const { mutate: bookmark, isLoading: bookmarking } =
     api.user.toggleHighlight.useMutation({
       onSettled() {
-        util.pool.getHighlightVideosPaginated.invalidate(queryKey);
+        void util.pool.getHighlightVideosPaginated.invalidate(queryKey);
       },
     });
 
   const { mutate: upvote, isLoading: upvoting } =
     api.user.upvoteHighlight.useMutation({
       onSettled() {
-        util.pool.getHighlightVideosPaginated.invalidate(queryKey);
+        void util.pool.getHighlightVideosPaginated.invalidate(queryKey);
       },
     });
 
@@ -152,14 +152,14 @@ const GroupedPoolFeed: React.FC<PoolProps> = ({
   const { mutate: bookmark, isLoading: bookmarking } =
     api.user.toggleHighlight.useMutation({
       onSettled() {
-        util.pool.getHighlightBundle.invalidate(queryKey);
+        void util.pool.getHighlightBundle.invalidate(queryKey);
       },
     });
 
   const { mutate: upvote, isLoading: upvoting } =
     api.user.upvoteHighlight.useMutation({
       onSettled() {
-        util.pool.getHighlightBundle.invalidate(queryKey);
+        void util.pool.getHighlightBundle.invalidate(queryKey);
       },
     });
 
@@ -231,7 +231,7 @@ export const getServerSideProps: GetServerSideProps<PoolProps> = async (
       initialCursor: Number.isNaN(initialCursor) ? undefined : initialCursor,
     });
   } else {
-    ssg.pool.getHighlightBundle.prefetch({
+    await ssg.pool.getHighlightBundle.prefetch({
       poolId,
       cursor: initialCursor ?? 0,
       amount: length,

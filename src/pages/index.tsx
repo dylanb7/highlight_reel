@@ -77,7 +77,7 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
       );
     },
     onSettled() {
-      util.pool.getPublicPoolsPaginated.invalidate();
+      void util.pool.getPublicPoolsPaginated.invalidate();
     },
   });
 
@@ -96,13 +96,13 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
         );
       },
       onSettled() {
-        util.pool.getPublicPoolsPaginated.invalidate(queryKey);
+        void util.pool.getPublicPoolsPaginated.invalidate(queryKey);
       },
     });
 
   const buttonContext: ButtonContext = {
     action: (poolId) => {
-      if (!user.userId) return;
+      if (!user.userId || typeof poolId !== "number") return;
       const poolInfo = poolMap.get(poolId);
       if (!poolInfo || !poolInfo.followInfo) return;
       if (poolInfo.followInfo.follows || poolInfo.followInfo.requested) {
@@ -118,6 +118,11 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
       }
     },
     state: (poolId) => {
+      if (typeof poolId !== "number") return {
+        follows: false,
+        pending: false,
+        disabled: adding || removing,
+      };
       const poolInfo = poolMap.get(poolId);
       return {
         follows: poolInfo?.followInfo?.follows ?? false,
@@ -152,7 +157,7 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
               <div className="mt-4 flex items-center justify-center">
                 <button
                   className="mb-4 w-fit rounded-lg bg-indigo-500 px-3 py-2 font-semibold text-white no-underline transition hover:bg-indigo-700 disabled:opacity-75"
-                  onClick={() => fetchNextPage()}
+                  onClick={() => void fetchNextPage()}
                   disabled={isLoading || data === null}
                 >
                   Load More
@@ -185,7 +190,7 @@ const AuthedContent = () => {
     return [
       typeof tab === "string" ? tab : "discover",
       (newValue: string) => {
-        push({ query: { tab: newValue } }, undefined, { shallow: true });
+        void push({ query: { tab: newValue } }, undefined, { shallow: true });
       },
     ];
   };
