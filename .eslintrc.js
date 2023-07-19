@@ -4,8 +4,7 @@ module.exports = {
         "es2021": true
     },
     "extends": [
-        "eslint:recommended",
-        "plugin:@typescript-eslint/recommended",
+        "standard-with-typescript",
         "plugin:react/recommended"
     ],
     "overrides": [
@@ -21,13 +20,11 @@ module.exports = {
             }
         }
     ],
-    "parser": "@typescript-eslint/parser",
     "parserOptions": {
         "ecmaVersion": "latest",
         "sourceType": "module"
     },
     "plugins": [
-        "@typescript-eslint",
         "react"
     ],
     "rules": {
