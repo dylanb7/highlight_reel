@@ -6,13 +6,13 @@ import { getAuth } from "@clerk/nextjs/dist/types/server";
 import { type NextRequest } from "next/server";
 import { type GetServerSidePropsContext } from "next";
 
-export const getServerHelpers = async (
+export const getServerHelpers = (
   req: NextRequest | GetServerSidePropsContext["req"] | null
 ) => {
   if (!req) {
     return createServerSideHelpers({
       router: appRouter,
-      ctx: await createContextInner({ req, auth: null }),
+      ctx: createContextInner({ req, auth: null }),
       transformer: superjson,
     });
   }
@@ -20,7 +20,7 @@ export const getServerHelpers = async (
 
   return createServerSideHelpers({
     router: appRouter,
-    ctx: await createContextInner({ req, auth }),
+    ctx: createContextInner({ req, auth }),
     transformer: superjson,
   });
 };
