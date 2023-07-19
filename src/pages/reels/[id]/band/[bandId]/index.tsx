@@ -18,13 +18,15 @@ import { WristBands } from "../../../../../components/pool-components/wristband-
 import { LoadingSpinner } from "../../../../../components/misc/loading";
 
 import type { HighlightThumbnail } from "../../../../../types/highlight-out";
-import { generateSSGHelper } from "../../../../../utils/ssgHelper";
 import { api } from "../../../../../utils/trpc";
 import { PoolInfo } from "../../../../../components/pool-components/pool-info";
 import PageWrap from "../../../../../components/layout/page-wrap";
-import { ParsedUrlQuery } from "querystring";
+import { getServerHelpers } from "../../../../../utils/ssgHelper";
 
-type PoolViewBandProps = { poolId: number; bandId: string };
+interface PoolViewBandProps {
+  poolId: number;
+  bandId: string;
+}
 
 const PoolView: NextPage<PoolViewBandProps> = ({ poolId, bandId }) => {
   const { data: poolInfo } = api.pool.getPoolById.useQuery(poolId);
@@ -183,7 +185,7 @@ export const getServerSideProps: GetServerSideProps<PoolViewBandProps> = async (
 
   const bandId = params.bandId;
 
-  const ssg = generateSSGHelper();
+  const ssg = await getServerHelpers(props.req);
 
   await ssg.pool.getPoolById.prefetch(poolId);
 
@@ -202,10 +204,6 @@ export const getServerSideProps: GetServerSideProps<PoolViewBandProps> = async (
       bandId,
     },
   };
-};
-
-export const getStaticPaths = () => {
-  return { paths: [], fallback: "blocking" };
 };
 
 export default PoolView;

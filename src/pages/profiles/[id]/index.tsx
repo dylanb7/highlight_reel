@@ -2,8 +2,10 @@ import type { NextPage, GetServerSideProps } from "next";
 import PageWrap from "../../../components/layout/page-wrap";
 import { LoadingSpinner } from "../../../components/misc/loading";
 import { ProfileComponent } from "../../../components/profile-components";
-import { generateSSGHelper } from "../../../utils/ssgHelper";
+
 import { api } from "../../../utils/trpc";
+import { getServerHelpers } from "../../../utils/ssgHelper";
+import { getAuth } from "@clerk/nextjs/dist/types/server-helpers.server";
 
 const ProfileView: NextPage<{ userId: string }> = ({ userId }) => {
   const { data: profile, isLoading } = api.user.profileQuery.useQuery(userId);
@@ -38,9 +40,21 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  const ssg = generateSSGHelper();
+  const auth = getAuth(props.req);
+
+  const owns = auth.userId === userId;
+
+  const ssg = await getServerHelpers(props.req);
 
   await ssg.user.profileQuery.prefetch(userId);
+
+  await ssg.user.profilePoolsQuery.prefetch({userId, type: "followed"});
+
+  if(owns) {
+    await ssg.user.profilePoolsQuery.prefetch({userId, type: "modded"});
+    await ssg.user.profilePoolsQuery.prefetch({userId, type: "owned"});
+  }
+  
 
   await ssg.user.getUserBookmarksPaginated.prefetchInfinite({
     userId: userId,

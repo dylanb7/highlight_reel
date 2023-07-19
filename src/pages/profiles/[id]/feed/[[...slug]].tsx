@@ -1,25 +1,20 @@
-import type { GetStaticProps, NextPage } from "next";
+import { GetServerSideProps, NextPage } from "next";
 import { useMemo } from "react";
-import {
-  bookmarkActionUpdate,
-  likeActionUpdate,
-} from "../../../../components/contexts/action-types";
 import { FeedContextProvider } from "../../../../components/contexts/feed-context";
 import { ContinuousFeed } from "../../../../components/highlight-components/highlight-feed";
-import type { HighlightVideo } from "../../../../types/highlight-out";
-import { addExt } from "../../../../utils/highlightUtils";
-import { generateSSGHelper } from "../../../../utils/ssgHelper";
+import { HighlightVideo } from "../../../../types/highlight-out";
+import { getServerHelpers } from "../../../../utils/ssgHelper";
 import { api } from "../../../../utils/trpc";
 
-const FeedWithStart: NextPage<{ id: string; startId: string }> = ({
+const FeedWithStart: NextPage<{ id: string; startTime?: number }> = ({
   id,
-  startId,
+  startTime,
 }) => {
   const util = api.useContext();
 
   const queryKey = {
     profileId: id,
-    initialCursor: addExt(startId),
+    initialCursor: startTime,
   };
 
   const {
@@ -32,6 +27,7 @@ const FeedWithStart: NextPage<{ id: string; startId: string }> = ({
   } = api.user.getBookmarkVideosPaginated.useInfiniteQuery(queryKey, {
     refetchOnWindowFocus: false,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
+    getPreviousPageParam: (prevPage) => prevPage.prevCursor,
   });
 
   const highlights = useMemo(() => {
@@ -49,24 +45,6 @@ const FeedWithStart: NextPage<{ id: string; startId: string }> = ({
 
   const { mutate: bookmark, isLoading: bookmarking } =
     api.user.toggleHighlight.useMutation({
-      async onMutate(variables) {
-        await util.user.getBookmarkVideosPaginated.cancel(queryKey);
-        const prev =
-          util.user.getBookmarkVideosPaginated.getInfiniteData(queryKey);
-        if (prev) {
-          util.user.getBookmarkVideosPaginated.setInfiniteData(queryKey, {
-            ...prev,
-            pages: bookmarkActionUpdate(prev, variables),
-          });
-        }
-        return { prev };
-      },
-      onError(_, __, context) {
-        util.user.getBookmarkVideosPaginated.setInfiniteData(
-          queryKey,
-          context?.prev
-        );
-      },
       onSettled() {
         util.user.getBookmarkVideosPaginated.invalidate(queryKey);
       },
@@ -74,24 +52,6 @@ const FeedWithStart: NextPage<{ id: string; startId: string }> = ({
 
   const { mutate: upvote, isLoading: upvoting } =
     api.user.upvoteHighlight.useMutation({
-      async onMutate(variables) {
-        await util.user.getBookmarkVideosPaginated.cancel(queryKey);
-        const prev =
-          util.user.getBookmarkVideosPaginated.getInfiniteData(queryKey);
-        if (prev) {
-          util.user.getBookmarkVideosPaginated.setInfiniteData(queryKey, {
-            ...prev,
-            pages: likeActionUpdate(prev, variables),
-          });
-        }
-        return { prev };
-      },
-      onError(_, __, context) {
-        util.user.getBookmarkVideosPaginated.setInfiniteData(
-          queryKey,
-          context?.prev
-        );
-      },
       onSettled() {
         util.user.getBookmarkVideosPaginated.invalidate(queryKey);
       },
@@ -130,47 +90,43 @@ const FeedWithStart: NextPage<{ id: string; startId: string }> = ({
           return (await fetchPreviousPage()).data?.pages.at(0)?.highlights.at(0)
             ?.id;
         }}
-        from={data?.pages.at(0)?.name ?? ""}
+        from={""}
       />
-      \
     </FeedContextProvider>
   );
 };
 
-export const getStaticProps: GetStaticProps<{
+export const getServerSideProps: GetServerSideProps<{
   id: string;
-  startId: string;
+  startTime?: number;
 }> = async (props) => {
   const { params } = props;
 
-  if (!params) return { notFound: true };
+  const id = params?.id;
 
-  const { id, startId } = params;
-
-  if (typeof id !== "string" || typeof startId !== "string") {
+  if (!id || typeof id !== "string")
     return {
       notFound: true,
     };
-  }
 
-  const ssg = generateSSGHelper();
+  const slug = params?.slug;
+
+  const startTime = slug ? Number(slug[0]) : undefined;
+
+  const ssg = await getServerHelpers(props.req);
 
   await ssg.user.getBookmarkVideosPaginated.prefetchInfinite({
     profileId: id,
-    initialCursor: startId,
+    initialCursor: Number.isNaN(startTime) ? undefined : startTime,
   });
 
   return {
     props: {
       trpcState: ssg.dehydrate(),
       id,
-      startId,
+      startTime,
     },
   };
-};
-
-export const getStaticPaths = () => {
-  return { paths: [], fallback: "blocking" };
 };
 
 export default FeedWithStart;

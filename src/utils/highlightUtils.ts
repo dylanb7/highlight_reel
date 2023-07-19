@@ -197,8 +197,6 @@ export const createCursor = (cursorInfo: highlightCursor) => {
     `'${cursorInfo.highlight_id},${cursorInfo.timestamp},${cursorInfo.dir}'`,
     "base64"
   ).toString("binary");
-
-  return undefined;
 };
 
 export const decodeCursor = (cursor: string) => {

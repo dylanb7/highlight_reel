@@ -1,8 +1,8 @@
 import * as Popover from "@radix-ui/react-popover";
-import { useSession } from "next-auth/react";
 import { useState } from "react";
 import { useProfileButtonContext } from "./contexts/follow-profile-context";
 import SignInComponent from "./misc/sign-in";
+import { useAuth } from "@clerk/nextjs";
 
 const ButtonStyle: React.FC<{ profileId: string }> = ({ profileId }) => {
   const { action, state } = useProfileButtonContext();
@@ -372,12 +372,12 @@ const PoolProfileFollow: React.FC<{
 export const ProfileFollowButton: React.FC<{
   profileId: string;
 }> = ({ profileId }) => {
-  const { data: session } = useSession();
+  const user = useAuth();
 
   const [open, setOpen] = useState(false);
 
-  if (session && session.user) {
-    if (session.user.id === profileId) {
+  if (user.userId) {
+    if (user.userId === profileId) {
       return (
         <div className="rounded-lg bg-indigo-500 px-3 py-1 text-sm font-semibold text-white no-underline transition">
           You

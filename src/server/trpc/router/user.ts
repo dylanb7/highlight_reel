@@ -12,7 +12,7 @@ import {
 } from "../../../utils/highlightUtils";
 import type { HighlightReturn } from "../../../types/highlight-out";
 
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import type { User } from "../../db/schema";
 import { bookmarkedHighlightToUser, highlight } from "../../db/schema";
 import {
@@ -106,36 +106,74 @@ export const userRouter = router({
       z.object({
         userId: z.string(),
         type: z.enum(["followed", "modded", "owned"]),
-        cursor: z.string(),
+        amount: z.number().nullish(),
+        cursor: z.date().nullish(),
       })
     )
     .query(async ({ ctx, input }) => {
       const ref = ctx.auth?.userId;
+      const amount = input.amount ?? 6;
       const owns = input.userId === ref;
       if (input.type !== "followed" && !owns) return undefined;
       const innerPoolSelect = {
-        columns: {},
+        where: () => {
+          if (!input.cursor) gte(poolsToFollowers.poolId, 0);
+          return lt(poolsToFollowers.updatedAt, input.cursor!);
+        },
+        limit: amount + 1,
         with: {
           pool: {
             with: {
               poolFollowers: {},
-              highlights: {
-                columns: { id: true },
-              },
+              highlights: {},
               ...(!owns && ref
                 ? {
                     poolRequests: {
                       limit: 1,
                       where: eq(poolsToRequested.userId, ref),
-                      columns: { poolId: true },
                     },
                   }
                 : {}),
             },
           },
         },
+
         orderBy: asc(poolsToFollowers.updatedAt),
       };
+
+      const poolDataToInfo = (pool: {
+        id: number;
+        name: string | null;
+        ownerId: string;
+        public: number;
+        createdAt: Date | null;
+        highlights: {
+          id: string;
+        }[];
+        poolFollowers: {
+          userId: string;
+        }[];
+        poolRequests: (
+          | {
+              poolId: number;
+            }
+          | {}
+        )[];
+      }): PoolInfo => {
+        return {
+          ...pool,
+          highlightCount: pool.highlights.length,
+          followerCount: pool.poolFollowers.length,
+          followInfo: {
+            follows: pool.poolFollowers.find((user) => user.userId === ref)
+              ? true
+              : false,
+            requested: pool.poolRequests?.length > 0 ?? false,
+          },
+          isPublic: publicToBool(pool.public),
+        };
+      };
+
       if (input.type === "followed") {
         const pools = await ctx.db.query.users.findFirst({
           where: eq(users.id, input.userId),
@@ -144,22 +182,20 @@ export const userRouter = router({
             followedPools: innerPoolSelect,
           },
         });
-        return (
-          pools?.followedPools.map<PoolInfo>((followed) => ({
-            ...followed.pool,
-            highlightCount: followed.pool.highlights.length,
-            followerCount: followed.pool.poolFollowers.length,
-            followInfo: {
-              follows: followed.pool.poolFollowers.find(
-                (user) => user.userId === ref
-              )
-                ? true
-                : false,
-              requested: followed.pool.poolRequests?.length > 0 ?? false,
-            },
-            isPublic: publicToBool(followed.pool.public),
-          })) ?? []
-        );
+
+        const hasNext = pools?.followedPools.length === amount + 1;
+
+        if (hasNext) pools?.followedPools.pop();
+
+        const poolsInfo =
+          pools?.followedPools.map<PoolInfo>((followed) =>
+            poolDataToInfo(followed.pool)
+          ) ?? [];
+
+        return {
+          poolsInfo,
+          nextCursor: hasNext ? pools?.followedPools[-1]?.updatedAt : undefined,
+        };
       }
       if (input.type === "modded") {
         const pools = await ctx.db.query.users.findFirst({
@@ -169,28 +205,30 @@ export const userRouter = router({
             moddedPools: innerPoolSelect,
           },
         });
-        return (
-          pools?.moddedPools.map<PoolInfo>((modded) => ({
-            ...modded.pool,
-            highlightCount: modded.pool.highlights.length,
-            followerCount: modded.pool.poolFollowers.length,
-            followInfo: {
-              follows: modded.pool.poolFollowers.find(
-                (user) => user.userId === ref
-              )
-                ? true
-                : false,
-              requested: modded.pool.poolRequests?.length > 0 ?? false,
-            },
-            isPublic: publicToBool(modded.pool.public),
-          })) ?? []
-        );
+
+        const hasNext = pools?.moddedPools.length === amount + 1;
+
+        if (hasNext) pools?.moddedPools.pop();
+
+        const poolsInfo =
+          pools?.moddedPools.map<PoolInfo>((modded) =>
+            poolDataToInfo(modded.pool)
+          ) ?? [];
+        return {
+          poolsInfo,
+          nextCursor: hasNext ? pools?.moddedPools[-1]?.updatedAt : undefined,
+        };
       }
       const pools = await ctx.db.query.users.findFirst({
         where: eq(users.id, input.userId),
         columns: {},
         with: {
           ownedPools: {
+            where: () => {
+              if (!input.cursor) gte(highlightPool.id, 0);
+              return lt(highlightPool.createdAt, input.cursor!);
+            },
+            limit: amount + 1,
             with: {
               poolFollowers: {},
               highlights: {
@@ -210,7 +248,11 @@ export const userRouter = router({
           },
         },
       });
-      return (
+      const hasNext = pools?.ownedPools.length === amount + 1;
+
+      if (hasNext) pools?.ownedPools.pop();
+
+      const poolsInfo =
         pools?.ownedPools.map<PoolInfo>((owned) => ({
           ...owned,
           highlightCount: owned.highlights.length,
@@ -222,8 +264,11 @@ export const userRouter = router({
             requested: owned.poolRequests?.length > 0 ?? false,
           },
           isPublic: publicToBool(owned.public),
-        })) ?? []
-      );
+        })) ?? [];
+      return {
+        poolsInfo,
+        nextCursor: hasNext ? pools?.ownedPools[-1]?.createdAt : undefined,
+      };
     }),
 
   toggleHighlight: protectedProcedure

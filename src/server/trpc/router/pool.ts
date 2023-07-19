@@ -18,13 +18,11 @@ import {
   highlightPool,
   poolsToFollowers,
   poolsToRequested,
-  users,
 } from "../../db/schema";
 import {
   and,
   desc,
   eq,
-  exists,
   ilike,
   like,
   lt,
@@ -186,11 +184,9 @@ export const poolRouter = router({
         where: () => {
           if (!userId && !cursor) return eq(highlightPool.public, 1);
           if (!userId) {
-            const date = new Date(cursor!);
-
             return and(
               eq(highlightPool.public, 1),
-              lt(highlightPool.createdAt, date)
+              lt(highlightPool.createdAt, cursor!)
             );
           }
           const userFollows = ctx.db

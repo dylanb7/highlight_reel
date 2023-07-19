@@ -1,8 +1,8 @@
-import type { GetStaticProps, NextPage } from "next";
+import type { GetServerSideProps, GetStaticProps, NextPage } from "next";
 import React, { useMemo } from "react";
 import { api } from "../../../utils/trpc";
 import { LoadingSpinner } from "../../../components/misc/loading";
-import { generateSSGHelper } from "../../../utils/ssgHelper";
+import { getServerHelpers } from "../../../utils/ssgHelper";
 import Head from "next/head";
 import {
   dayGrouping,
@@ -19,7 +19,9 @@ import { WristBands } from "../../../components/pool-components/wristband-row";
 import { PoolInfo } from "../../../components/pool-components/pool-info";
 import PageWrap from "../../../components/layout/page-wrap";
 
-const PoolView: NextPage<{ poolId: string }> = ({ poolId }) => {
+
+
+const PoolView: NextPage<{ poolId: number }> = ({ poolId }) => {
   const { data: poolInfo } = api.pool.getPoolById.useQuery(poolId);
 
   return (
@@ -39,7 +41,7 @@ const PoolView: NextPage<{ poolId: string }> = ({ poolId }) => {
 };
 
 const LoadFeed: React.FC<{
-  poolId: string;
+  poolId: number;
 }> = ({ poolId }) => {
   const loadAmount = 6;
 
@@ -145,8 +147,8 @@ const LoadFeed: React.FC<{
   );
 };
 
-export const getStaticProps: GetStaticProps<{
-  poolId: string;
+export const getServerSideProps: GetServerSideProps<{
+  poolId: number;
 }> = async (props) => {
   const { params } = props;
   if (!params || !params.id || typeof params.id !== "string") {
@@ -154,30 +156,37 @@ export const getStaticProps: GetStaticProps<{
       notFound: true,
     };
   }
+ 
+  const urlPool = params.id;
 
-  const poolId = params.id;
+  const poolId = Number(urlPool)
 
-  const ssg = generateSSGHelper();
+  if(Number.isNaN(poolId)) {
+    return {
+      notFound: true,
+    };
+  }
 
-  await ssg.pool.getPoolById.prefetch(poolId);
 
-  await ssg.pool.getPoolHighlightsPaginated.prefetchInfinite({
+  const ssgHelper = await getServerHelpers(props.req);
+
+  await ssgHelper.pool.getPoolById.prefetch(poolId);
+
+  await ssgHelper.pool.getPoolHighlightsPaginated.prefetchInfinite({
     amount: 6,
     poolId: poolId,
   });
 
-  await ssg.pool.getWristbands.prefetch(poolId);
+  await ssgHelper.pool.getWristbands.prefetch(poolId);
 
   return {
     props: {
-      trpcState: ssg.dehydrate(),
+      trpcState: ssgHelper.dehydrate(),
       poolId,
     },
   };
 };
 
-export const getStaticPaths = () => {
-  return { paths: [], fallback: "blocking" };
-};
+
 
 export default PoolView;

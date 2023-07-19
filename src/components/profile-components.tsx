@@ -2,11 +2,10 @@ import * as Separator from "@radix-ui/react-separator";
 import * as ScrollArea from "@radix-ui/react-scroll-area";
 import { ChevronDownIcon, ChevronUpIcon } from "@radix-ui/react-icons";
 import * as Collapsible from "@radix-ui/react-collapsible";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PoolComponent } from "./highlight-pool-card";
 import { ProfileList } from "./profile-scroll-components";
 import { ProfileFollowButton } from "./follow-profile";
-import type { PoolInfo } from "../types/pool-out";
 
 import type {
   ProfileInfo,
@@ -21,21 +20,104 @@ import { HighlightGridsComponent } from "./highlight-components/highlight-grid";
 import type { GridActions } from "./contexts/grid-context";
 import { GridContextProvider } from "./contexts/grid-context";
 import type { HighlightThumbnail } from "../types/highlight-out";
-import { LoadingSpinner } from "./misc/loading";
+import { LoadingSpinner, Spinner } from "./misc/loading";
 import {
   bookmarkActionUpdate,
   likeActionUpdate,
 } from "./contexts/action-types";
 import { useAuth } from "@clerk/nextjs";
+import { useInView } from "react-intersection-observer";
+import { PoolInfo } from "../types/pool-out";
 
 export const PoolScroll: React.FC<{
-  pools: PoolInfo[];
+  profileId: string;
   title: string;
+  type: "followed" | "modded" | "owned";
   initialOpen: boolean;
-}> = ({ pools, title, initialOpen }) => {
+}> = ({ type, title, initialOpen, profileId }) => {
+  const util = api.useContext();
+
+  const queryKey = {
+    type,
+    userId: profileId,
+  };
+
+  const {
+    data: allPools,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+  } = api.user.profilePoolsQuery.useInfiniteQuery(queryKey, {
+    getNextPageParam: (nextPage) => nextPage?.nextCursor,
+  });
+
+  const { ref, inView, entry } = useInView({
+    threshold: 0,
+  });
+
   const [open, setOpen] = useState(initialOpen);
 
+  const pools = useMemo(() => {
+    return allPools?.pages.flatMap((page) => page?.poolsInfo ?? []) ?? [];
+  }, [allPools]);
+
+  const poolMap = useMemo(() => {
+    const poolMap = new Map<number, PoolInfo>();
+
+    for (const pool of pools) {
+      poolMap.set(pool.id, pool);
+    }
+    return poolMap;
+  }, [pools]);
+
+  const { mutate: add, isLoading: adding } = api.user.addPool.useMutation({
+    onSettled() {
+      util.user.profilePoolsQuery.invalidate(queryKey);
+    },
+  });
+
+  const { mutate: remove, isLoading: removing } =
+    api.user.removePool.useMutation({
+      onSettled() {
+        util.user.profilePoolsQuery.invalidate(queryKey);
+      },
+    });
+
+  const buttonContext: ButtonContext = {
+    action: (poolId) => {
+      const poolInfo = poolMap.get(poolId);
+      if (!poolInfo || !poolInfo.followInfo) return;
+      if (poolInfo.followInfo.follows || poolInfo.followInfo.requested) {
+        remove({
+          poolId: poolId,
+          requested: poolInfo.followInfo.requested,
+        });
+      } else {
+        add({
+          poolId: poolId,
+          isPublic: poolInfo.isPublic,
+        });
+      }
+    },
+    state: (poolId) => {
+      const poolInfo = poolMap.get(poolId);
+      return {
+        follows: poolInfo?.followInfo?.follows ?? false,
+        pending: poolInfo?.followInfo?.requested ?? false,
+        disabled: adding || removing,
+      };
+    },
+  };
+
+  useEffect(() => {
+    if (inView && !isLoading && hasNextPage) {
+      fetchNextPage();
+    }
+  }, [isLoading, inView, pools, hasNextPage]);
+
   const hasPools = pools && pools.length > 0;
+
+  if (!hasPools) return <></>;
 
   return (
     <Collapsible.Root open={open} onOpenChange={setOpen}>
@@ -60,11 +142,15 @@ export const PoolScroll: React.FC<{
               {hasPools && (
                 <div className="my-3 flex flex-row gap-4 px-3 pb-1 sm:px-6">
                   {pools &&
-                    pools.map((pool) => (
-                      <div key={pool.id} className="snap-center">
-                        <PoolComponent key={pool.id} pool={pool} />
-                      </div>
-                    ))}
+                    pools.map((pool) => {
+                      if (!pool) return <></>;
+                      return (
+                        <div key={pool.id} className="snap-center">
+                          <PoolComponent key={pool.id} pool={pool} />
+                        </div>
+                      );
+                    })}
+                  <div ref={ref}>{hasNextPage && <Spinner />}</div>
                 </div>
               )}
             </ScrollArea.Viewport>
@@ -325,33 +411,32 @@ export const ProfileBookmarks: React.FC<{
 };
 
 export const ProfileComponent: React.FC<{
-  profile: ProfilePoolsInfo;
+  profile: ProfileInfo;
 }> = ({ profile }) => {
   return (
-    <ProfilePoolButtonProvider userId={profile.id} profile={profile}>
-      <div className="flex flex-col justify-start gap-1 pt-10">
-        <ProfileData user={{ ...profile }} />
-        <PoolScroll
-          pools={profile.followed}
-          title={"Followed Reels"}
-          initialOpen={true}
-        />
-        {profile.owned && (
-          <PoolScroll
-            pools={profile.owned ?? []}
-            title={"Owned Reels"}
-            initialOpen={false}
-          />
-        )}
-        {profile.modded && (
-          <PoolScroll
-            pools={profile.modded ?? []}
-            title={"Mod Reels"}
-            initialOpen={false}
-          />
-        )}
-        <ProfileBookmarks id={profile.id} />
-      </div>
-    </ProfileButtonProvider>
+    <div className="flex flex-col justify-start gap-1 pt-10">
+      <ProfileData user={{ ...profile }} />
+      <PoolScroll
+        type={"followed"}
+        title={"Followed Reels"}
+        initialOpen={true}
+        profileId={profile.id}
+      />
+
+      <PoolScroll
+        type={"owned"}
+        title={"Owned Reels"}
+        initialOpen={false}
+        profileId={profile.id}
+      />
+      <PoolScroll
+        type={"modded"}
+        title={"Mod Reels"}
+        initialOpen={false}
+        profileId={profile.id}
+      />
+
+      <ProfileBookmarks id={profile.id} />
+    </div>
   );
 };

@@ -5,14 +5,13 @@ import {
   bigint,
   smallint,
   tinyint,
-  datetime,
   primaryKey,
   float,
   serial,
   timestamp,
 } from "drizzle-orm/mysql-core";
 import type { InferModel } from "drizzle-orm";
-import { relations, sql } from "drizzle-orm";
+import { relations } from "drizzle-orm";
 
 export type User = InferModel<typeof users>;
 

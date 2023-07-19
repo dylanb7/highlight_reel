@@ -9,7 +9,7 @@ import { db } from "../db";
 import type { NextRequest } from "next/server";
 import type { GetServerSidePropsContext } from "next";
 
-type CreateContextOptions = {
+export type CreateContextOptions = {
   auth: SignedInAuthObject | SignedOutAuthObject | null;
   req: NextRequest | GetServerSidePropsContext["req"] | null;
 };
@@ -34,7 +34,6 @@ export const createContextInner = async (opts: CreateContextOptions) => {
 export const createContext = async (opts: CreateNextContextOptions) => {
   const { req } = opts;
 
-  // Get the session from the server using the unstable_getServerSession wrapper function
   const auth = getAuth(req);
 
   return await createContextInner({

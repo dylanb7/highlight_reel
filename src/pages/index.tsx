@@ -2,7 +2,6 @@ import { api } from "../utils/trpc";
 import { LoadingSpinner } from "../components/misc/loading";
 import { PoolComponent } from "../components/highlight-pool-card";
 import { UserFinish } from "../components/user-finish";
-import { useSession } from "next-auth/react";
 import React, { useMemo } from "react";
 
 import * as Tab from "@radix-ui/react-tabs";
@@ -16,6 +15,7 @@ import type { PoolInfo } from "../types/pool-out";
 import type { ButtonContext } from "../components/contexts/button-types";
 import type { NextPage } from "next";
 import PageWrap from "../components/layout/page-wrap";
+import { useAuth } from "@clerk/nextjs";
 
 const UnauthedContent = () => {
   return (
@@ -26,7 +26,7 @@ const UnauthedContent = () => {
 };
 
 const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
-  const { data: session } = useSession();
+  const user = useAuth();
 
   const amount = 5;
 
@@ -45,7 +45,7 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
 
   const queryKey = {
     cursor: data?.pages.at(-1)?.nextCursor,
-    userId: session?.user?.id,
+    userId: user.userId,
     discover: discover,
     amount: amount,
   };
@@ -102,7 +102,7 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
 
   const buttonContext: ButtonContext = {
     action: (poolId) => {
-      if (!session || !session.user) return;
+      if (!user.userId) return;
       const poolInfo = poolMap.get(poolId);
       if (!poolInfo || !poolInfo.followInfo) return;
       if (poolInfo.followInfo.follows || poolInfo.followInfo.requested) {
@@ -190,9 +190,9 @@ const AuthedContent = () => {
     ];
   };
 
-  const { data: session } = useSession();
+  const user = useAuth();
 
-  const id = session?.user?.id;
+  const id = user.userId;
 
   const [value, onChange] = useTabsValue();
 
@@ -269,9 +269,9 @@ const ProfileLayout: React.FC<{ userId: string }> = ({ userId }) => {
 };
 
 const HomePage: NextPage = () => {
-  const { data: session } = useSession();
+  const user = useAuth();
 
-  if (!session) {
+  if (!user.userId) {
     return (
       <PageWrap>
         <UnauthedContent />

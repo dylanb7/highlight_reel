@@ -1,51 +1,43 @@
 import { GetServerSideProps, NextPage } from "next";
 import React, { useMemo } from "react";
-import { FeedContextProvider } from "../../../../../../components/contexts/feed-context";
+import { FeedContextProvider } from "../../../../components/contexts/feed-context";
 import {
   ContinuousFeed,
   IndexedFeed,
-} from "../../../../../../components/highlight-components/highlight-feed";
-import { HighlightVideo } from "../../../../../../types/highlight-out";
-import { api } from "../../../../../../utils/trpc";
-import { getServerHelpers } from "../../../../../../utils/ssgHelper";
+} from "../../../../components/highlight-components/highlight-feed";
+import { HighlightVideo } from "../../../../types/highlight-out";
+import { getServerHelpers } from "../../../../utils/ssgHelper";
+import { api } from "../../../../utils/trpc";
 
-interface BandProps {
-  wristbandId: string;
+interface PoolProps {
   poolId: number;
   initialCursor?: number | null;
   length?: number | null;
 }
 
-const BandFeed: NextPage<BandProps> = (props) => {
+const PoolFeed: NextPage<PoolProps> = (props) => {
   if (props.length && props.initialCursor)
     return (
-      <GroupedBandFeed
+      <GroupedPoolFeed
         poolId={props.poolId}
-        wristbandId={props.wristbandId}
         initialCursor={props.initialCursor}
         length={props.length}
       />
     );
 
   return (
-    <ContinuousBandFeed
+    <ContinuousPoolFeed
       poolId={props.poolId}
-      wristbandId={props.wristbandId}
       initialCursor={props.initialCursor}
     />
   );
 };
 
-const ContinuousBandFeed: React.FC<BandProps> = ({
-  poolId,
-  wristbandId,
-  initialCursor,
-}) => {
+const ContinuousPoolFeed: React.FC<PoolProps> = ({ poolId, initialCursor }) => {
   const util = api.useContext();
 
-  const queryKey: BandProps = {
+  const queryKey: PoolProps = {
     poolId,
-    wristbandId,
     initialCursor,
     length,
   };
@@ -57,7 +49,7 @@ const ContinuousBandFeed: React.FC<BandProps> = ({
     isFetching,
     hasPreviousPage,
     fetchPreviousPage,
-  } = api.pool.getWristbandVideosPaginated.useInfiniteQuery(queryKey, {
+  } = api.pool.getHighlightVideosPaginated.useInfiniteQuery(queryKey, {
     refetchOnWindowFocus: false,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
   });
@@ -78,14 +70,14 @@ const ContinuousBandFeed: React.FC<BandProps> = ({
   const { mutate: bookmark, isLoading: bookmarking } =
     api.user.toggleHighlight.useMutation({
       onSettled() {
-        util.pool.getWristbandVideosPaginated.invalidate(queryKey);
+        util.pool.getHighlightVideosPaginated.invalidate(queryKey);
       },
     });
 
   const { mutate: upvote, isLoading: upvoting } =
     api.user.upvoteHighlight.useMutation({
       onSettled() {
-        util.pool.getWristbandVideosPaginated.invalidate(queryKey);
+        util.pool.getHighlightVideosPaginated.invalidate(queryKey);
       },
     });
 
@@ -111,9 +103,7 @@ const ContinuousBandFeed: React.FC<BandProps> = ({
       <ContinuousFeed
         highlights={highlights ?? []}
         fetching={isFetching}
-        backPath={`/reels/${encodeURIComponent(
-          poolId
-        )}/band/${encodeURIComponent(wristbandId)}`}
+        backPath={`/reels/${encodeURIComponent(poolId)}`}
         hasNext={hasNextPage ?? false}
         hasPrev={hasPreviousPage ?? false}
         next={async () => {
@@ -130,9 +120,9 @@ const ContinuousBandFeed: React.FC<BandProps> = ({
   );
 };
 
-const GroupedBandFeed: React.FC<BandProps> = ({
+const GroupedPoolFeed: React.FC<PoolProps> = ({
   poolId,
-  wristbandId,
+
   initialCursor,
   length,
 }) => {
@@ -140,17 +130,13 @@ const GroupedBandFeed: React.FC<BandProps> = ({
 
   const queryKey = {
     poolId,
-    bandId: wristbandId,
     amount: length!,
     cursor: initialCursor!,
   };
 
-  const { data, isLoading } = api.pool.getWristbandHighlightBundle.useQuery(
-    queryKey,
-    {
-      refetchOnWindowFocus: false,
-    }
-  );
+  const { data, isLoading } = api.pool.getHighlightBundle.useQuery(queryKey, {
+    refetchOnWindowFocus: false,
+  });
 
   const highlights = useMemo(() => data?.highlights ?? [], [data?.highlights]);
 
@@ -166,14 +152,14 @@ const GroupedBandFeed: React.FC<BandProps> = ({
   const { mutate: bookmark, isLoading: bookmarking } =
     api.user.toggleHighlight.useMutation({
       onSettled() {
-        util.pool.getWristbandHighlightBundle.invalidate(queryKey);
+        util.pool.getHighlightBundle.invalidate(queryKey);
       },
     });
 
   const { mutate: upvote, isLoading: upvoting } =
     api.user.upvoteHighlight.useMutation({
       onSettled() {
-        util.pool.getWristbandHighlightBundle.invalidate(queryKey);
+        util.pool.getHighlightBundle.invalidate(queryKey);
       },
     });
 
@@ -201,24 +187,22 @@ const GroupedBandFeed: React.FC<BandProps> = ({
         from={data?.name ?? undefined}
         initial={initialCursor ?? undefined}
         fetching={isLoading}
-        backPath={`/reels/${encodeURIComponent(
-          poolId
-        )}/band/${encodeURIComponent(wristbandId)}/`}
+        backPath={`/reels/${encodeURIComponent(poolId)}`}
       />
     </FeedContextProvider>
   );
 };
 
-export const getServerSideProps: GetServerSideProps<BandProps> = async (
+export const getServerSideProps: GetServerSideProps<PoolProps> = async (
   props
 ) => {
   const { params } = props;
 
   if (!params) return { notFound: true };
 
-  const { id, bandId, slug } = params;
+  const { id, slug } = params;
 
-  if (typeof id !== "string" || typeof bandId !== "string") {
+  if (typeof id !== "string") {
     return {
       notFound: true,
     };
@@ -242,17 +226,15 @@ export const getServerSideProps: GetServerSideProps<BandProps> = async (
   const ssg = await getServerHelpers(props.req);
 
   if (length === undefined) {
-    await ssg.pool.getWristbandVideosPaginated.prefetchInfinite({
+    await ssg.pool.getHighlightVideosPaginated.prefetchInfinite({
       poolId,
-      wristbandId: bandId,
       initialCursor: Number.isNaN(initialCursor) ? undefined : initialCursor,
     });
   } else {
-    ssg.pool.getWristbandHighlightBundle.prefetch({
+    ssg.pool.getHighlightBundle.prefetch({
       poolId,
       cursor: initialCursor ?? 0,
       amount: length,
-      bandId,
     });
   }
 
@@ -262,9 +244,8 @@ export const getServerSideProps: GetServerSideProps<BandProps> = async (
       poolId,
       initialCursor,
       length,
-      wristbandId: bandId,
     },
   };
 };
 
-export default BandFeed;
+export default PoolFeed;

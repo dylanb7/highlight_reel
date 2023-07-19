@@ -1,4 +1,6 @@
-import type { NextPage, GetStaticProps } from "next";
+import { GetServerSideProps, NextPage } from "next";
+import { getServerHelpers } from "../../utils/ssgHelper";
+import { api } from "../../utils/trpc";
 import { useMemo } from "react";
 import {
   bookmarkActionUpdate,
@@ -6,16 +8,13 @@ import {
 } from "../../components/contexts/action-types";
 import { FeedContextProvider } from "../../components/contexts/feed-context";
 import { ContinuousFeed } from "../../components/highlight-components/highlight-feed";
-import type { HighlightVideo } from "../../types/highlight-out";
-import { addExt } from "../../utils/highlightUtils";
-import { generateSSGHelper } from "../../utils/ssgHelper";
-import { api } from "../../utils/trpc";
+import { HighlightVideo } from "../../types/highlight-out";
 
-const FeedWithStart: NextPage<{ startId: string }> = ({ startId }) => {
+const UserLikesFeed: NextPage<{ startTime?: number }> = ({ startTime }) => {
   const util = api.useContext();
 
   const queryKey = {
-    initialCursor: addExt(startId),
+    initialCursor: startTime,
   };
 
   const {
@@ -28,6 +27,7 @@ const FeedWithStart: NextPage<{ startId: string }> = ({ startId }) => {
   } = api.user.getLikedVideosPaginated.useInfiniteQuery(queryKey, {
     refetchOnWindowFocus: false,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
+    getPreviousPageParam: (prevPage) => prevPage.prevCursor,
   });
 
   const highlights = useMemo(() => {
@@ -45,24 +45,6 @@ const FeedWithStart: NextPage<{ startId: string }> = ({ startId }) => {
 
   const { mutate: bookmark, isLoading: bookmarking } =
     api.user.toggleHighlight.useMutation({
-      async onMutate(variables) {
-        await util.user.getLikedVideosPaginated.cancel(queryKey);
-        const prev =
-          util.user.getLikedVideosPaginated.getInfiniteData(queryKey);
-        if (prev) {
-          util.user.getLikedVideosPaginated.setInfiniteData(queryKey, {
-            ...prev,
-            pages: bookmarkActionUpdate(prev, variables),
-          });
-        }
-        return { prev };
-      },
-      onError(_, __, context) {
-        util.user.getLikedVideosPaginated.setInfiniteData(
-          queryKey,
-          context?.prev
-        );
-      },
       onSettled() {
         util.user.getLikedVideosPaginated.invalidate(queryKey);
       },
@@ -70,24 +52,6 @@ const FeedWithStart: NextPage<{ startId: string }> = ({ startId }) => {
 
   const { mutate: upvote, isLoading: upvoting } =
     api.user.upvoteHighlight.useMutation({
-      async onMutate(variables) {
-        await util.user.getLikedVideosPaginated.cancel(queryKey);
-        const prev =
-          util.user.getLikedVideosPaginated.getInfiniteData(queryKey);
-        if (prev) {
-          util.user.getLikedVideosPaginated.setInfiniteData(queryKey, {
-            ...prev,
-            pages: likeActionUpdate(prev, variables),
-          });
-        }
-        return { prev };
-      },
-      onError(_, __, context) {
-        util.user.getLikedVideosPaginated.setInfiniteData(
-          queryKey,
-          context?.prev
-        );
-      },
       onSettled() {
         util.user.getLikedVideosPaginated.invalidate(queryKey);
       },
@@ -115,7 +79,7 @@ const FeedWithStart: NextPage<{ startId: string }> = ({ startId }) => {
       <ContinuousFeed
         highlights={highlights ?? []}
         fetching={isFetching}
-        backPath={`/?tab=profile}`}
+        backPath={`/?tab=profile`}
         hasNext={hasNextPage ?? false}
         hasPrev={hasPreviousPage ?? false}
         next={async () => {
@@ -132,37 +96,27 @@ const FeedWithStart: NextPage<{ startId: string }> = ({ startId }) => {
   );
 };
 
-export const getStaticProps: GetStaticProps<{
-  startId: string;
+export const getServerSideProps: GetServerSideProps<{
+  startTime?: number;
 }> = async (props) => {
   const { params } = props;
 
-  if (!params) return { notFound: true };
+  const slug = params?.slug;
 
-  const { startId } = params;
+  const startTime = slug ? Number(slug[0]) : undefined;
 
-  if (typeof startId !== "string") {
-    return {
-      notFound: true,
-    };
-  }
-
-  const ssg = generateSSGHelper();
+  const ssg = await getServerHelpers(props.req);
 
   await ssg.user.getLikedVideosPaginated.prefetchInfinite({
-    initialCursor: startId,
+    initialCursor: Number.isNaN(startTime) ? undefined : startTime,
   });
 
   return {
     props: {
       trpcState: ssg.dehydrate(),
-      startId,
+      startTime,
     },
   };
 };
 
-export const getStaticPaths = () => {
-  return { paths: [], fallback: "blocking" };
-};
-
-export default FeedWithStart;
+export default UserLikesFeed;
