@@ -9,6 +9,7 @@ import { type HighlightVideo } from "../../../../types/highlight-out";
 import { getServerHelpers } from "../../../../utils/ssgHelper";
 import { api } from "../../../../utils/trpc";
 
+
 interface PoolProps {
   poolId: number;
   initialCursor?: number | null;
@@ -16,6 +17,7 @@ interface PoolProps {
 }
 
 const PoolFeed: NextPage<PoolProps> = (props) => {
+  console.log(props)
   if (props.length && props.initialCursor)
     return (
       <GroupedPoolFeed
@@ -39,7 +41,7 @@ const ContinuousPoolFeed: React.FC<PoolProps> = ({ poolId, initialCursor }) => {
   const queryKey: PoolProps = {
     poolId,
     initialCursor,
-    length,
+    length: undefined,
   };
 
   const {
@@ -122,7 +124,6 @@ const ContinuousPoolFeed: React.FC<PoolProps> = ({ poolId, initialCursor }) => {
 
 const GroupedPoolFeed: React.FC<PoolProps> = ({
   poolId,
-
   initialCursor,
   length,
 }) => {
@@ -223,7 +224,7 @@ export const getServerSideProps: GetServerSideProps<PoolProps> = async (
     : initialCursorParse;
   const length = Number.isNaN(lengthParse) ? undefined : lengthParse;
 
-  const ssg = await getServerHelpers(props.req);
+  const ssg = getServerHelpers(props.req);
 
   if (length === undefined) {
     await ssg.pool.getHighlightVideosPaginated.prefetchInfinite({

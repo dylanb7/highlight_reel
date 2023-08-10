@@ -8,8 +8,6 @@ import { ProfileList } from "./profile-scroll-components";
 import { ProfileFollowButton } from "./follow-profile";
 
 import type {
-  ProfileInfo,
-  ProfilePoolsInfo,
   UserInfo,
 } from "../types/user-out";
 
@@ -126,6 +124,8 @@ export const PoolScroll: React.FC<{
 
   if (!hasPools) return <></>;
 
+
+
   return (
     <Collapsible.Root open={open} onOpenChange={setOpen}>
       <div className="flex flex-col">
@@ -182,7 +182,6 @@ export const ProfileData: React.FC<{
     following: number;
   };
 }> = ({ user }) => {
-  const auth = useAuth();
 
   const utils = api.useContext();
 
@@ -266,11 +265,9 @@ export const ProfileData: React.FC<{
         <p className="text-2xl font-semibold text-slate-900 dark:text-white">
           {user.username}
         </p>
-        {auth.userId !== user.id && (
-          <ProfileButtonProvider value={buttonContext}>
-            <ProfileFollowButton profileId={user.id} />
-          </ProfileButtonProvider>
-        )}
+        <ProfileButtonProvider value={buttonContext}>
+          <ProfileFollowButton profileId={user.id} />
+        </ProfileButtonProvider>
       </div>
       <Separator.Root
         orientation="horizontal"
@@ -419,8 +416,27 @@ export const ProfileBookmarks: React.FC<{
 };
 
 export const ProfileComponent: React.FC<{
-  profile: ProfileInfo;
-}> = ({ profile }) => {
+  userId: string;
+}> = ({ userId }) => {
+
+  const { data: profile, isLoading } = api.user.profileQuery.useQuery(userId);
+
+  if (isLoading) {
+    return <div className="flex flex-row items-center gap-2 justify-center text-xl text-slate-900 dark:text-white">
+      <Spinner />
+      Loading Profile
+    </div>
+
+  }
+
+  if (!profile) {
+    return (
+      <div className="flex items-center justify-center text-xl text-slate-900 dark:text-white">
+        Profile not found
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col justify-start gap-1 pt-10">
       <ProfileData user={{ ...profile }} />

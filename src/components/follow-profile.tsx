@@ -26,8 +26,8 @@ const ButtonStyle: React.FC<{ profileId: string }> = ({ profileId }) => {
       {buttonState.follows
         ? "Unfollow"
         : buttonState.pending
-        ? "Requested"
-        : "Follow"}
+          ? "Requested"
+          : "Follow"}
     </button>
   );
 };
@@ -372,9 +372,11 @@ const PoolProfileFollow: React.FC<{
 export const ProfileFollowButton: React.FC<{
   profileId: string;
 }> = ({ profileId }) => {
-  const user = useAuth();
 
   const [open, setOpen] = useState(false);
+
+
+  const user = useAuth();
 
   if (user.userId) {
     if (user.userId === profileId) {
@@ -389,24 +391,25 @@ export const ProfileFollowButton: React.FC<{
 
   return (
     <Popover.Root open={open}>
-      <Popover.Trigger>
-        <button
-          onClick={() => {
-            setOpen((value) => !value);
-          }}
-          disabled={open}
+      <Popover.Trigger
+        onClick={() => {
+          setOpen(!open);
+        }}
+      >
+        <div
           className={
-            "rounded-lg bg-indigo-500 px-3 py-1 text-sm font-semibold text-white no-underline transition hover:bg-indigo-700 disabled:opacity-50"
+            "rounded-lg bg-indigo-500 px-3 py-1 text-sm font-semibold text-white no-underline opacity-80 transition hover:bg-indigo-700"
           }
         >
           Follow
-        </button>
+        </div>
       </Popover.Trigger>
+
       <Popover.Content
         onInteractOutside={() => {
           setOpen(false);
         }}
-        className="w-fit max-w-xs rounded-lg bg-white p-1 shadow-lg radix-side-bottom:animate-slide-down dark:bg-slate-900"
+        className="w-fit max-w-xs rounded-lg bg-white p-1 shadow-lg border border-gray-300 radix-side-bottom:animate-slide-down dark:border-gray-500 dark:bg-slate-900"
       >
         <div className="m-1 flex flex-col items-center justify-center gap-2">
           <p className="text-sm font-semibold text-slate-900 dark:text-white">
@@ -415,6 +418,5 @@ export const ProfileFollowButton: React.FC<{
           <SignInComponent isHead={false} />
         </div>
       </Popover.Content>
-    </Popover.Root>
-  );
+    </Popover.Root>)
 };

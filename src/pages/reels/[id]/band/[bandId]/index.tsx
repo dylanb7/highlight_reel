@@ -1,7 +1,8 @@
 import type { NextPage, GetServerSideProps } from "next";
 import Head from "next/head";
+import { useMemo, useState } from "react";
+import Datepicker, { type DateValueType } from "react-tailwindcss-datepicker";
 
-import { useMemo } from "react";
 import {
   bookmarkActionUpdate,
   likeActionUpdate,
@@ -13,7 +14,6 @@ import {
   HighlightGridsComponent,
   dayGrouping,
 } from "../../../../../components/highlight-components/highlight-grid";
-import { WristBands } from "../../../../../components/pool-components/wristband-row";
 
 import { LoadingSpinner } from "../../../../../components/misc/loading";
 
@@ -22,6 +22,7 @@ import { api } from "../../../../../utils/trpc";
 import { PoolInfo } from "../../../../../components/pool-components/pool-info";
 import PageWrap from "../../../../../components/layout/page-wrap";
 import { getServerHelpers } from "../../../../../utils/ssgHelper";
+import { Filters, useInitialDate } from "~/components/pool-components/pool-filters";
 
 interface PoolViewBandProps {
   poolId: number;
@@ -36,11 +37,12 @@ const PoolView: NextPage<PoolViewBandProps> = ({ poolId, bandId }) => {
       <Head>
         <title>{`Reel - ${poolInfo?.name ?? "Loading"} - ${bandId}`}</title>
       </Head>
+
       <div className="flex h-full w-full flex-col items-start justify-start px-4 sm:px-8">
         <div className="mt-8 self-center pb-4">
           <PoolInfo poolId={poolId} />
         </div>
-        <WristBands poolId={poolId} />
+        <Filters poolId={poolId} />
         <LoadFeed poolId={poolId} bandId={bandId} />
       </div>
     </PageWrap>
@@ -53,10 +55,13 @@ const LoadFeed: React.FC<{
 }> = ({ poolId, bandId }) => {
   const loadAmount = 6;
 
+  const initialCursor = useInitialDate()
+
   const queryKey = {
     amount: loadAmount,
     poolId: poolId,
     wristbandId: bandId,
+    initialCursor
   };
 
   const util = api.useContext();
@@ -184,7 +189,7 @@ export const getServerSideProps: GetServerSideProps<PoolViewBandProps> = async (
 
   const bandId = params.bandId;
 
-  const ssg = await getServerHelpers(props.req);
+  const ssg = getServerHelpers(props.req);
 
   await ssg.pool.getPoolById.prefetch(poolId);
 

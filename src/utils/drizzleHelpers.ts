@@ -1,15 +1,4 @@
-import {
-  and,
-  eq,
-  or,
-  exists,
-  asc,
-  desc,
-  gt,
-  isNotNull,
-  lt,
-  lte,
-} from "drizzle-orm";
+import { and, eq, or, exists, asc, desc, gt, isNotNull, lt } from "drizzle-orm";
 import {
   users,
   follows,
@@ -18,7 +7,7 @@ import {
   highlightPool,
 } from "../server/db/schema";
 import type { dbType } from "../server/db";
-import type { highlightCursor } from "./highlightUtils";
+import { type highlightCursor } from "./highlightUtils";
 
 export const userWhereArgs = (
   currentId: string | null | undefined,
@@ -48,7 +37,7 @@ export const cursorWhereArgs = (
 ) => {
   const timestamp = parsedCursor?.timestamp ?? initialCursor;
   if (!timestamp) return isNotNull(highlight.id);
-  if (!parsedCursor) return lte(highlight.timestampUtc, timestamp);
+  if (!parsedCursor) return lt(highlight.timestampUtc, timestamp);
   if (parsedCursor.dir === "next")
     return or(
       lt(highlight.timestampUtc, parsedCursor.timestamp),

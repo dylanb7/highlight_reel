@@ -1,5 +1,6 @@
 import type { GetServerSideProps, NextPage } from "next";
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
+
 import { api } from "../../../utils/trpc";
 import { LoadingSpinner } from "../../../components/misc/loading";
 import { getServerHelpers } from "../../../utils/ssgHelper";
@@ -15,9 +16,12 @@ import {
   bookmarkActionUpdate,
   likeActionUpdate,
 } from "../../../components/contexts/action-types";
-import { WristBands } from "../../../components/pool-components/wristband-row";
+
 import { PoolInfo } from "../../../components/pool-components/pool-info";
 import PageWrap from "../../../components/layout/page-wrap";
+import { Filters, useInitialDate } from "~/components/pool-components/pool-filters";
+import { decodeCursor } from "~/utils/highlightUtils";
+import { getQueryKey } from "@trpc/react-query";
 
 
 
@@ -33,7 +37,8 @@ const PoolView: NextPage<{ poolId: number }> = ({ poolId }) => {
         <div className="mt-8 self-center pb-4">
           <PoolInfo poolId={poolId} />
         </div>
-        <WristBands poolId={poolId} />
+
+        <Filters poolId={poolId} />
         <LoadFeed poolId={poolId} />
       </div>
     </PageWrap>
@@ -45,9 +50,12 @@ const LoadFeed: React.FC<{
 }> = ({ poolId }) => {
   const loadAmount = 6;
 
+  const initialCursor = useInitialDate()
+
   const queryKey = {
     amount: loadAmount,
     poolId: poolId,
+    initialCursor
   };
 
   const util = api.useContext();
@@ -56,6 +64,9 @@ const LoadFeed: React.FC<{
     api.pool.getPoolHighlightsPaginated.useInfiniteQuery(queryKey, {
       getNextPageParam: (lastPage) => lastPage.nextCursor,
     });
+
+
+
   const highlights = useMemo(() => {
     return data?.pages.flatMap((page) => page.highlights) ?? [];
   }, [data]);
@@ -168,7 +179,7 @@ export const getServerSideProps: GetServerSideProps<{
   }
 
 
-  const ssgHelper = await getServerHelpers(props.req);
+  const ssgHelper = getServerHelpers(props.req);
 
   await ssgHelper.pool.getPoolById.prefetch(poolId);
 

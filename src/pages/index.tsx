@@ -32,23 +32,20 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
 
   const util = api.useContext();
 
+  const queryKey = {
+    amount
+  }
+
   const { data, hasNextPage, fetchNextPage, isLoading } =
     api.pool.getPublicPoolsPaginated.useInfiniteQuery(
-      {
-        amount: amount,
-      },
+      queryKey,
       {
         refetchOnWindowFocus: false,
         getNextPageParam: (lastPage) => lastPage.nextCursor,
       }
     );
 
-  const queryKey = {
-    cursor: data?.pages.at(-1)?.nextCursor,
-    userId: user.userId,
-    discover: discover,
-    amount: amount,
-  };
+
 
   const pools = useMemo(() => {
     return data?.pages.flatMap((page) => page.poolsInfo) ?? [];
@@ -142,16 +139,16 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
             <p className="mb-2 pt-4 text-center text-2xl font-semibold text-slate-900 dark:text-white">
               {discover ? "Discover Reels" : "Public Reels"}
             </p>
+            {data && pools.length == 0 && (
+              <p className="text font-semibold text-slate-900 dark:text-white text-center">
+                No New Reels to Discover
+              </p>
+            )}
             <div className="m-4 flex max-w-6xl grid-cols-1 flex-col items-center justify-center gap-4 sm:grid sm:grid-cols-2 md:gap-8 lg:grid-cols-3">
               {data &&
                 pools.map((reel) => (
                   <PoolComponent key={reel.id} pool={reel} />
                 ))}
-              {data && pools.length == 0 && (
-                <p className="text font-semibold text-slate-900">
-                  No New Reels to Discover
-                </p>
-              )}
             </div>
             {hasNextPage && (
               <div className="mt-4 flex items-center justify-center">
@@ -230,14 +227,14 @@ const AuthedContent = () => {
           <Tab.List className="flex flex-row items-center justify-around gap-8 ">
             <Tab.Trigger
               value="discover"
-              className="flex flex-col items-center text-xs font-semibold radix-state-active:text-indigo-500 radix-state-inactive:text-slate-900 hover:radix-state-inactive:text-indigo-700 dark:radix-state-inactive:text-white dark:hover:radix-state-inactive:text-indigo-300"
+              className={`flex flex-col items-center text-xs font-semibold ${value === "discover" ? "text-indigo-500" : "text-slate-900 dark:text-white hover:text-indigo-700 dark:hover:text-indigo-300"}`}
             >
               <CameraIcon className="h-6 w-6" />
               Discover
             </Tab.Trigger>
             <Tab.Trigger
               value="profile"
-              className="flex flex-col items-center text-xs font-semibold radix-state-active:text-indigo-500 radix-state-inactive:text-slate-900 hover:radix-state-inactive:text-indigo-700 dark:radix-state-inactive:text-white dark:hover:radix-state-inactive:text-indigo-300"
+              className={`flex flex-col items-center text-xs font-semibold ${value === "profile" ? "text-indigo-500" : "text-slate-900 dark:text-white hover:text-indigo-700 dark:hover:text-indigo-300"}`}
             >
               <PersonIcon className="h-6 w-6" />
               Profile
@@ -260,17 +257,11 @@ const ProfileLayout: React.FC<{ userId: string }> = ({ userId }) => {
     );
 
   if (!profile)
-    return (
-      <p className="mb-2 pt-4 text-center text-2xl font-semibold text-slate-900 dark:text-white">
-        Error fetching your profile
-      </p>
-    );
-
-  if (!profile.username || profile.public == null) {
     return <UserFinish />;
-  }
 
-  return <ProfileComponent profile={profile} />;
+
+
+  return <ProfileComponent userId={userId} />;
 };
 
 const HomePage: NextPage = () => {

@@ -239,7 +239,7 @@ export const getServerSideProps: GetServerSideProps<BandProps> = async (
     : initialCursorParse;
   const length = Number.isNaN(lengthParse) ? undefined : lengthParse;
 
-  const ssg = await getServerHelpers(props.req);
+  const ssg = getServerHelpers(props.req);
 
   if (length === undefined) {
     await ssg.pool.getWristbandVideosPaginated.prefetchInfinite({

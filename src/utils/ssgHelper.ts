@@ -2,7 +2,7 @@ import { appRouter } from "../server/trpc/router/_app";
 import { createServerSideHelpers } from "@trpc/react-query/server";
 import superjson from "superjson";
 import { createContextInner } from "../server/trpc/context";
-import { getAuth } from "@clerk/nextjs/dist/types/server";
+import { getAuth } from '@clerk/nextjs/server';
 import { type NextRequest } from "next/server";
 import { type GetServerSidePropsContext } from "next";
 

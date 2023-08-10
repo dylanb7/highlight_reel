@@ -54,7 +54,7 @@ export const highlightPool = mysqlTable(
     name: varchar("name", { length: 191 }),
     ownerId: varchar("ownerId", { length: 191 }).notNull(),
     public: tinyint("public").default(0).notNull(),
-    createdAt: timestamp("createdAt").defaultNow(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   (table) => {
     return {
@@ -76,7 +76,7 @@ export const poolsToMods = mysqlTable(
   {
     userId: varchar("user_id", { length: 191 }).notNull(),
     poolId: bigint("pool_id", { mode: "number" }).notNull(),
-    updatedAt: timestamp("updatedAt").onUpdateNow().defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   },
   (table) => ({
     pk: primaryKey(table.userId, table.poolId),
@@ -89,7 +89,7 @@ export const poolsToFollowers = mysqlTable(
   {
     userId: varchar("user_id", { length: 191 }).notNull(),
     poolId: bigint("pool_id", { mode: "number" }).notNull(),
-    updatedAt: timestamp("updatedAt").onUpdateNow().defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   },
   (table) => ({
     pk: primaryKey(table.userId, table.poolId),
@@ -102,7 +102,7 @@ export const poolsToRequested = mysqlTable(
   {
     userId: varchar("user_id", { length: 191 }).notNull(),
     poolId: bigint("pool_id", { mode: "number" }).notNull(),
-    updatedAt: timestamp("updatedAt").onUpdateNow().defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   },
   (table) => ({
     pk: primaryKey(table.userId, table.poolId),
@@ -161,10 +161,10 @@ export const userRelations = relations(users, ({ many }) => ({
   requestedPools: many(poolsToRequested),
   ownedPools: many(highlightPool),
   moddedPools: many(poolsToMods),
-  follows: many(follows),
-  followers: many(follows),
-  requests: many(requests),
-  pending: many(requests),
+  follows: many(follows, { relationName: "followed" }),
+  followers: many(follows, { relationName: "follower" }),
+  requests: many(requests, { relationName: "requests" }),
+  pending: many(requests, { relationName: "pending" }),
 }));
 
 export const highlightRelations = relations(highlight, ({ one, many }) => ({
@@ -194,10 +194,12 @@ export const followerRelations = relations(follows, ({ one }) => ({
   follower: one(users, {
     fields: [follows.followerId],
     references: [users.id],
+    relationName: "follower",
   }),
   followed: one(users, {
     fields: [follows.followedId],
     references: [users.id],
+    relationName: "followed",
   }),
 }));
 
@@ -205,10 +207,12 @@ export const requestRelations = relations(requests, ({ one }) => ({
   requester: one(users, {
     fields: [requests.requesterId],
     references: [users.id],
+    relationName: "requests",
   }),
   requested: one(users, {
     fields: [requests.requestedId],
     references: [users.id],
+    relationName: "pending",
   }),
 }));
 

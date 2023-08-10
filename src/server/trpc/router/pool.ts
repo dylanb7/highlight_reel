@@ -19,7 +19,7 @@ import {
   poolsToFollowers,
   poolsToRequested,
 } from "../../db/schema";
-import { and, desc, eq, ilike, like, lt, lte, notExists } from "drizzle-orm";
+import { and, desc, eq, like, lt, lte, notInArray } from "drizzle-orm";
 import {
   canViewPool,
   cursorWhereArgs,
@@ -125,7 +125,7 @@ export const poolRouter = router({
       const searchLimit = 15;
       if (userId) {
         const res = await ctx.db.query.highlightPool.findMany({
-          where: ilike(highlightPool.name, input),
+          where: like(highlightPool.name, input),
           with: {
             poolFollowers: {
               where: eq(poolsToFollowers.userId, userId),
@@ -179,24 +179,23 @@ export const poolRouter = router({
               lt(highlightPool.createdAt, cursor!)
             );
           }
+
           const userFollows = ctx.db
-            .select()
+            .select({ id: poolsToFollowers.poolId })
             .from(poolsToFollowers)
-            .where(
-              and(
-                eq(poolsToFollowers.poolId, highlightPool.id),
-                eq(poolsToFollowers.userId, userId)
-              )
-            );
+            .where(eq(poolsToFollowers.userId, userId));
 
           if (cursor) {
             return and(
               eq(highlightPool.public, 1),
               lt(highlightPool.createdAt, cursor),
-              notExists(userFollows)
+              notInArray(highlight.id, userFollows)
             );
           }
-          return and(eq(highlightPool.public, 1), notExists(userFollows));
+          return and(
+            eq(highlightPool.public, 1),
+            notInArray(highlight.id, userFollows)
+          );
         },
         with: {
           highlights: {
@@ -238,7 +237,9 @@ export const poolRouter = router({
           highlightCount: pool.highlights.length,
         };
       });
-      const nextCursor = hasNext ? poolsInfo[-1]?.createdAt : undefined;
+      const nextCursor = hasNext
+        ? poolsInfo[poolsInfo.length - 1]?.createdAt
+        : undefined;
       return {
         poolsInfo,
         nextCursor,
@@ -664,7 +665,7 @@ export const poolRouter = router({
     .query(async ({ ctx, input }) => {
       const ref = ctx.auth?.userId;
       const res = await ctx.db.query.poolsToFollowers.findMany({
-        where: eq(highlightPool.id, input),
+        where: eq(poolsToFollowers.poolId, input),
         columns: {},
         with: {
           user: {

@@ -39,6 +39,7 @@ export const dayGrouping: GroupingStrategy = (highlights) => {
 
   for (const highlight of highlights) {
     if (!highlight.timestampUtc) continue;
+
     const key = dayjs
       .unix(Number(highlight.timestampUtc))
       .utc()
@@ -133,7 +134,7 @@ const HighlightGrid: React.FC<{ group: HighlightGroup }> = ({ group }) => {
               highlight={highlight}
               length={length}
               continuous={group.continuous}
-              start={group.highlights.at(0)?.id ?? ""}
+              start={group.highlights.at(0)!.timestampUtc!}
               index={index}
             />
           ))}
@@ -149,7 +150,7 @@ const HighlightGrid: React.FC<{ group: HighlightGroup }> = ({ group }) => {
 };
 
 const ImageComponent: React.FC<{
-  start: string;
+  start: number;
   length: number;
   index: number;
   continuous: boolean;
@@ -167,18 +168,12 @@ const ImageComponent: React.FC<{
   const href: UrlObject = useMemo(() => {
     if (continuous)
       return {
-        pathname: `/${gridContext.basePath}/[startId]`,
-        query: {
-          startId: highlight.id,
-        },
+        pathname: `/${gridContext.basePath}/${highlight.timestampUtc}`,
       };
     return {
-      pathname: `/${gridContext.basePath}/${start}/${length}`,
-      query: {
-        current: index,
-      },
+      pathname: `/${gridContext.basePath}/${encodeURIComponent(start)}/${encodeURIComponent(length)}/${encodeURIComponent(index)}`,
     };
-  }, [continuous, gridContext.basePath, highlight.id, index, length, start]);
+  }, [continuous, gridContext.basePath, highlight.timestampUtc, index, length, start]);
 
   return (
     <AspectRatio.Root ratio={aspect}>
@@ -204,9 +199,9 @@ const ImageComponent: React.FC<{
           )}
 
           <Link href={href}>
-            <div className="absolute inset-x-0 top-0 bottom-[30px] z-40" />
+            <div className="absolute inset-x-0 top-0 bottom-[30px] z-30" />
           </Link>
-          <div className="absolute inset-x-0 bottom-0 z-40">
+          <div className="absolute inset-x-0 bottom-0 z-30">
             <ActionRowCompact highlight={highlight} />
           </div>
         </div>

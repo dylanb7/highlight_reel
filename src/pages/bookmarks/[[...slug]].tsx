@@ -85,9 +85,7 @@ const FeedWithStart: NextPage<{ startTime?: number }> = ({ startTime }) => {
           context?.prev
         );
       },
-      onSettled() {
-        void util.user.getUserBookmarkedVideosPaginated.invalidate(queryKey);
-      },
+
     });
 
   return (
@@ -135,12 +133,14 @@ export const getServerSideProps: GetServerSideProps<{ startTime?: number }> = as
 
   const slug = params?.slug;
 
-  const startTime = slug ? Number(slug[0]) : undefined;
+  const parsedSlug = slug ? Number(slug[0]) : undefined;
 
-  const ssg = await getServerHelpers(props.req);
+  const startTime = Number.isNaN(parsedSlug) ? undefined : parsedSlug
+
+  const ssg = getServerHelpers(props.req);
 
   await ssg.user.getUserBookmarkedVideosPaginated.prefetchInfinite({
-    initialCursor: Number.isNaN(startTime) ? undefined : startTime,
+    initialCursor: startTime,
   });
 
   return {

@@ -1,13 +1,23 @@
-import { SignIn, SignOutButton, SignedIn, SignedOut } from "@clerk/nextjs";
+import { SignedIn, SignedOut, UserButton, useClerk } from "@clerk/nextjs";
 
-const SignInComponent: React.FC<{ isHead?: boolean }> = ({ }) => {
+const SignInComponent: React.FC<{ isHead?: boolean }> = ({ isHead }) => {
+  const { openSignIn } = useClerk();
+
   return (
     <>
       <SignedIn>
-        <SignOutButton />
+        <UserButton />
       </SignedIn>
       <SignedOut>
-        <SignIn />
+        <button
+          className={
+            "rounded-lg bg-indigo-500 text-sm font-semibold text-white no-underline transition hover:bg-indigo-700 " +
+            (isHead ?? true ? "w-32 py-2" : "px-2 py-1")
+          }
+          onClick={() => openSignIn()}
+        >
+          Sign in
+        </button>
       </SignedOut>
     </>
     /*<button

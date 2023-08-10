@@ -6,15 +6,10 @@ import { z } from "zod";
  * This way you can ensure the app isn't built with invalid env vars.
  */
 export const serverSchema = z.object({
-  DATABASE_HOST: z.string(),
-  DATABASE_USERNAME: z.string(),
-  DATABASE_PASSWORD: z.string(),
-
+  DATABASE_URL: z.string(),
   NODE_ENV: z.enum(["development", "test", "production"]),
-
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string(),
   CLERK_SECRET_KEY: z.string(),
-
   AWS_ACCESS_KEY_ID: z.string().optional(),
   AWS_SECRET_ACCESS_KEY: z.string().optional(),
 });

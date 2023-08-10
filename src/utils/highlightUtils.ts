@@ -7,6 +7,7 @@ import type {
   URLFetch,
 } from "../types/highlight-out";
 import { z } from "zod";
+import { Buffer } from "buffer";
 
 const REGION = "us-east-1";
 
@@ -153,7 +154,7 @@ const getCursors = (
   }
 
   const first = highlights[0];
-  const last = highlights[-1];
+  const last = highlights[highlights.length - 1];
 
   if (!first || !last) return { nextCursor, prevCursor };
 
@@ -192,19 +193,24 @@ export const cursorSchema = z.object({
 
 export type highlightCursor = z.infer<typeof cursorSchema>;
 
+const decode = (str: string): string =>
+  Buffer.from(str, "base64").toString("binary");
+const encode = (str: string): string =>
+  Buffer.from(str, "binary").toString("base64");
+
 export const createCursor = (cursorInfo: highlightCursor) => {
-  return Buffer.from(
-    `'${cursorInfo.highlight_id},${cursorInfo.timestamp},${cursorInfo.dir}'`,
-    "base64"
-  ).toString("binary");
+  return encode(
+    `${cursorInfo.highlight_id},${cursorInfo.timestamp},${cursorInfo.dir}`
+  );
 };
 
 export const decodeCursor = (cursor: string) => {
-  const decodedData = Buffer.from(cursor, "binary").toString("base64");
+  const decodedData = decode(cursor);
   const vals = decodedData.split(",");
+  console.log(vals);
   const cursorObj = {
     highlight_id: vals[0],
-    timestamp: vals[1] ? parseInt(vals[1]) : undefined,
+    timestamp: vals[1] ? Number(vals[1]) : undefined,
     dir: vals[2],
   };
   const res = cursorSchema.safeParse(cursorObj);

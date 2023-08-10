@@ -40,7 +40,7 @@ export const PoolFollowButton: React.FC<{
 
   const [open, setOpen] = useState(false);
 
-  if (auth?.userId) {
+  if (auth.userId) {
     return <ButtonStyle poolId={poolId} />;
   }
 
@@ -64,7 +64,7 @@ export const PoolFollowButton: React.FC<{
         onInteractOutside={() => {
           setOpen(false);
         }}
-        className="w-fit max-w-xs rounded-lg bg-white p-1 shadow-lg radix-side-bottom:animate-slide-down dark:bg-slate-900"
+        className="w-fit max-w-xs rounded-lg bg-white p-1 shadow-lg border border-gray-300 radix-side-bottom:animate-slide-down dark:border-gray-500 dark:bg-slate-900"
       >
         <div className="m-1 flex flex-col items-center justify-center gap-2">
           <p className="text-sm font-semibold text-slate-900 dark:text-white">

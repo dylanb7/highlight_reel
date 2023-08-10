@@ -101,7 +101,7 @@ export const getServerSideProps: GetServerSideProps<{
 
   const startTime = slug ? Number(slug[0]) : undefined;
 
-  const ssg = await getServerHelpers(props.req);
+  const ssg = getServerHelpers(props.req);
 
   await ssg.user.getLikedVideosPaginated.prefetchInfinite({
     initialCursor: Number.isNaN(startTime) ? undefined : startTime,

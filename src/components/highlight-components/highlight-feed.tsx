@@ -30,6 +30,7 @@ import * as reltiveTime from "dayjs/plugin/relativeTime";
 import * as utc from "dayjs/plugin/utc";
 import LocalizedFormat from "dayjs/plugin/localizedFormat";
 import { removeExt } from "../../utils/highlightUtils";
+import { z } from "zod";
 
 dayjs.extend(reltiveTime.default);
 dayjs.extend(utc.default);
@@ -43,6 +44,12 @@ interface NavProps {
   next: () => void;
   prev: () => void;
 }
+
+export const continuousSlug = z.string();
+
+export const indexedSlug = z.object({
+
+});
 
 export const ContinuousFeed: React.FC<{
   highlights: HighlightVideo[];
@@ -63,20 +70,22 @@ export const ContinuousFeed: React.FC<{
   next,
   prev,
 }) => {
-    const { push, query } = useRouter();
+    const { push, replace, query } = useRouter();
 
-    const { startId } = query;
+    const { slug } = query;
+
+    const currentId = !slug || typeof slug === "string" ? undefined : slug[0]
 
     const length = highlights.length;
 
     useEffect(() => {
       const initial = highlights.at(0);
-      if (startId === undefined && initial) {
-        void push(
+      if ((currentId === undefined || Number.isInteger(Number(currentId))) && initial) {
+        void replace(
           {
             query: {
               ...query,
-              startId: encodeURIComponent(removeExt(initial.id)),
+              slug: [encodeURIComponent(removeExt(initial.id))],
             },
           },
           undefined,
@@ -85,15 +94,15 @@ export const ContinuousFeed: React.FC<{
           }
         );
       }
-    }, [highlights, push, query, startId]);
+    }, [highlights, query, currentId, replace]);
 
     const current = useMemo(() => {
-      if (typeof startId !== "string") return undefined;
+      if (typeof currentId !== "string") return undefined;
       const index = highlights.findIndex((highlight) => {
-        return removeExt(highlight.id) === startId;
+        return removeExt(highlight.id) === currentId;
       });
       return index == -1 ? undefined : index;
-    }, [highlights, startId]);
+    }, [highlights, currentId]);
 
     const highlight = useMemo(() => {
       return current !== undefined ? highlights.at(current) : undefined;
@@ -104,6 +113,8 @@ export const ContinuousFeed: React.FC<{
     const hasCachedPrev = current !== undefined && current > 0;
 
     const goNext = async () => {
+      console.log('next');
+      console.log(highlights)
       const nextHighlight =
         current !== undefined ? highlights.at(current + 1) : undefined;
       if (nextHighlight) {
@@ -111,7 +122,7 @@ export const ContinuousFeed: React.FC<{
           {
             query: {
               ...query,
-              startId: encodeURIComponent(removeExt(nextHighlight.id)),
+              slug: [encodeURIComponent(removeExt(nextHighlight.id))],
             },
           },
           undefined,
@@ -121,10 +132,11 @@ export const ContinuousFeed: React.FC<{
         );
       }
       const id = await next();
+      console.log(id);
       if (!id) return;
       void push(
         {
-          query: { ...query, startId: encodeURIComponent(removeExt(id)) },
+          query: { ...query, slug: [encodeURIComponent(removeExt(id))] },
         },
         undefined,
         {
@@ -140,8 +152,7 @@ export const ContinuousFeed: React.FC<{
         return push(
           {
             query: {
-              ...query,
-              startId: encodeURIComponent(removeExt(prevHighlight.id)),
+              slug: encodeURIComponent(removeExt(prevHighlight.id)),
             },
           },
           undefined,
@@ -154,7 +165,7 @@ export const ContinuousFeed: React.FC<{
       if (!id) return;
       void push(
         {
-          query: { ...query, startId: encodeURIComponent(removeExt(id)) },
+          query: { slug: encodeURIComponent(removeExt(id)) },
         },
         undefined,
         {
@@ -201,16 +212,9 @@ export const IndexedFeed: React.FC<{
 }> = ({ highlights, fetching, from, backPath }) => {
   const { push, query } = useRouter();
 
-  const { current } = query;
+  const { slug } = query;
 
-  const setIndex = useCallback(
-    (newValue: number) => {
-      void push({ query: { ...query, current: newValue } }, undefined, {
-        shallow: true,
-      });
-    },
-    [push, query]
-  );
+  const current = slug?.at(2)
 
   const validIndex =
     typeof current === "string" && !Number.isNaN(parseInt(current));
@@ -220,6 +224,16 @@ export const IndexedFeed: React.FC<{
   const length = highlights.length;
 
   const hasNext = index < length - 1;
+
+  const setIndex = useCallback(
+    (newValue: number) => {
+      console.log(`new num : ${newValue}`)
+      void push({ query: { ...query, slug: [removeExt(highlights[0]!.id), encodeURIComponent(length), encodeURIComponent(newValue)] } }, undefined, {
+        shallow: true,
+      });
+    },
+    [highlights, length, push, query]
+  );
 
   const next = () => {
     if (!hasNext) void Promise.resolve(undefined);
@@ -310,7 +324,7 @@ const BaseCompontent: React.FC<
       return (
         <div className="flex justify-center">
           <h3 className="py-3 text-2xl font-semibold text-slate-900 dark:text-white">
-            Not Found
+            Highlight not found
           </h3>
         </div>
       );
@@ -511,6 +525,7 @@ const MobilePlayer: React.FC<
                   />
                 </div>
               )}
+
             </div>
           )}
         </div>
@@ -709,22 +724,21 @@ const Source: React.FC<{ poolId: number; wristbandId?: string | null }> = ({
   wristbandId,
 }) => {
   return (
-    <div className="flex flex-col items-end justify-start">
-      <p className="text-lg font-bold text-slate-900 dark:text-white">
+    <div className="flex flex-col items-center justify-start text-lg font-bold text-slate-900 dark:text-white">
+      <p>
         Captured By:
-        {wristbandId && (
-          <IconStyleLink
-            url={`/reels/${encodeURIComponent(
-              poolId
-            )}/band/${encodeURIComponent(wristbandId)}`}
-          >
-            <h2 className="underline">Band</h2>
-          </IconStyleLink>
-        )}
-        <IconStyleLink url={`/reels/${poolId}`}>
-          <h2 className="underline">Reel</h2>
-        </IconStyleLink>
       </p>
+
+      {wristbandId && (
+        <IconStyleLink
+          url={`/reels/${encodeURIComponent(poolId)}/band/${encodeURIComponent(wristbandId)}`}
+        >
+          <h2 className="underline">Band</h2>
+        </IconStyleLink>
+      )}
+      <IconStyleLink url={`/reels/${poolId}`}>
+        <h2 className="underline">Reel</h2>
+      </IconStyleLink>
     </div>
   );
 };

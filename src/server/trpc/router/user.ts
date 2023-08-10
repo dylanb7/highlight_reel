@@ -12,7 +12,7 @@ import {
 } from "../../../utils/highlightUtils";
 import type { HighlightReturn } from "../../../types/highlight-out";
 
-import { and, asc, eq, gte, inArray, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, inArray, lt, sql } from "drizzle-orm";
 import type { User } from "../../db/schema";
 import { bookmarkedHighlightToUser, highlight } from "../../db/schema";
 import {
@@ -46,10 +46,11 @@ export const userRouter = router({
       })
     )
     .mutation(({ ctx, input }) => {
-      return ctx.db
-        .update(users)
-        .set({ public: input.public ? 1 : 0, username: input.username })
-        .where(eq(users.id, ctx.auth.userId));
+      return ctx.db.insert(users).values({
+        id: ctx.auth.userId,
+        public: input.public ? 1 : 0,
+        username: input.username,
+      });
     }),
 
   profileQuery: publicProcedure
@@ -112,13 +113,14 @@ export const userRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const ref = ctx.auth?.userId;
+      const { userId, type, cursor } = input;
       const amount = input.amount ?? 6;
-      const owns = input.userId === ref;
-      if (input.type !== "followed" && !owns) return undefined;
+      const owns = userId === ref;
+      if (type !== "followed" && !owns) return undefined;
       const innerPoolSelect = {
         where: () => {
-          if (!input.cursor) gte(poolsToFollowers.poolId, 0);
-          return lt(poolsToFollowers.updatedAt, input.cursor!);
+          if (!cursor) return gte(poolsToFollowers.poolId, 0);
+          return lt(poolsToFollowers.updatedAt, cursor);
         },
         limit: amount + 1,
         with: {
@@ -138,7 +140,7 @@ export const userRouter = router({
           },
         },
 
-        orderBy: asc(poolsToFollowers.updatedAt),
+        orderBy: desc(poolsToFollowers.updatedAt),
       };
 
       const poolDataToInfo = (pool: {
@@ -146,7 +148,7 @@ export const userRouter = router({
         name: string | null;
         ownerId: string;
         public: number;
-        createdAt: Date | null;
+        createdAt: Date;
         highlights: {
           id: string;
         }[];
@@ -174,9 +176,9 @@ export const userRouter = router({
         };
       };
 
-      if (input.type === "followed") {
+      if (type === "followed") {
         const pools = await ctx.db.query.users.findFirst({
-          where: eq(users.id, input.userId),
+          where: eq(users.id, userId),
           columns: {},
           with: {
             followedPools: innerPoolSelect,
@@ -194,12 +196,14 @@ export const userRouter = router({
 
         return {
           poolsInfo,
-          nextCursor: hasNext ? pools?.followedPools[-1]?.updatedAt : undefined,
+          nextCursor: hasNext
+            ? pools?.followedPools[amount - 1]?.updatedAt
+            : undefined,
         };
       }
-      if (input.type === "modded") {
+      if (type === "modded") {
         const pools = await ctx.db.query.users.findFirst({
-          where: eq(users.id, input.userId),
+          where: eq(users.id, userId),
           columns: {},
           with: {
             moddedPools: innerPoolSelect,
@@ -216,17 +220,19 @@ export const userRouter = router({
           ) ?? [];
         return {
           poolsInfo,
-          nextCursor: hasNext ? pools?.moddedPools[-1]?.updatedAt : undefined,
+          nextCursor: hasNext
+            ? pools?.moddedPools[amount - 1]?.updatedAt
+            : undefined,
         };
       }
       const pools = await ctx.db.query.users.findFirst({
-        where: eq(users.id, input.userId),
+        where: eq(users.id, userId),
         columns: {},
         with: {
           ownedPools: {
             where: () => {
-              if (!input.cursor) gte(highlightPool.id, 0);
-              return lt(highlightPool.createdAt, input.cursor!);
+              if (!cursor) return gte(highlightPool.id, 0);
+              return lt(highlightPool.createdAt, cursor);
             },
             limit: amount + 1,
             with: {
@@ -244,7 +250,7 @@ export const userRouter = router({
                   }
                 : {}),
             },
-            orderBy: asc(highlightPool.createdAt),
+            orderBy: desc(highlightPool.createdAt),
           },
         },
       });
@@ -267,7 +273,9 @@ export const userRouter = router({
         })) ?? [];
       return {
         poolsInfo,
-        nextCursor: hasNext ? pools?.ownedPools[-1]?.createdAt : undefined,
+        nextCursor: hasNext
+          ? pools?.ownedPools[amount - 1]?.createdAt
+          : undefined,
       };
     }),
 
@@ -284,15 +292,15 @@ export const userRouter = router({
 
       if (input.add) {
         return ctx.db
-          .insert(upvotedHighlightToUser)
+          .insert(bookmarkedHighlightToUser)
           .values({ highlightId: extId, userId: userId });
       }
       return ctx.db
-        .delete(upvotedHighlightToUser)
+        .delete(bookmarkedHighlightToUser)
         .where(
           and(
-            eq(upvotedHighlightToUser.highlightId, extId),
-            eq(upvotedHighlightToUser.userId, userId)
+            eq(bookmarkedHighlightToUser.highlightId, extId),
+            eq(bookmarkedHighlightToUser.userId, userId)
           )
         );
     }),
@@ -402,7 +410,7 @@ export const userRouter = router({
                 },
               },
             },
-            orderBy: asc(users.id),
+            orderBy: asc(follows.followerId),
           },
         },
       });
@@ -453,7 +461,7 @@ export const userRouter = router({
                 },
               },
             },
-            orderBy: asc(users.id),
+            orderBy: asc(follows.followedId),
           },
         },
       });
@@ -618,6 +626,13 @@ export const userRouter = router({
         (val) => val.highlight.id
       );
 
+      if (highlightIds.length === 0)
+        return {
+          highlights: [],
+          nextCursor: undefined,
+          prevCursor: undefined,
+        };
+
       if (currentId) {
         const highlightAdditions = await ctx.db
           .select({
@@ -756,6 +771,13 @@ export const userRouter = router({
         (val) => val.highlight.id
       );
 
+      if (highlightIds.length === 0)
+        return {
+          highlights: [],
+          nextCursor: undefined,
+          prevCursor: undefined,
+        };
+
       if (currentId) {
         const highlightAdditions = await ctx.db
           .select({
@@ -885,6 +907,13 @@ export const userRouter = router({
       const highlightIds = highlightSelect.map<string>(
         (val) => val.highlight.id
       );
+
+      if (highlightIds.length === 0)
+        return {
+          highlights: [],
+          prevCursor: undefined,
+          nextCursor: undefined,
+        };
 
       const highlightAdditions = await ctx.db
         .select({

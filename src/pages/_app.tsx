@@ -6,10 +6,11 @@ import "../styles/globals.css";
 
 import Head from "next/head";
 import { ClerkProvider } from "@clerk/nextjs";
+import { dark } from "@clerk/themes"
 
 const MyApp: AppType = ({ Component, pageProps: { ...pageProps } }) => {
   return (
-    <ClerkProvider>
+    <ClerkProvider appearance={{ baseTheme: dark, }}>
       <Head>
         <title>Highlight Reel</title>
         <meta name="description" content="💭" />
