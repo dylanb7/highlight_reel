@@ -11,7 +11,7 @@ const MobileNav = ({ open }: { open: boolean }) => {
         open ? "-translate-x-0" : "-translate-x-full"
       } drop-shadow-md filter transition-transform duration-300 ease-in-out`}
     >
-      <div className="relative mx-4 mt-4 flex flex-col">
+      <div className="relative mx-4 mt-4 flex flex-col gap-2">
         <SignInComponent />
         <ModeToggle />
       </div>
