@@ -47,9 +47,7 @@ interface NavProps {
 
 export const continuousSlug = z.string();
 
-export const indexedSlug = z.object({
-
-});
+export const indexedSlug = z.object({});
 
 export const ContinuousFeed: React.FC<{
   highlights: HighlightVideo[];
@@ -70,138 +68,143 @@ export const ContinuousFeed: React.FC<{
   next,
   prev,
 }) => {
-    const { push, replace, query } = useRouter();
+  const { push, replace, query } = useRouter();
 
-    const { slug } = query;
+  const { slug } = query;
 
-    const currentId = !slug || typeof slug === "string" ? undefined : slug[0]
+  const currentId = !slug || typeof slug === "string" ? undefined : slug[0];
 
-    const length = highlights.length;
+  const length = highlights.length;
 
-    useEffect(() => {
-      const initial = highlights.at(0);
-      if ((currentId === undefined || Number.isInteger(Number(currentId))) && initial) {
-        void replace(
-          {
-            query: {
-              ...query,
-              slug: [encodeURIComponent(removeExt(initial.id))],
-            },
-          },
-          undefined,
-          {
-            shallow: true,
-          }
-        );
-      }
-    }, [highlights, query, currentId, replace]);
-
-    const current = useMemo(() => {
-      if (typeof currentId !== "string") return undefined;
-      const index = highlights.findIndex((highlight) => {
-        return removeExt(highlight.id) === currentId;
-      });
-      return index == -1 ? undefined : index;
-    }, [highlights, currentId]);
-
-    const highlight = useMemo(() => {
-      return current !== undefined ? highlights.at(current) : undefined;
-    }, [current, highlights]);
-
-    const hasCachedNext = current !== undefined && current < length - 1;
-
-    const hasCachedPrev = current !== undefined && current > 0;
-
-    const goNext = async () => {
-      console.log('next');
-      console.log(highlights)
-      const nextHighlight =
-        current !== undefined ? highlights.at(current + 1) : undefined;
-      if (nextHighlight) {
-        return push(
-          {
-            query: {
-              ...query,
-              slug: [encodeURIComponent(removeExt(nextHighlight.id))],
-            },
-          },
-          undefined,
-          {
-            shallow: true,
-          }
-        );
-      }
-      const id = await next();
-      console.log(id);
-      if (!id) return;
-      void push(
+  useEffect(() => {
+    const initial = highlights.at(0);
+    if (
+      (currentId === undefined || Number.isInteger(Number(currentId))) &&
+      initial
+    ) {
+      void replace(
         {
-          query: { ...query, slug: [encodeURIComponent(removeExt(id))] },
+          query: {
+            ...query,
+            slug: [encodeURIComponent(removeExt(initial.id))],
+          },
         },
         undefined,
         {
           shallow: true,
         }
       );
-    };
+    }
+  }, [highlights, query, currentId, replace]);
 
-    const goPrev = async () => {
-      const prevHighlight =
-        current !== undefined ? highlights.at(current - 1) : undefined;
-      if (prevHighlight) {
-        return push(
-          {
-            query: {
-              slug: encodeURIComponent(removeExt(prevHighlight.id)),
-            },
-          },
-          undefined,
-          {
-            shallow: true,
-          }
-        );
-      }
-      const id = await prev();
-      if (!id) return;
-      void push(
+  const current = useMemo(() => {
+    if (typeof currentId !== "string") return undefined;
+    const index = highlights.findIndex((highlight) => {
+      return removeExt(highlight.id) === currentId;
+    });
+    return index == -1 ? undefined : index;
+  }, [highlights, currentId]);
+
+  const highlight = current !== undefined ? highlights.at(current) : undefined;
+
+  const hasCachedNext = current !== undefined && current < length - 1;
+
+  const hasCachedPrev = current !== undefined && current > 0;
+
+  const goNext = async () => {
+    console.log("next");
+    console.log(highlights);
+    const nextHighlight =
+      current !== undefined ? highlights.at(current + 1) : undefined;
+    if (nextHighlight) {
+      return push(
         {
-          query: { slug: encodeURIComponent(removeExt(id)) },
+          query: {
+            ...query,
+            slug: [encodeURIComponent(removeExt(nextHighlight.id))],
+          },
         },
         undefined,
         {
           shallow: true,
         }
       );
-    };
-
-    if (length == 0)
-      return (
-        <div className="flex justify-center">
-          <h3 className="py-3 text-2xl font-semibold text-slate-900 dark:text-white">
-            Empty Feed
-          </h3>
-        </div>
-      );
-
-    return (
-      <BaseCompontent
-        hasNext={hasCachedNext || hasNext}
-        hasPrev={hasCachedPrev || hasPrev}
-        next={() => { void goNext(); }}
-        prev={() => { void goPrev(); }}
-        highlight={highlight}
-        nextHighlight={
-          hasNext ? highlights.at(current ?? 0 + 1)?.thumbnailUrl : undefined
-        }
-        previousHighlight={
-          hasPrev ? highlights.at(current ?? 0 - 1)?.thumbnailUrl : undefined
-        }
-        fetching={fetching ?? false}
-        backPath={backPath}
-        from={from}
-      />
+    }
+    const id = await next();
+    console.log(id);
+    if (!id) return;
+    void push(
+      {
+        query: { ...query, slug: [encodeURIComponent(removeExt(id))] },
+      },
+      undefined,
+      {
+        shallow: true,
+      }
     );
   };
+
+  const goPrev = async () => {
+    const prevHighlight =
+      current !== undefined ? highlights.at(current - 1) : undefined;
+    if (prevHighlight) {
+      return push(
+        {
+          query: {
+            slug: encodeURIComponent(removeExt(prevHighlight.id)),
+          },
+        },
+        undefined,
+        {
+          shallow: true,
+        }
+      );
+    }
+    const id = await prev();
+    if (!id) return;
+    void push(
+      {
+        query: { slug: encodeURIComponent(removeExt(id)) },
+      },
+      undefined,
+      {
+        shallow: true,
+      }
+    );
+  };
+
+  if (length == 0)
+    return (
+      <div className="flex justify-center">
+        <h3 className="py-3 text-2xl font-semibold text-slate-900 dark:text-white">
+          Empty Feed
+        </h3>
+      </div>
+    );
+
+  return (
+    <BaseCompontent
+      hasNext={hasCachedNext || hasNext}
+      hasPrev={hasCachedPrev || hasPrev}
+      next={() => {
+        void goNext();
+      }}
+      prev={() => {
+        void goPrev();
+      }}
+      highlight={highlight}
+      nextHighlight={
+        hasNext ? highlights.at(current ?? 0 + 1)?.thumbnailUrl : undefined
+      }
+      previousHighlight={
+        hasPrev ? highlights.at(current ?? 0 - 1)?.thumbnailUrl : undefined
+      }
+      fetching={fetching ?? false}
+      backPath={backPath}
+      from={from}
+    />
+  );
+};
 
 export const IndexedFeed: React.FC<{
   highlights: HighlightVideo[];
@@ -214,7 +217,7 @@ export const IndexedFeed: React.FC<{
 
   const { slug } = query;
 
-  const current = slug?.at(2)
+  const current = slug?.at(2);
 
   const validIndex =
     typeof current === "string" && !Number.isNaN(parseInt(current));
@@ -227,10 +230,23 @@ export const IndexedFeed: React.FC<{
 
   const setIndex = useCallback(
     (newValue: number) => {
-      console.log(`new num : ${newValue}`)
-      void push({ query: { ...query, slug: [removeExt(highlights[0]!.id), encodeURIComponent(length), encodeURIComponent(newValue)] } }, undefined, {
-        shallow: true,
-      });
+      console.log(`new num : ${newValue}`);
+      void push(
+        {
+          query: {
+            ...query,
+            slug: [
+              removeExt(highlights[0]!.id),
+              encodeURIComponent(length),
+              encodeURIComponent(newValue),
+            ],
+          },
+        },
+        undefined,
+        {
+          shallow: true,
+        }
+      );
     },
     [highlights, length, push, query]
   );
@@ -269,8 +285,12 @@ export const IndexedFeed: React.FC<{
       progress={progress}
       hasNext={hasNext}
       hasPrev={hasPrev}
-      next={() => { void next() }}
-      prev={() => { void prev() }}
+      next={() => {
+        void next();
+      }}
+      prev={() => {
+        void prev();
+      }}
       fetching={fetching ?? false}
       backPath={backPath}
       nextHighlight={
@@ -305,47 +325,47 @@ const BaseCompontent: React.FC<
   nextHighlight,
   previousHighlight,
 }) => {
-    const relativeTime = useMemo(() => {
-      if (!highlight || !highlight.timestampUtc) return undefined;
-      return dayjs().to(dayjs.unix(Number(highlight.timestampUtc)).utc().local());
-    }, [highlight]);
+  const relativeTime = useMemo(() => {
+    if (!highlight || !highlight.timestampUtc) return undefined;
+    return dayjs().to(dayjs.unix(Number(highlight.timestampUtc)).utc().local());
+  }, [highlight]);
 
-    const aspect = useMemo(() => {
-      if (
-        !highlight ||
-        !highlight.aspectRatioNumerator ||
-        !highlight.aspectRatioDenominator
-      )
-        return 9 / 16;
-      return highlight.aspectRatioDenominator / highlight.aspectRatioNumerator;
-    }, [highlight]);
+  const aspect = useMemo(() => {
+    if (
+      !highlight ||
+      !highlight.aspectRatioNumerator ||
+      !highlight.aspectRatioDenominator
+    )
+      return 9 / 16;
+    return highlight.aspectRatioDenominator / highlight.aspectRatioNumerator;
+  }, [highlight]);
 
-    if (!highlight)
-      return (
-        <div className="flex justify-center">
-          <h3 className="py-3 text-2xl font-semibold text-slate-900 dark:text-white">
-            Highlight not found
-          </h3>
-        </div>
-      );
-
+  if (!highlight)
     return (
-      <MobilePlayer
-        aspect={aspect}
-        relativeTime={relativeTime}
-        hasNext={hasNext}
-        hasPrev={hasPrev}
-        from={from}
-        next={next}
-        prev={prev}
-        progress={progress}
-        highlight={highlight}
-        previousHighlight={previousHighlight}
-        nextHighlight={nextHighlight}
-        backPath={backPath}
-      />
+      <div className="flex justify-center">
+        <h3 className="py-3 text-2xl font-semibold text-slate-900 dark:text-white">
+          Highlight not found
+        </h3>
+      </div>
     );
-    /*
+
+  return (
+    <MobilePlayer
+      aspect={aspect}
+      relativeTime={relativeTime}
+      hasNext={hasNext}
+      hasPrev={hasPrev}
+      from={from}
+      next={next}
+      prev={prev}
+      progress={progress}
+      highlight={highlight}
+      previousHighlight={previousHighlight}
+      nextHighlight={nextHighlight}
+      backPath={backPath}
+    />
+  );
+  /*
     return (
       <div className="flex flex-col items-center justify-start px-2 md:px-8">
         <BackNav backPath={backPath} from={from} relativeTime={relativeTime} />
@@ -377,7 +397,7 @@ const BaseCompontent: React.FC<
         )}
       </div>
     );*/
-  };
+};
 
 const MobilePlayer: React.FC<
   {
@@ -402,136 +422,133 @@ const MobilePlayer: React.FC<
   progress,
   highlight,
 }) => {
-    const landscape = useSyncExternalStore(
-      (callback) => {
-        window.addEventListener("resize", callback);
-        return () => {
-          window.removeEventListener("resize", callback);
-        };
-      },
-      () => {
-        return window.innerWidth > window.innerHeight ? true : false;
-      },
-      () => false
-    );
+  const landscape = useSyncExternalStore(
+    (callback) => {
+      window.addEventListener("resize", callback);
+      return () => {
+        window.removeEventListener("resize", callback);
+      };
+    },
+    () => {
+      return window.innerWidth > window.innerHeight ? true : false;
+    },
+    () => false
+  );
 
-    const [info, setInfo] = useState(false);
+  const [info, setInfo] = useState(false);
 
-    return (
-      <div className="relative flex h-full w-full flex-col items-start justify-start">
-        <div className="fixed inset-x-0 top-0 z-50 flex h-8 items-center border-b border-gray-300 bg-white p-4 shadow-sm dark:bg-slate-900">
-          <Link href={"/"}>
-            <p className="text-xl font-bold text-slate-900 dark:text-white">
-              H<span className="text-indigo-500">R</span>
-            </p>
-          </Link>
-        </div>
-        <div className="relative bottom-0 top-8 w-full overflow-clip">
-          {landscape && (
-            <div
-              className={`absolute inset-y-0 right-0 w-1/3 ${info ? "translate-x-0" : "translate-x-full"
-                } z-50 flex transform flex-col items-start justify-start gap-4 bg-white p-4 dark:bg-slate-900`}
+  return (
+    <div className="relative flex h-full w-full flex-col items-start justify-start">
+      <div className="fixed inset-x-0 top-0 z-50 flex h-8 items-center border-b border-gray-300 bg-white p-4 shadow-sm dark:bg-slate-900">
+        <Link href={"/"}>
+          <p className="text-xl font-bold text-slate-900 dark:text-white">
+            H<span className="text-indigo-500">R</span>
+          </p>
+        </Link>
+      </div>
+      <div className="relative bottom-0 top-8 w-full overflow-clip">
+        {landscape && (
+          <div
+            className={`absolute inset-y-0 right-0 w-1/3 ${
+              info ? "translate-x-0" : "translate-x-full"
+            } z-50 flex transform flex-col items-start justify-start gap-4 bg-white p-4 dark:bg-slate-900`}
+          >
+            <IconButton
+              onClick={() => {
+                setInfo(false);
+              }}
             >
-              <IconButton
-                onClick={() => {
-                  setInfo(false);
-                }}
-              >
-                <Cross1Icon className={twIcons(6, 0)} />
-              </IconButton>
-              <div className="w-full shrink">
-                <Time highlight={highlight} />
-              </div>
-
-              {highlight.poolId && (
-                <div className="self-center">
-                  <Source
-                    poolId={highlight.poolId}
-                    wristbandId={highlight.wristbandId}
-                  />
-                </div>
-              )}
+              <Cross1Icon className={twIcons(6, 0)} />
+            </IconButton>
+            <div className="w-full shrink">
+              <Time highlight={highlight} />
             </div>
-          )}
 
-          <Player
-            url={highlight.url}
-            aspect={aspect}
-            hasGutter={false}
-            highlight={landscape ? highlight : undefined}
-          />
-
-          <div className="absolute top-0 flex w-full flex-row items-center justify-between bg-gradient-to-b from-slate-900 px-2">
-            <BackNav
-              backPath={backPath}
-              from={from}
-              relativeTime={relativeTime}
-              iconSize={6}
-            />
-
-            {landscape && (
-              <IconButton
-                onClick={() => {
-                  setInfo(true);
-                }}
-              >
-                <InfoCircledIcon className={twIcons(6, 0)} />
-              </IconButton>
+            {highlight.poolId && (
+              <div className="self-center">
+                <Source
+                  poolId={highlight.poolId}
+                  wristbandId={highlight.wristbandId}
+                />
+              </div>
             )}
           </div>
+        )}
+
+        <Player
+          url={highlight.url}
+          aspect={aspect}
+          hasGutter={false}
+          highlight={landscape ? highlight : undefined}
+        />
+
+        <div className="absolute top-0 flex w-full flex-row items-center justify-between bg-gradient-to-b from-slate-900 px-2">
+          <BackNav
+            backPath={backPath}
+            from={from}
+            relativeTime={relativeTime}
+            iconSize={6}
+          />
 
           {landscape && (
-            <div className="absolute right-2 top-1/2 flex -translate-y-1/2 flex-row items-center justify-center gap-1 rounded-md bg-slate-900/50 p-1">
-              {progress && (
-                <h2 className="self-center text-xl font-semibold text-slate-900 dark:text-white">
-                  {progress}
-                </h2>
-              )}
-              <ArrowNav
-                hasNext={hasNext}
-                hasPrev={hasPrev}
-                next={next}
-                prev={prev}
-              />
-            </div>
+            <IconButton
+              onClick={() => {
+                setInfo(true);
+              }}
+            >
+              <InfoCircledIcon className={twIcons(6, 0)} />
+            </IconButton>
           )}
-          {!landscape && (
-            <div className="flex h-full w-full flex-col gap-4 pb-4">
-              <ActionRow highlight={highlight} />
-              <div className="flex flex-row items-center justify-between px-4">
-                <div className="shrink">
-                  <Time highlight={highlight} />
-                </div>
-                <div className="flex flex-row items-start justify-start gap-2">
-                  {progress && (
-                    <h2 className="self-center text-xl font-semibold text-slate-900 dark:text-white">
-                      {progress}
-                    </h2>
-                  )}
-                  <ArrowNav
-                    hasNext={hasNext}
-                    hasPrev={hasPrev}
-                    next={next}
-                    prev={prev}
-                  />
-                </div>
-              </div>
+        </div>
 
-              {highlight.poolId && (
-                <div className="self-center">
+        {landscape && (
+          <div className="absolute right-2 top-1/2 flex -translate-y-1/2 flex-row items-center justify-center gap-1 rounded-md bg-slate-900/50 p-1">
+            {progress && (
+              <h2 className="self-center text-xl font-semibold text-slate-900 dark:text-white">
+                {progress}
+              </h2>
+            )}
+            <ArrowNav
+              hasNext={hasNext}
+              hasPrev={hasPrev}
+              next={next}
+              prev={prev}
+            />
+          </div>
+        )}
+        {!landscape && (
+          <div className="flex h-full w-full flex-col gap-4 pb-4">
+            <ActionRow highlight={highlight} />
+            <div className="flex flex-row items-start justify-between px-4">
+              <div className="flex shrink flex-col">
+                <Time highlight={highlight} />
+                {highlight.poolId && (
                   <Source
                     poolId={highlight.poolId}
                     wristbandId={highlight.wristbandId}
                   />
-                </div>
-              )}
-
+                )}
+              </div>
+              <div className="flex flex-row items-start justify-start gap-2">
+                {progress && (
+                  <h2 className="self-center text-xl font-semibold text-slate-900 dark:text-white">
+                    {progress}
+                  </h2>
+                )}
+                <ArrowNav
+                  hasNext={hasNext}
+                  hasPrev={hasPrev}
+                  next={next}
+                  prev={prev}
+                />
+              </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
-    );
-  };
+    </div>
+  );
+};
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const ThumbnailStack: React.FC<
@@ -551,89 +568,89 @@ const ThumbnailStack: React.FC<
   hasPrev,
   hasNext,
 }) => {
-    const smallHeight = 60;
+  const smallHeight = 60;
 
-    const bigHeight = smallHeight * 1.15;
+  const bigHeight = smallHeight * 1.15;
 
-    const smallWidth = smallHeight * aspect;
+  const smallWidth = smallHeight * aspect;
 
-    const bigWidth = bigHeight * aspect;
+  const bigWidth = bigHeight * aspect;
 
-    const placeholder = (width: number, height: number) => (
-      <div
-        className={`bg-gray-200 dark:bg-slate-700`}
-        style={{ width: width, height: height }}
-      />
-    );
+  const placeholder = (width: number, height: number) => (
+    <div
+      className={`bg-gray-200 dark:bg-slate-700`}
+      style={{ width: width, height: height }}
+    />
+  );
 
-    return (
-      <div className="flex flex-row">
-        <div className="relative w-32" style={{ height: bigHeight * 1.6 }}>
-          {hasPrev && (
-            <div
-              onClick={() => {
-                prev();
-              }}
-              className={
-                "absolute inset-x-0 top-0 mx-auto overflow-clip rounded-md border border-black opacity-75 hover:-top-2 dark:border-white"
-              }
-              style={{ width: smallWidth, height: smallHeight }}
-            >
-              {prevThumbnail ? (
-                <Image
-                  src={prevThumbnail}
-                  unoptimized
-                  alt={"Highlight"}
-                  width={smallWidth}
-                  height={smallHeight}
-                />
-              ) : (
-                placeholder(smallWidth, smallHeight)
-              )}
-            </div>
-          )}
+  return (
+    <div className="flex flex-row">
+      <div className="relative w-32" style={{ height: bigHeight * 1.6 }}>
+        {hasPrev && (
           <div
-            className="absolute inset-0 z-10 m-auto overflow-clip rounded-md border border-black dark:border-white"
-            style={{ width: bigWidth, height: bigHeight }}
+            onClick={() => {
+              prev();
+            }}
+            className={
+              "absolute inset-x-0 top-0 mx-auto overflow-clip rounded-md border border-black opacity-75 hover:-top-2 dark:border-white"
+            }
+            style={{ width: smallWidth, height: smallHeight }}
           >
-            {current ? (
+            {prevThumbnail ? (
               <Image
-                src={current}
+                src={prevThumbnail}
                 unoptimized
                 alt={"Highlight"}
-                width={bigWidth}
-                height={bigHeight}
+                width={smallWidth}
+                height={smallHeight}
               />
             ) : (
-              placeholder(bigWidth, bigHeight)
+              placeholder(smallWidth, smallHeight)
             )}
           </div>
-          {hasNext && (
-            <div
-              onClick={() => {
-                next();
-              }}
-              className="absolute inset-x-0 bottom-0 mx-auto overflow-clip rounded-md border border-black opacity-75 hover:-bottom-2 dark:border-white"
-              style={{ width: smallWidth, height: smallHeight }}
-            >
-              {nextThumbnail ? (
-                <Image
-                  src={nextThumbnail}
-                  unoptimized
-                  alt={"Highlight"}
-                  width={smallWidth}
-                  height={smallHeight}
-                />
-              ) : (
-                placeholder(smallWidth, smallHeight)
-              )}
-            </div>
+        )}
+        <div
+          className="absolute inset-0 z-10 m-auto overflow-clip rounded-md border border-black dark:border-white"
+          style={{ width: bigWidth, height: bigHeight }}
+        >
+          {current ? (
+            <Image
+              src={current}
+              unoptimized
+              alt={"Highlight"}
+              width={bigWidth}
+              height={bigHeight}
+            />
+          ) : (
+            placeholder(bigWidth, bigHeight)
           )}
         </div>
-        <ArrowNav next={next} prev={prev} hasNext={hasNext} hasPrev={hasPrev} />
+        {hasNext && (
+          <div
+            onClick={() => {
+              next();
+            }}
+            className="absolute inset-x-0 bottom-0 mx-auto overflow-clip rounded-md border border-black opacity-75 hover:-bottom-2 dark:border-white"
+            style={{ width: smallWidth, height: smallHeight }}
+          >
+            {nextThumbnail ? (
+              <Image
+                src={nextThumbnail}
+                unoptimized
+                alt={"Highlight"}
+                width={smallWidth}
+                height={smallHeight}
+              />
+            ) : (
+              placeholder(smallWidth, smallHeight)
+            )}
+          </div>
+        )}
       </div>
-    );
-  };
+      <ArrowNav next={next} prev={prev} hasNext={hasNext} hasPrev={hasPrev} />
+    </div>
+  );
+};
 
 const BackNav: React.FC<{
   backPath: string;
@@ -724,21 +741,26 @@ const Source: React.FC<{ poolId: number; wristbandId?: string | null }> = ({
   wristbandId,
 }) => {
   return (
-    <div className="flex flex-col items-center justify-start text-lg font-bold text-slate-900 dark:text-white">
-      <p>
-        Captured By:
+    <div className="flex flex-col items-start justify-start text-sm font-semibold text-slate-500 dark:text-gray-300">
+      <p className="text-lg font-bold text-slate-900 dark:text-white">
+        Captured By
       </p>
-
+      <IconStyleLink url={`/reels/${poolId}`}>
+        <span className="text-sm font-semibold text-slate-500 dark:text-gray-300">
+          Reel&nbsp;‣&nbsp;{poolId}
+        </span>
+      </IconStyleLink>
       {wristbandId && (
         <IconStyleLink
-          url={`/reels/${encodeURIComponent(poolId)}/band/${encodeURIComponent(wristbandId)}`}
+          url={`/reels/${encodeURIComponent(poolId)}/band/${encodeURIComponent(
+            wristbandId
+          )}`}
         >
-          <h2 className="underline">Band</h2>
+          <span className="text-sm font-semibold text-slate-500 dark:text-gray-300">
+            Band&nbsp;‣&nbsp;{wristbandId}
+          </span>
         </IconStyleLink>
       )}
-      <IconStyleLink url={`/reels/${poolId}`}>
-        <h2 className="underline">Reel</h2>
-      </IconStyleLink>
     </div>
   );
 };
@@ -750,7 +772,7 @@ const IconStyleLink: React.FC<React.PropsWithChildren<{ url: string }>> = ({
   return (
     <Link
       href={url}
-      className="flex items-center justify-center rounded-lg transition-all hover:bg-indigo-500/20 active:bg-indigo-500/30 disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none dark:hover:bg-slate-700/50 dark:active:bg-slate-700/30"
+      className="flex items-center justify-center rounded-lg p-1 transition-all hover:bg-indigo-500/20 active:bg-indigo-500/30 disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none dark:hover:bg-slate-700/50 dark:active:bg-slate-700/30"
     >
       {children}
     </Link>

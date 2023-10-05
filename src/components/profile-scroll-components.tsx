@@ -150,11 +150,12 @@ const PoolRowFetch: React.FC<{ fetch: number; dismiss: () => void }> = ({
       }
     },
     state: (id) => {
-      if (typeof id !== "string") return {
-        follows: false,
-        pending: false,
-        disabled: following || unfollowing,
-      };
+      if (typeof id !== "string")
+        return {
+          follows: false,
+          pending: false,
+          disabled: following || unfollowing,
+        };
       const user = userMap.get(id);
       return {
         follows: user?.followInfo?.follows ?? false,
@@ -258,11 +259,12 @@ const FollowersFetch: React.FC<{ fetch: string; dismiss: () => void }> = ({
       }
     },
     state: (id) => {
-      if (typeof id !== "string") return {
-        follows: false,
-        pending: false,
-        disabled: following || unfollowing,
-      };
+      if (typeof id !== "string")
+        return {
+          follows: false,
+          pending: false,
+          disabled: following || unfollowing,
+        };
       const user = userMap.get(id);
       return {
         follows: user?.followInfo?.follows ?? false,
@@ -366,11 +368,12 @@ const FollowingFetch: React.FC<{ fetch: string; dismiss: () => void }> = ({
       }
     },
     state: (id) => {
-      if (typeof id !== "string") return {
-        follows: false,
-        pending: false,
-        disabled: following || unfollowing,
-      };
+      if (typeof id !== "string")
+        return {
+          follows: false,
+          pending: false,
+          disabled: following || unfollowing,
+        };
       const user = userMap.get(id);
       return {
         follows: user?.followInfo?.follows ?? false,
@@ -400,12 +403,12 @@ export const ProfileList: React.FC<{
 
   return (
     <Dialog.Root onOpenChange={setOpen} open={open}>
-      <Dialog.Trigger className="cursor-pointer truncate text-xs font-semibold text-slate-500 hover:text-slate-900 dark:text-gray-400 hover:dark:text-white">
+      <Dialog.Trigger className="cursor-pointer truncate text-xs font-semibold text-slate-500 hover:text-slate-900 hover:underline dark:text-gray-400 hover:dark:text-white">
         {text}
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black opacity-40" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-y-1/2 -translate-x-1/2">
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2">
           <div className="m-4 flex flex-col rounded-lg bg-white p-2 shadow-lg dark:bg-slate-700">
             <div className="flex flex-row items-center justify-between px-2">
               <p className="text-lg font-semibold text-slate-900 dark:text-white">
@@ -418,7 +421,7 @@ export const ProfileList: React.FC<{
             <Separator.Root
               orientation="horizontal"
               decorative
-              className="my-1 mx-2 h-px bg-slate-900 dark:bg-white"
+              className="mx-2 my-1 h-px bg-slate-900 dark:bg-white"
             />
             <ScrollArea.Root className="overflow-hidden">
               <ScrollArea.Viewport className="h-full max-h-80 w-full pr-3">

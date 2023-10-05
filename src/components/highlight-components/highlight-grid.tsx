@@ -66,6 +66,38 @@ export const dayGrouping: GroupingStrategy = (highlights) => {
   return values;
 };
 
+export const hourGrouping: GroupingStrategy = (highlights) => {
+  const dayMap = new Map<string, HighlightThumbnail[]>();
+
+  for (const highlight of highlights) {
+    if (!highlight.timestampUtc) continue;
+
+    const key = dayjs
+      .unix(Number(highlight.timestampUtc))
+      .utc()
+      .local()
+      .format("MMM DD @ h a");
+    const current = dayMap.get(key);
+    if (current) {
+      current.push(highlight);
+    } else {
+      dayMap.set(key, [highlight]);
+    }
+  }
+
+  const values: HighlightGroup[] = [];
+
+  for (const [key, dayValues] of dayMap) {
+    values.push({
+      header: key,
+      highlights: dayValues,
+      continuous: dayValues.length > 15,
+    });
+  }
+
+  return values;
+};
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const individualGroup: GroupingStrategy = (highlights) => {
   return highlights.map((highlight) => {
@@ -127,7 +159,7 @@ const HighlightGrid: React.FC<{ group: HighlightGroup }> = ({ group }) => {
         {group.header}
       </h3>
       {!isEmpty && (
-        <div className="container grid w-full grid-cols-2 justify-start gap-2 sm:grid-cols-3">
+        <div className="grid w-full grid-cols-2 justify-start gap-2 sm:grid-cols-3">
           {group.highlights.map((highlight, index) => (
             <ImageComponent
               key={highlight.id}
@@ -171,15 +203,24 @@ const ImageComponent: React.FC<{
         pathname: `/${gridContext.basePath}/${highlight.timestampUtc}`,
       };
     return {
-      pathname: `/${gridContext.basePath}/${encodeURIComponent(start)}/${encodeURIComponent(length)}/${encodeURIComponent(index)}`,
+      pathname: `/${gridContext.basePath}/${encodeURIComponent(
+        start
+      )}/${encodeURIComponent(length)}/${encodeURIComponent(index)}`,
     };
-  }, [continuous, gridContext.basePath, highlight.timestampUtc, index, length, start]);
+  }, [
+    continuous,
+    gridContext.basePath,
+    highlight.timestampUtc,
+    index,
+    length,
+    start,
+  ]);
 
   return (
     <AspectRatio.Root ratio={aspect}>
       <div
         key={highlight.id}
-        className="group relative h-full w-full overflow-clip rounded-md border border-gray-300 hover:border-slate-600 hover:border-slate-900 hover:shadow-xl dark:border-gray-500 dark:hover:border-white"
+        className="group relative h-full w-full overflow-clip rounded-md border border-gray-300 hover:border-slate-900 hover:shadow-xl dark:border-gray-500 dark:hover:border-white"
       >
         <div className={"absolute inset-0"}>
           {highlight.thumbnailUrl && (
@@ -199,7 +240,7 @@ const ImageComponent: React.FC<{
           )}
 
           <Link href={href}>
-            <div className="absolute inset-x-0 top-0 bottom-[30px] z-30" />
+            <div className="absolute inset-x-0 bottom-[30px] top-0 z-30" />
           </Link>
           <div className="absolute inset-x-0 bottom-0 z-30">
             <ActionRowCompact highlight={highlight} />

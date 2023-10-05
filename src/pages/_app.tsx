@@ -6,17 +6,24 @@ import "../styles/globals.css";
 
 import Head from "next/head";
 import { ClerkProvider } from "@clerk/nextjs";
-import { dark } from "@clerk/themes"
+import { ThemeProvider } from "~/components/theme-provider";
 
 const MyApp: AppType = ({ Component, pageProps: { ...pageProps } }) => {
   return (
-    <ClerkProvider appearance={{ baseTheme: dark, }}>
+    <ClerkProvider {...pageProps}>
       <Head>
         <title>Highlight Reel</title>
         <meta name="description" content="💭" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <Component {...pageProps} />
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="system"
+        enableSystem
+        disableTransitionOnChange
+      >
+        <Component {...pageProps} />
+      </ThemeProvider>
     </ClerkProvider>
   );
 };

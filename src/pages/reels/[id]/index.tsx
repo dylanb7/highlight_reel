@@ -8,6 +8,7 @@ import Head from "next/head";
 import {
   dayGrouping,
   HighlightGridsComponent,
+  hourGrouping,
 } from "../../../components/highlight-components/highlight-grid";
 import type { GridActions } from "../../../components/contexts/grid-context";
 import { GridContextProvider } from "../../../components/contexts/grid-context";
@@ -19,11 +20,12 @@ import {
 
 import { PoolInfo } from "../../../components/pool-components/pool-info";
 import PageWrap from "../../../components/layout/page-wrap";
-import { Filters, useInitialDate } from "~/components/pool-components/pool-filters";
+import {
+  Filters,
+  useInitialDate,
+} from "~/components/pool-components/pool-filters";
 import { decodeCursor } from "~/utils/highlightUtils";
 import { getQueryKey } from "@trpc/react-query";
-
-
 
 const PoolView: NextPage<{ poolId: number }> = ({ poolId }) => {
   const { data: poolInfo } = api.pool.getPoolById.useQuery(poolId);
@@ -50,12 +52,12 @@ const LoadFeed: React.FC<{
 }> = ({ poolId }) => {
   const loadAmount = 6;
 
-  const initialCursor = useInitialDate()
+  const initialCursor = useInitialDate();
 
   const queryKey = {
     amount: loadAmount,
     poolId: poolId,
-    initialCursor
+    initialCursor,
   };
 
   const util = api.useContext();
@@ -64,8 +66,6 @@ const LoadFeed: React.FC<{
     api.pool.getPoolHighlightsPaginated.useInfiniteQuery(queryKey, {
       getNextPageParam: (lastPage) => lastPage.nextCursor,
     });
-
-
 
   const highlights = useMemo(() => {
     return data?.pages.flatMap((page) => page.highlights) ?? [];
@@ -153,7 +153,10 @@ const LoadFeed: React.FC<{
 
   return (
     <GridContextProvider value={actions}>
-      <HighlightGridsComponent highlights={highlights} grouping={dayGrouping} />
+      <HighlightGridsComponent
+        highlights={highlights}
+        grouping={hourGrouping}
+      />
     </GridContextProvider>
   );
 };
@@ -170,14 +173,13 @@ export const getServerSideProps: GetServerSideProps<{
 
   const urlPool = params.id;
 
-  const poolId = Number(urlPool)
+  const poolId = Number(urlPool);
 
   if (Number.isNaN(poolId)) {
     return {
       notFound: true,
     };
   }
-
 
   const ssgHelper = getServerHelpers(props.req);
 
@@ -197,7 +199,5 @@ export const getServerSideProps: GetServerSideProps<{
     },
   };
 };
-
-
 
 export default PoolView;

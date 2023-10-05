@@ -1,7 +1,6 @@
 import type { NextPage, GetServerSideProps } from "next";
 import Head from "next/head";
 import { useMemo, useState } from "react";
-import Datepicker, { type DateValueType } from "react-tailwindcss-datepicker";
 
 import {
   bookmarkActionUpdate,
@@ -22,7 +21,10 @@ import { api } from "../../../../../utils/trpc";
 import { PoolInfo } from "../../../../../components/pool-components/pool-info";
 import PageWrap from "../../../../../components/layout/page-wrap";
 import { getServerHelpers } from "../../../../../utils/ssgHelper";
-import { Filters, useInitialDate } from "~/components/pool-components/pool-filters";
+import {
+  Filters,
+  useInitialDate,
+} from "~/components/pool-components/pool-filters";
 
 interface PoolViewBandProps {
   poolId: number;
@@ -55,13 +57,13 @@ const LoadFeed: React.FC<{
 }> = ({ poolId, bandId }) => {
   const loadAmount = 6;
 
-  const initialCursor = useInitialDate()
+  const initialCursor = useInitialDate();
 
   const queryKey = {
     amount: loadAmount,
     poolId: poolId,
     wristbandId: bandId,
-    initialCursor
+    initialCursor,
   };
 
   const util = api.useContext();

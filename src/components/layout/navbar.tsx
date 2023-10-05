@@ -2,19 +2,18 @@ import React, { useState } from "react";
 import Link from "next/link";
 import SignInComponent from "../misc/sign-in";
 import PoolSearchComponent from "./pool-search-bar";
-
-
-
+import { ModeToggle } from "../misc/dark-mode-toggle";
 
 const MobileNav = ({ open }: { open: boolean }) => {
   return (
     <div
-      className={`absolute top-0 left-0 z-10 h-screen w-screen transform bg-gray-200 dark:bg-slate-800 ${open ? "-translate-x-0" : "-translate-x-full"
-        } drop-shadow-md filter transition-transform duration-300 ease-in-out`}
+      className={`absolute left-0 top-0 z-10 h-screen w-screen transform bg-gray-200 dark:bg-slate-800 ${
+        open ? "-translate-x-0" : "-translate-x-full"
+      } drop-shadow-md filter transition-transform duration-300 ease-in-out`}
     >
-      <div className="mt-4 mx-4 flex flex-col relative">
+      <div className="relative mx-4 mt-4 flex flex-col">
         <SignInComponent />
-
+        <ModeToggle />
       </div>
     </div>
   );
@@ -45,20 +44,24 @@ export const NavBar = () => {
         >
           {/* hamburger button */}
           <span
-            className={`h-1 w-full transform rounded-lg bg-slate-900 transition duration-300 ease-in-out dark:bg-white ${open ? "translate-y-2 rotate-45" : ""
-              }`}
+            className={`h-1 w-full transform rounded-lg bg-slate-900 transition duration-300 ease-in-out dark:bg-white ${
+              open ? "translate-y-2 rotate-45" : ""
+            }`}
           />
           <span
-            className={`h-1 transform rounded-lg bg-slate-900 transition-all duration-300 ease-in-out dark:bg-white ${open ? "w-0" : "w-full"
-              }`}
+            className={`h-1 transform rounded-lg bg-slate-900 transition-all duration-300 ease-in-out dark:bg-white ${
+              open ? "w-0" : "w-full"
+            }`}
           />
           <span
-            className={`h-1 w-full transform rounded-lg bg-slate-900 transition duration-300 ease-in-out dark:bg-white ${open ? "-translate-y-2 -rotate-45" : ""
-              }`}
+            className={`h-1 w-full transform rounded-lg bg-slate-900 transition duration-300 ease-in-out dark:bg-white ${
+              open ? "-translate-y-2 -rotate-45" : ""
+            }`}
           />
         </div>
 
-        <div className="hidden justify-end md:flex">
+        <div className="hidden justify-end md:flex md:flex-row md:items-center md:gap-2">
+          <ModeToggle />
           <SignInComponent />
         </div>
       </div>
