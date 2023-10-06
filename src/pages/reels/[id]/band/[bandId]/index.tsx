@@ -12,6 +12,7 @@ import { GridContextProvider } from "../../../../../components/contexts/grid-con
 import {
   HighlightGridsComponent,
   dayGrouping,
+  hourGrouping,
 } from "../../../../../components/highlight-components/highlight-grid";
 
 import { LoadingSpinner } from "../../../../../components/misc/loading";
@@ -161,7 +162,10 @@ const LoadFeed: React.FC<{
 
   return (
     <GridContextProvider value={actions}>
-      <HighlightGridsComponent highlights={highlights} grouping={dayGrouping} />
+      <HighlightGridsComponent
+        highlights={highlights}
+        grouping={hourGrouping}
+      />
     </GridContextProvider>
   );
 };
