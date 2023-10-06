@@ -1,12 +1,11 @@
 import type { GetServerSideProps, NextPage } from "next";
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 
 import { api } from "../../../utils/trpc";
 import { LoadingSpinner } from "../../../components/misc/loading";
 import { getServerHelpers } from "../../../utils/ssgHelper";
 import Head from "next/head";
 import {
-  dayGrouping,
   HighlightGridsComponent,
   hourGrouping,
 } from "../../../components/highlight-components/highlight-grid";
@@ -24,8 +23,6 @@ import {
   Filters,
   useInitialDate,
 } from "~/components/pool-components/pool-filters";
-import { decodeCursor } from "~/utils/highlightUtils";
-import { getQueryKey } from "@trpc/react-query";
 
 const PoolView: NextPage<{ poolId: number }> = ({ poolId }) => {
   const { data: poolInfo } = api.pool.getPoolById.useQuery(poolId);

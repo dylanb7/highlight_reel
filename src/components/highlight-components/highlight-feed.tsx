@@ -836,14 +836,14 @@ const Player: React.FC<{
             </IconButton>
 
             <div className="justify-cetner flex w-full flex-row items-center">
-              <div className="h-2 grow transition-transform duration-[660ms]">
+              <div className="duration-[660ms] h-2 grow transition-transform">
                 <div className="h-2 w-full overflow-clip rounded-full bg-slate-800">
                   <div
                     className=" h-2 bg-slate-600"
                     style={{ width: `${progress.loaded * 100}%` }}
                   >
                     <div
-                      className="h-2 bg-white transition-transform duration-[660ms]"
+                      className="duration-[660ms] h-2 bg-white transition-transform"
                       style={{ width: `${progress.played * 100}%` }}
                     />
                   </div>

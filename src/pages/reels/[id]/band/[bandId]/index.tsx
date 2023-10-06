@@ -1,6 +1,6 @@
 import type { NextPage, GetServerSideProps } from "next";
 import Head from "next/head";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import {
   bookmarkActionUpdate,

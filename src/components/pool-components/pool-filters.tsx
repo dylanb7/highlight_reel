@@ -149,8 +149,8 @@ export const WristBands: React.FC<{ poolId: number }> = ({ poolId }) => {
 export const Filters: React.FC<{ poolId: number }> = ({ poolId }) => {
   return (
     <div className="flex flex-col">
-      <WristBands poolId={poolId} />
       <DateFilter />
+      <WristBands poolId={poolId} />
     </div>
   );
 };

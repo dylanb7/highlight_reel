@@ -155,7 +155,7 @@ const HighlightGrid: React.FC<{ group: HighlightGroup }> = ({ group }) => {
 
   return (
     <div className="flex flex-col items-start justify-start">
-      <h3 className="pb-3 text-2xl font-semibold text-slate-900 dark:text-white">
+      <h3 className="pb-1 text-lg font-semibold text-slate-900 dark:text-white">
         {group.header}
       </h3>
       {!isEmpty && (

@@ -18,5 +18,5 @@ export const IconButton: React.FC<
 };
 
 export const twIcons = (size = 4, m = 3) =>
-  "text-slate-900 dark:text-white hover:text-slate-800 dark:hover:text-gray-100" +
+  "text-white hover:text-slate-800 dark:hover:text-gray-100" +
   ` w-${size} h-${size} m-${m}`;
