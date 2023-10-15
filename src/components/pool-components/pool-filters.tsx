@@ -7,7 +7,6 @@ import { api } from "../../utils/trpc";
 import { cn } from "@/cnutils";
 import { Button } from "@/shadcn/ui/button";
 import { Calendar } from "@/shadcn/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shadcn/ui/popover";
 import dayjs from "dayjs";
 import {
   Select,
@@ -17,6 +16,7 @@ import {
   SelectValue,
 } from "@/shadcn/ui/select";
 import { CalendarIcon } from "@radix-ui/react-icons";
+import { Dialog, DialogContent, DialogTrigger } from "@/shadcn/ui/dialog";
 
 export const useInitialDate = () => {
   const { query } = useRouter();
@@ -57,12 +57,12 @@ export const DateFilter: React.FC = () => {
         From
       </h3>
 
-      <Popover>
-        <PopoverTrigger asChild>
+      <Dialog>
+        <DialogTrigger asChild>
           <Button
             variant={"outline"}
             className={cn(
-              "w-[280px] justify-start text-left font-normal",
+              "w-[280px] justify-start text-left font-normal dark:hover:border dark:hover:border-white dark:hover:bg-slate-950 ",
               !startDate && "text-muted-foreground"
             )}
           >
@@ -73,8 +73,8 @@ export const DateFilter: React.FC = () => {
               <span>Pick a date</span>
             )}
           </Button>
-        </PopoverTrigger>
-        <PopoverContent className="flex w-auto flex-col space-y-2 p-2">
+        </DialogTrigger>
+        <DialogContent className="flex w-auto flex-col space-y-2 p-2">
           <Select
             onValueChange={(value) =>
               onSelect(dayjs().subtract(parseInt(value), "day").toDate())
@@ -98,8 +98,8 @@ export const DateFilter: React.FC = () => {
               }}
             />
           </div>
-        </PopoverContent>
-      </Popover>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -2,7 +2,10 @@ import { type GetServerSideProps, type NextPage } from "next";
 import { getServerHelpers } from "../../utils/ssgHelper";
 import { api } from "../../utils/trpc";
 import { useMemo } from "react";
-import { bookmarkActionUpdate, likeActionUpdate } from "../../components/contexts/action-types";
+import {
+  bookmarkActionUpdate,
+  likeActionUpdate,
+} from "../../components/contexts/action-types";
 import { FeedContextProvider } from "../../components/contexts/feed-context";
 import { ContinuousFeed } from "../../components/highlight-components/highlight-feed";
 import { type HighlightVideo } from "../../types/highlight-out";
@@ -85,7 +88,6 @@ const FeedWithStart: NextPage<{ startTime?: number }> = ({ startTime }) => {
           context?.prev
         );
       },
-
     });
 
   return (
@@ -110,7 +112,7 @@ const FeedWithStart: NextPage<{ startTime?: number }> = ({ startTime }) => {
       <ContinuousFeed
         highlights={highlights ?? []}
         fetching={isFetching}
-        backPath={`/?tab=profile`}
+        backPath={`/profile`}
         hasNext={hasNextPage ?? false}
         hasPrev={hasPreviousPage ?? false}
         next={async () => {
@@ -127,15 +129,16 @@ const FeedWithStart: NextPage<{ startTime?: number }> = ({ startTime }) => {
   );
 };
 
-export const getServerSideProps: GetServerSideProps<{ startTime?: number }> = async (props) => {
-
+export const getServerSideProps: GetServerSideProps<{
+  startTime?: number;
+}> = async (props) => {
   const { params } = props;
 
   const slug = params?.slug;
 
   const parsedSlug = slug ? Number(slug[0]) : undefined;
 
-  const startTime = Number.isNaN(parsedSlug) ? undefined : parsedSlug
+  const startTime = Number.isNaN(parsedSlug) ? undefined : parsedSlug;
 
   const ssg = getServerHelpers(props.req);
 
@@ -150,7 +153,5 @@ export const getServerSideProps: GetServerSideProps<{ startTime?: number }> = as
     },
   };
 };
-
-
 
 export default FeedWithStart;

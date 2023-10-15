@@ -1,4 +1,4 @@
-import * as Popover from "@radix-ui/react-popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shadcn/ui/popover";
 import { useState } from "react";
 import SignInComponent from "./misc/sign-in";
 
@@ -27,8 +27,8 @@ const ButtonStyle: React.FC<{ poolId: number }> = ({ poolId }) => {
       {buttonState.follows
         ? "Unfollow"
         : buttonState.pending
-          ? "Requested"
-          : "Follow"}
+        ? "Requested"
+        : "Follow"}
     </button>
   );
 };
@@ -38,19 +38,13 @@ export const PoolFollowButton: React.FC<{
 }> = ({ poolId }) => {
   const auth = useAuth();
 
-  const [open, setOpen] = useState(false);
-
   if (auth.userId) {
     return <ButtonStyle poolId={poolId} />;
   }
 
   return (
-    <Popover.Root open={open}>
-      <Popover.Trigger
-        onClick={() => {
-          setOpen(!open);
-        }}
-      >
+    <Popover>
+      <PopoverTrigger>
         <div
           className={
             "rounded-lg bg-indigo-500 px-3 py-1 text-sm font-semibold text-white no-underline opacity-80 transition hover:bg-indigo-700"
@@ -58,21 +52,16 @@ export const PoolFollowButton: React.FC<{
         >
           Follow
         </div>
-      </Popover.Trigger>
+      </PopoverTrigger>
 
-      <Popover.Content
-        onInteractOutside={() => {
-          setOpen(false);
-        }}
-        className="w-fit max-w-xs rounded-lg bg-white p-1 shadow-lg border border-gray-300 radix-side-bottom:animate-slide-down dark:border-gray-500 dark:bg-slate-900"
-      >
+      <PopoverContent>
         <div className="m-1 flex flex-col items-center justify-center gap-2">
           <p className="text-sm font-semibold text-slate-900 dark:text-white">
             Must be signed in to follow
           </p>
           <SignInComponent isHead={false} />
         </div>
-      </Popover.Content>
-    </Popover.Root>
+      </PopoverContent>
+    </Popover>
   );
 };

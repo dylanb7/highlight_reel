@@ -31,6 +31,8 @@ import * as utc from "dayjs/plugin/utc";
 import LocalizedFormat from "dayjs/plugin/localizedFormat";
 import { removeExt } from "../../utils/highlightUtils";
 import { z } from "zod";
+import { FocusProvider } from "../contexts/focus-context";
+import { Sheet } from "@/shadcn/ui/sheet";
 
 dayjs.extend(reltiveTime.default);
 dayjs.extend(utc.default);
@@ -217,12 +219,12 @@ export const IndexedFeed: React.FC<{
 
   const { slug } = query;
 
-  const current = slug?.at(2);
+  const current = slug?.at(1);
 
   const validIndex =
     typeof current === "string" && !Number.isNaN(parseInt(current));
 
-  const index = validIndex ? parseInt(current) : 0;
+  const index = validIndex ? parseInt(current) - 1 : 1;
 
   const length = highlights.length;
 
@@ -230,15 +232,14 @@ export const IndexedFeed: React.FC<{
 
   const setIndex = useCallback(
     (newValue: number) => {
-      console.log(`new num : ${newValue}`);
       void push(
         {
           query: {
             ...query,
             slug: [
               removeExt(highlights[0]!.id),
+              encodeURIComponent(newValue + 1),
               encodeURIComponent(length),
-              encodeURIComponent(newValue),
             ],
           },
         },
@@ -439,115 +440,114 @@ const MobilePlayer: React.FC<
 
   return (
     <div className="relative flex h-full w-full flex-col items-start justify-start">
-      <div className="fixed inset-x-0 top-0 z-50 flex h-8 items-center border-b border-gray-300 bg-white p-4 shadow-sm dark:bg-slate-900">
-        <Link href={"/"}>
-          <p className="text-xl font-bold text-slate-900 dark:text-white">
-            H<span className="text-indigo-500">R</span>
-          </p>
-        </Link>
-      </div>
-      <div className="relative bottom-0 top-8 w-full overflow-clip">
-        {landscape && (
-          <div
-            className={`absolute inset-y-0 right-0 w-1/3 ${
-              info ? "translate-x-0" : "translate-x-full"
-            } z-50 flex transform flex-col items-start justify-start gap-4 bg-white p-4 dark:bg-slate-900`}
-          >
-            <IconButton
-              onClick={() => {
-                setInfo(false);
-              }}
-            >
-              <Cross1Icon className={twIcons(6, 0)} />
-            </IconButton>
-            <div className="w-full shrink">
-              <Time highlight={highlight} />
-            </div>
-
-            {highlight.poolId && (
-              <div className="self-center">
-                <Source
-                  poolId={highlight.poolId}
-                  wristbandId={highlight.wristbandId}
-                />
-              </div>
-            )}
-          </div>
-        )}
-
-        <Player
-          url={highlight.url}
-          aspect={aspect}
-          hasGutter={false}
-          highlight={landscape ? highlight : undefined}
-        />
-
-        <div className="absolute top-0 flex w-full flex-row items-center justify-between bg-gradient-to-b from-slate-900 px-2">
-          <BackNav
-            backPath={backPath}
-            from={from}
-            relativeTime={relativeTime}
-            iconSize={6}
-          />
-
+      <FocusProvider value={{ isFocused: false }}>
+        <div className="relative h-full w-full overflow-clip">
           {landscape && (
-            <IconButton
-              onClick={() => {
-                setInfo(true);
-              }}
+            <div
+              className={`absolute inset-y-0 right-0 w-1/3 ${
+                info ? "translate-x-0" : "translate-x-full"
+              } z-50 flex transform flex-col items-start justify-start gap-4 bg-white p-4 dark:bg-slate-900`}
             >
-              <InfoCircledIcon className={twIcons(6, 0)} />
-            </IconButton>
-          )}
-        </div>
-
-        {landscape && (
-          <div className="absolute right-2 top-1/2 flex -translate-y-1/2 flex-row items-center justify-center gap-1 rounded-md bg-slate-900/50 p-1">
-            {progress && (
-              <h2 className="self-center text-xl font-semibold text-slate-900 dark:text-white">
-                {progress}
-              </h2>
-            )}
-            <ArrowNav
-              hasNext={hasNext}
-              hasPrev={hasPrev}
-              next={next}
-              prev={prev}
-            />
-          </div>
-        )}
-        {!landscape && (
-          <div className="flex h-full w-full flex-col gap-4 pb-4">
-            <ActionRow highlight={highlight} />
-            <div className="flex flex-row items-start justify-between px-4">
-              <div className="flex shrink flex-col">
+              <IconButton
+                onClick={() => {
+                  setInfo(false);
+                }}
+              >
+                <Cross1Icon className={twIcons(6, 0)} />
+              </IconButton>
+              <div className="w-full shrink">
                 <Time highlight={highlight} />
-                {highlight.poolId && (
+              </div>
+
+              {highlight.poolId && (
+                <div className="self-center">
                   <Source
                     poolId={highlight.poolId}
                     wristbandId={highlight.wristbandId}
                   />
-                )}
-              </div>
-              <div className="flex flex-row items-start justify-start gap-2">
-                {progress && (
-                  <h2 className="self-center text-xl font-semibold text-slate-900 dark:text-white">
-                    {progress}
-                  </h2>
-                )}
-                <ArrowNav
-                  hasNext={hasNext}
-                  hasPrev={hasPrev}
-                  next={next}
-                  prev={prev}
-                />
+                </div>
+              )}
+            </div>
+          )}
+
+          <Player
+            url={highlight.url}
+            aspect={aspect}
+            hasGutter={false}
+            highlight={landscape ? highlight : undefined}
+          />
+
+          <div className="absolute top-0 flex w-full flex-row items-center justify-between bg-gradient-to-b from-slate-900 px-2">
+            <BackNav
+              backPath={backPath}
+              from={from}
+              relativeTime={relativeTime}
+              iconSize={6}
+            />
+
+            {landscape && (
+              <IconButton
+                onClick={() => {
+                  setInfo(true);
+                }}
+              >
+                <InfoCircledIcon className={twIcons(6, 0)} />
+              </IconButton>
+            )}
+          </div>
+
+          {landscape && (
+            <div className="absolute right-2 top-1/2 flex -translate-y-1/2 flex-row items-center justify-center gap-1 rounded-md bg-slate-900/50 p-1">
+              {progress && (
+                <h2 className="self-center text-xl font-semibold text-slate-900 dark:text-white">
+                  {progress}
+                </h2>
+              )}
+              <ArrowNav
+                hasNext={hasNext}
+                hasPrev={hasPrev}
+                next={next}
+                prev={prev}
+              />
+            </div>
+          )}
+          {!landscape && (
+            <div className="flex h-full w-full flex-col gap-4 pb-4">
+              <ActionRow highlight={highlight} />
+              <div className="flex flex-row items-start justify-between px-4">
+                <div className="flex shrink flex-col">
+                  <Time highlight={highlight} />
+                  {highlight.poolId && (
+                    <Source
+                      poolId={highlight.poolId}
+                      wristbandId={highlight.wristbandId}
+                    />
+                  )}
+                </div>
+                <div className="flex flex-row items-start justify-start gap-2">
+                  {progress && (
+                    <h2 className="self-center text-xl font-semibold text-slate-900 dark:text-white">
+                      {progress}
+                    </h2>
+                  )}
+                  <ArrowNav
+                    hasNext={hasNext}
+                    hasPrev={hasPrev}
+                    next={next}
+                    prev={prev}
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      </FocusProvider>
     </div>
   );
+};
+
+const TopRow: React.FC<{ isLandscape: false }> = ({ isLandscape }) => {
+  return <></>;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -666,7 +666,7 @@ const BackNav: React.FC<{
         <ChevronLeftIcon className={twIcons(size, 2)} />
       </IconStyleLink>
 
-      <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
+      <h3 className="text-xl font-semibold text-white">
         {from ? `${from} - ` : ""}
         {relativeTime && <span>{relativeTime}</span>}
       </h3>
@@ -795,9 +795,10 @@ const Player: React.FC<{
     <div
       onMouseEnter={() => setFocused(true)}
       onMouseLeave={() => setFocused(false)}
+      onClick={() => setFocused((val) => !val)}
       className="relative mx-auto"
       style={{
-        maxHeight: hasGutter ? "calc(100vh - 16rem)" : "calc(100vh - 2rem)",
+        maxHeight: hasGutter ? "calc(100vh - 16rem)" : "100vh",
         maxWidth: "100%",
         objectFit: "contain",
         aspectRatio: aspect,
@@ -835,7 +836,7 @@ const Player: React.FC<{
               )}
             </IconButton>
 
-            <div className="justify-cetner flex w-full flex-row items-center">
+            <div className="flex w-full flex-row items-center justify-center">
               <div className="duration-[660ms] h-2 grow transition-transform">
                 <div className="h-2 w-full overflow-clip rounded-full bg-slate-800">
                   <div

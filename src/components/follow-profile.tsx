@@ -1,4 +1,4 @@
-import * as Popover from "@radix-ui/react-popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shadcn/ui/popover";
 import { useState } from "react";
 import { useProfileButtonContext } from "./contexts/follow-profile-context";
 import SignInComponent from "./misc/sign-in";
@@ -26,8 +26,8 @@ const ButtonStyle: React.FC<{ profileId: string }> = ({ profileId }) => {
       {buttonState.follows
         ? "Unfollow"
         : buttonState.pending
-          ? "Requested"
-          : "Follow"}
+        ? "Requested"
+        : "Follow"}
     </button>
   );
 };
@@ -372,10 +372,6 @@ const PoolProfileFollow: React.FC<{
 export const ProfileFollowButton: React.FC<{
   profileId: string;
 }> = ({ profileId }) => {
-
-  const [open, setOpen] = useState(false);
-
-
   const user = useAuth();
 
   if (user.userId) {
@@ -390,12 +386,8 @@ export const ProfileFollowButton: React.FC<{
   }
 
   return (
-    <Popover.Root open={open}>
-      <Popover.Trigger
-        onClick={() => {
-          setOpen(!open);
-        }}
-      >
+    <Popover>
+      <PopoverTrigger>
         <div
           className={
             "rounded-lg bg-indigo-500 px-3 py-1 text-sm font-semibold text-white no-underline opacity-80 transition hover:bg-indigo-700"
@@ -403,20 +395,16 @@ export const ProfileFollowButton: React.FC<{
         >
           Follow
         </div>
-      </Popover.Trigger>
+      </PopoverTrigger>
 
-      <Popover.Content
-        onInteractOutside={() => {
-          setOpen(false);
-        }}
-        className="w-fit max-w-xs rounded-lg bg-white p-1 shadow-lg border border-gray-300 radix-side-bottom:animate-slide-down dark:border-gray-500 dark:bg-slate-900"
-      >
+      <PopoverContent>
         <div className="m-1 flex flex-col items-center justify-center gap-2">
           <p className="text-sm font-semibold text-slate-900 dark:text-white">
             Must be signed in to follow
           </p>
           <SignInComponent isHead={false} />
         </div>
-      </Popover.Content>
-    </Popover.Root>)
+      </PopoverContent>
+    </Popover>
+  );
 };

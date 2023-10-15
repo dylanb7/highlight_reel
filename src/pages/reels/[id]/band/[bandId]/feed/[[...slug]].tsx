@@ -13,7 +13,7 @@ interface BandProps {
   wristbandId: string;
   poolId: number;
   initialCursor?: number | null;
-  length?: number | null;
+  length?: number | null | undefined;
 }
 
 const BandFeed: NextPage<BandProps> = (props) => {

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
-import * as ScrollArea from "@radix-ui/react-scroll-area";
+import { ScrollArea } from "@/shadcn/ui/scroll-area";
 import { api } from "../../utils/trpc";
 import { MagnifyingGlassIcon, Cross2Icon } from "@radix-ui/react-icons";
 import { LoadingSpinner } from "../misc/loading";
@@ -18,38 +18,26 @@ const FetchResults: React.FC<{
   const { data: results, isLoading } = api.pool.poolSearch.useQuery(searchTerm);
 
   return (
-    <ScrollArea.Root
-      className={"h-72 overflow-hidden pb-2"}
-      style={{ width: width }}
-    >
-      <ScrollArea.Viewport className="h-full w-full">
-        <div className="flex flex-col items-center justify-between divide-y">
-          {isLoading && <LoadingSpinner loadingType={"Searching..."} />}
-          {results && results.length > 0 ? (
-            <>
-              {results.map((item) => (
-                <PoolRow key={item.id} pool={item} setClosed={setClosed} />
-              ))}
-            </>
-          ) : (
-            !isLoading && (
-              <div className="flex h-full w-full items-center justify-center">
-                <p className="text-md font-semibold text-slate-900">
-                  No Reels match that name
-                </p>
-              </div>
-            )
-          )}
-        </div>
-      </ScrollArea.Viewport>
-      <ScrollArea.Scrollbar
-        orientation="vertical"
-        className="mb-2 flex w-2 rounded-full bg-slate-300 hover:bg-slate-400"
-      >
-        <ScrollArea.Thumb className="relative flex-1 rounded-full bg-slate-900 dark:bg-white" />
-      </ScrollArea.Scrollbar>
-      <ScrollArea.Corner />
-    </ScrollArea.Root>
+    <ScrollArea className={"h-72 pb-2"} style={{ width: width }}>
+      <div className="flex flex-col items-center justify-between divide-y">
+        {isLoading && <LoadingSpinner loadingType={"Searching..."} />}
+        {results && results.length > 0 ? (
+          <>
+            {results.map((item) => (
+              <PoolRow key={item.id} pool={item} setClosed={setClosed} />
+            ))}
+          </>
+        ) : (
+          !isLoading && (
+            <div className="flex h-full w-full items-center justify-center">
+              <p className="text-md font-semibold text-slate-900">
+                No Reels match that name
+              </p>
+            </div>
+          )
+        )}
+      </div>
+    </ScrollArea>
   );
 };
 
@@ -69,8 +57,8 @@ const PoolRow: React.FC<{
           {pool.followInfo?.follows ?? false
             ? "Following"
             : pool.public
-              ? "Public"
-              : "Private"}
+            ? "Public"
+            : "Private"}
         </div>
       </div>
     </Link>
@@ -124,7 +112,7 @@ const PoolSearchComponent: React.FC = () => {
           side="bottom"
           avoidCollisions={false}
           className={
-            "relative z-50 overflow-clip rounded-lg border border-gray-500 bg-white shadow-sm radix-side-bottom:animate-slide-down"
+            "radix-side-bottom:animate-slide-down relative z-50 overflow-clip rounded-lg border border-gray-500 bg-white shadow-sm"
           }
           onInteractOutside={setClosed}
         >
@@ -135,7 +123,7 @@ const PoolSearchComponent: React.FC = () => {
             </h3>
             <PopoverPrimitive.Close
               onMouseDown={setClosed}
-              className="inline-flex items-center justify-center rounded-full pt-1 pr-2 outline-none"
+              className="inline-flex items-center justify-center rounded-full pr-2 pt-1 outline-none"
             >
               <Cross2Icon className="h-5 w-5 text-gray-500 hover:text-gray-700" />
             </PopoverPrimitive.Close>

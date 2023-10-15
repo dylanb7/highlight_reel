@@ -7,8 +7,8 @@ import {
   likeActionUpdate,
 } from "../../../../../components/contexts/action-types";
 
-import type { GridActions } from "../../../../../components/contexts/grid-context";
-import { GridContextProvider } from "../../../../../components/contexts/grid-context";
+import type { HighlightGridActions } from "../../../../../components/contexts/highlight-grid-context";
+import { HighlightGridContextProvider } from "../../../../../components/contexts/highlight-grid-context";
 import {
   HighlightGridsComponent,
   dayGrouping,
@@ -139,7 +139,7 @@ const LoadFeed: React.FC<{
 
   if (isLoading) return <LoadingSpinner loadingType={"Loading Highlights"} />;
 
-  const actions: GridActions = {
+  const actions: HighlightGridActions = {
     basePath: `reels/${encodeURIComponent(poolId)}/band/${encodeURIComponent(
       bandId
     )}/feed`,
@@ -161,12 +161,12 @@ const LoadFeed: React.FC<{
   };
 
   return (
-    <GridContextProvider value={actions}>
+    <HighlightGridContextProvider value={actions}>
       <HighlightGridsComponent
         highlights={highlights}
         grouping={hourGrouping}
       />
-    </GridContextProvider>
+    </HighlightGridContextProvider>
   );
 };
 

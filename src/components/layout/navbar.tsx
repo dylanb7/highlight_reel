@@ -3,6 +3,15 @@ import Link from "next/link";
 import SignInComponent from "../misc/sign-in";
 import PoolSearchComponent from "./pool-search-bar";
 import { ModeToggle } from "../misc/dark-mode-toggle";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/shadcn/ui/sheet";
+import { HamburgerMenuIcon } from "@radix-ui/react-icons";
 
 const MobileNav = ({ open }: { open: boolean }) => {
   return (
@@ -35,29 +44,23 @@ export const NavBar = () => {
         </p>
       </Link>
       <PoolSearchComponent />
+
       <div className="flex grow items-center justify-end">
-        <div
-          className="relative z-50 flex h-5 w-6 flex-col items-center justify-between md:hidden"
-          onClick={() => {
-            setOpen(!open);
-          }}
-        >
-          {/* hamburger button */}
-          <span
-            className={`h-1 w-full transform rounded-lg bg-slate-900 transition duration-300 ease-in-out dark:bg-white ${
-              open ? "translate-y-2 rotate-45" : ""
-            }`}
-          />
-          <span
-            className={`h-1 transform rounded-lg bg-slate-900 transition-all duration-300 ease-in-out dark:bg-white ${
-              open ? "w-0" : "w-full"
-            }`}
-          />
-          <span
-            className={`h-1 w-full transform rounded-lg bg-slate-900 transition duration-300 ease-in-out dark:bg-white ${
-              open ? "-translate-y-2 -rotate-45" : ""
-            }`}
-          />
+        <div className="md:hidden">
+          <Sheet>
+            <SheetTrigger>
+              <HamburgerMenuIcon className="h-8 w-8" />
+            </SheetTrigger>
+            <SheetContent side={"right"}>
+              <SheetHeader>
+                <SheetTitle>Menu</SheetTitle>
+              </SheetHeader>
+              <div className="flex flex-wrap items-center justify-start gap-2 pt-2">
+                <ModeToggle />
+                <SignInComponent />
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
 
         <div className="hidden justify-end md:flex md:flex-row md:items-center md:gap-3">

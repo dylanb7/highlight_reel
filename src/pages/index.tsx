@@ -4,9 +4,7 @@ import { PoolComponent } from "../components/highlight-pool-card";
 import { UserFinish } from "../components/user-finish";
 import React, { useMemo } from "react";
 
-import * as Tab from "@radix-ui/react-tabs";
 import { ProfileComponent } from "../components/profile-components";
-import * as ScrollArea from "@radix-ui/react-scroll-area";
 
 import { PersonIcon, CameraIcon } from "@radix-ui/react-icons";
 import { useRouter } from "next/router";
@@ -16,6 +14,9 @@ import type { ButtonContext } from "../components/contexts/button-types";
 import type { NextPage } from "next";
 import PageWrap from "../components/layout/page-wrap";
 import { useAuth } from "@clerk/nextjs";
+import { ScrollArea } from "@/shadcn/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shadcn/ui/tabs";
+import { HomeTabs } from "~/components/layout/home-nav";
 
 const UnauthedContent = () => {
   return (
@@ -33,19 +34,14 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
   const util = api.useContext();
 
   const queryKey = {
-    amount
-  }
+    amount,
+  };
 
   const { data, hasNextPage, fetchNextPage, isLoading } =
-    api.pool.getPublicPoolsPaginated.useInfiniteQuery(
-      queryKey,
-      {
-        refetchOnWindowFocus: false,
-        getNextPageParam: (lastPage) => lastPage.nextCursor,
-      }
-    );
-
-
+    api.pool.getPublicPoolsPaginated.useInfiniteQuery(queryKey, {
+      refetchOnWindowFocus: false,
+      getNextPageParam: (lastPage) => lastPage.nextCursor,
+    });
 
   const pools = useMemo(() => {
     return data?.pages.flatMap((page) => page.poolsInfo) ?? [];
@@ -115,11 +111,12 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
       }
     },
     state: (poolId) => {
-      if (typeof poolId !== "number") return {
-        follows: false,
-        pending: false,
-        disabled: adding || removing,
-      };
+      if (typeof poolId !== "number")
+        return {
+          follows: false,
+          pending: false,
+          disabled: adding || removing,
+        };
       const poolInfo = poolMap.get(poolId);
       return {
         follows: poolInfo?.followInfo?.follows ?? false,
@@ -132,46 +129,35 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
   if (isLoading) return <LoadingSpinner loadingType={"Loading discover"} />;
 
   return (
-    <ScrollArea.Root className="h-full w-full overflow-hidden">
-      <ScrollArea.Viewport className="h-full w-full">
-        <PoolButtonProvider value={buttonContext}>
-          <div className="flex flex-col items-center justify-center">
-            <p className="mb-2 pt-4 text-center text-2xl font-semibold text-slate-900 dark:text-white">
-              {discover ? "Discover Reels" : "Public Reels"}
+    <ScrollArea>
+      <PoolButtonProvider value={buttonContext}>
+        <div className="flex flex-col items-center justify-center">
+          <p className="mb-2 pt-4 text-center text-2xl font-semibold text-slate-900 dark:text-white">
+            {discover ? "Discover Reels" : "Public Reels"}
+          </p>
+          {data && pools.length == 0 && (
+            <p className="text text-center font-semibold text-slate-900 dark:text-white">
+              No New Reels to Discover
             </p>
-            {data && pools.length == 0 && (
-              <p className="text font-semibold text-slate-900 dark:text-white text-center">
-                No New Reels to Discover
-              </p>
-            )}
-            <div className="m-4 flex max-w-6xl grid-cols-1 flex-col items-center justify-center gap-4 sm:grid sm:grid-cols-2 md:gap-8 lg:grid-cols-3">
-              {data &&
-                pools.map((reel) => (
-                  <PoolComponent key={reel.id} pool={reel} />
-                ))}
-            </div>
-            {hasNextPage && (
-              <div className="mt-4 flex items-center justify-center">
-                <button
-                  className="mb-4 w-fit rounded-lg bg-indigo-500 px-3 py-2 font-semibold text-white no-underline transition hover:bg-indigo-700 disabled:opacity-75"
-                  onClick={() => void fetchNextPage()}
-                  disabled={isLoading || data === null}
-                >
-                  Load More
-                </button>
-              </div>
-            )}
+          )}
+          <div className="m-4 flex max-w-6xl grid-cols-1 flex-col items-center justify-center gap-4 sm:grid sm:grid-cols-2 md:gap-8 lg:grid-cols-3">
+            {data &&
+              pools.map((reel) => <PoolComponent key={reel.id} pool={reel} />)}
           </div>
-        </PoolButtonProvider>
-      </ScrollArea.Viewport>
-      <ScrollArea.Scrollbar
-        orientation="vertical"
-        className="flex w-2 rounded-full bg-slate-300 hover:bg-slate-400"
-      >
-        <ScrollArea.Thumb className="relative flex-1 rounded-full bg-slate-900" />
-      </ScrollArea.Scrollbar>
-      <ScrollArea.Corner />
-    </ScrollArea.Root>
+          {hasNextPage && (
+            <div className="mt-4 flex items-center justify-center">
+              <button
+                className="mb-4 w-fit rounded-lg bg-indigo-500 px-3 py-2 font-semibold text-white no-underline transition hover:bg-indigo-700 disabled:opacity-75"
+                onClick={() => void fetchNextPage()}
+                disabled={isLoading || data === null}
+              >
+                Load More
+              </button>
+            </div>
+          )}
+        </div>
+      </PoolButtonProvider>
+    </ScrollArea>
   );
 };
 
@@ -199,50 +185,39 @@ const AuthedContent = () => {
   const [value, onChange] = useTabsValue();
 
   return (
-    <Tab.Root
-      className="flex flex-col"
+    <Tabs
       defaultValue={"discover"}
       onValueChange={(newTab) => {
         onChange(newTab);
       }}
       value={value}
     >
-      <div className="mb-14">
-        <Tab.Content value="discover">
-          <PoolsFeed discover={true} />
-        </Tab.Content>
-        <Tab.Content value="profile">
-          {id ? (
-            <ProfileLayout userId={id} />
-          ) : (
-            <p className="mb-2 pt-4 text-center text-2xl font-semibold text-slate-900 dark:text-white">
-              Must be signed in to view profile
-            </p>
-          )}
-        </Tab.Content>
-      </div>
+      <TabsContent value="discover">
+        <PoolsFeed discover={true} />
+      </TabsContent>
+      <TabsContent value="profile">
+        {id ? (
+          <ProfileLayout userId={id} />
+        ) : (
+          <p className="mb-2 pt-4 text-center text-2xl font-semibold text-slate-900 dark:text-white">
+            Must be signed in to view profile
+          </p>
+        )}
+      </TabsContent>
 
-      <footer className="border-grey-300 fixed inset-x-0 bottom-0 z-50 h-14 border-t bg-white pb-3 shadow-lg dark:border-white dark:bg-slate-900">
-        <div className="mx-5 mt-3">
-          <Tab.List className="flex flex-row items-center justify-around gap-8 ">
-            <Tab.Trigger
-              value="discover"
-              className={`flex flex-col items-center text-xs font-semibold ${value === "discover" ? "text-indigo-500" : "text-slate-900 dark:text-white hover:text-indigo-700 dark:hover:text-indigo-300"}`}
-            >
-              <CameraIcon className="h-6 w-6" />
-              Discover
-            </Tab.Trigger>
-            <Tab.Trigger
-              value="profile"
-              className={`flex flex-col items-center text-xs font-semibold ${value === "profile" ? "text-indigo-500" : "text-slate-900 dark:text-white hover:text-indigo-700 dark:hover:text-indigo-300"}`}
-            >
-              <PersonIcon className="h-6 w-6" />
-              Profile
-            </Tab.Trigger>
-          </Tab.List>
-        </div>
+      <footer className="fixed inset-x-0 bottom-0 z-50 border-t bg-white shadow-lg dark:border-white dark:bg-slate-900">
+        <TabsList className="h-full w-full justify-around pb-3">
+          <TabsTrigger value="discover">
+            <CameraIcon className="h-6 w-6 pr-2" />
+            Discover
+          </TabsTrigger>
+          <TabsTrigger value="profile">
+            <PersonIcon className="h-6 w-6 pr-2" />
+            Profile
+          </TabsTrigger>
+        </TabsList>
       </footer>
-    </Tab.Root>
+    </Tabs>
   );
 };
 
@@ -256,10 +231,7 @@ const ProfileLayout: React.FC<{ userId: string }> = ({ userId }) => {
       </div>
     );
 
-  if (!profile)
-    return <UserFinish />;
-
-
+  if (!profile) return <UserFinish />;
 
   return <ProfileComponent userId={userId} />;
 };
@@ -270,14 +242,15 @@ const HomePage: NextPage = () => {
   if (!user.userId) {
     return (
       <PageWrap>
-        <UnauthedContent />
+        <PoolsFeed discover={false} />
       </PageWrap>
     );
   }
 
   return (
     <PageWrap>
-      <AuthedContent />
+      <PoolsFeed discover={true} />
+      <HomeTabs selected={"discover"} />
     </PageWrap>
   );
 };

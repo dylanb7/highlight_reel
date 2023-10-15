@@ -11,7 +11,7 @@ import type {
 } from "../../types/highlight-out";
 import { IconButton, twIcons } from "../misc/icon-button";
 import * as Separator from "@radix-ui/react-separator";
-import { useGridContext } from "../contexts/grid-context";
+import { useGridContext } from "../contexts/highlight-grid-context";
 import { useFeedContext } from "../contexts/feed-context";
 import { useAuth } from "@clerk/nextjs";
 
@@ -135,7 +135,7 @@ export const ActionRowCompact: React.FC<{
 
   return (
     <div className="flex w-full flex-row items-center justify-end gap-2 overflow-x-scroll rounded-sm bg-gradient-to-t from-slate-900 px-3 pb-1 pt-2">
-      <div className="flex flex-row gap-1 rounded-full border border-slate-900 px-1 dark:border-white">
+      <div className="flex flex-row gap-1 rounded-full border  border-white px-1">
         <h1 className="px-2 text-sm text-white">{highlight.upvotes}</h1>
         <Separator.Root
           className="w-px bg-white"

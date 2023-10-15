@@ -30,9 +30,9 @@ export const PoolData: React.FC<{
       <Separator.Root
         orientation="horizontal"
         decorative
-        className="mt-1.5 mb-1 h-px bg-gray-300 dark:bg-gray-500"
+        className="mb-1 mt-1.5 h-px bg-gray-300 dark:bg-gray-500"
       />
-      <div className="justify-left flex flex-row overflow-x-scroll">
+      <div className="justify-left flex flex-row">
         <p className="truncate text-xs font-semibold text-slate-500 dark:text-gray-400">
           Highlights: {pool.highlightCount}
         </p>

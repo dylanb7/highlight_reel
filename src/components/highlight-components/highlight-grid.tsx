@@ -1,16 +1,18 @@
 import * as AspectRatio from "@radix-ui/react-aspect-ratio";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { HighlightThumbnail } from "../../types/highlight-out";
 import { ActionRowCompact } from "./action-row";
 import Link from "next/link";
-import { useGridContext } from "../contexts/grid-context";
+import { useGridContext } from "../contexts/highlight-grid-context";
 
 import dayjs from "dayjs";
 import * as utc from "dayjs/plugin/utc";
 import type { UrlObject } from "url";
+import { useInView } from "react-intersection-observer";
+import { Spinner } from "../misc/loading";
 
 dayjs.extend(utc.default);
 
@@ -115,14 +117,24 @@ export const HighlightGridsComponent: React.FC<{
 }> = ({ highlights, grouping }) => {
   const groupStrat = grouping ?? defaultGroup;
 
+  const { ref, inView } = useInView({
+    threshold: 0,
+  });
+
   const highlightGroups = useMemo(() => {
     return groupStrat(highlights);
   }, [highlights, groupStrat]);
 
   const gridContext = useGridContext();
 
+  useEffect(() => {
+    if (inView && gridContext.hasMore() && !gridContext.disabled) {
+      void gridContext.fetchMore();
+    }
+  }, [gridContext, inView]);
+
   return (
-    <div className="flex w-full flex-col">
+    <div className="flex w-full flex-col pb-32">
       {highlightGroups.map((group, index) => {
         return (
           <div
@@ -133,17 +145,7 @@ export const HighlightGridsComponent: React.FC<{
           </div>
         );
       })}
-
-      <div className="self-center py-8">
-        {gridContext.hasMore() && (
-          <button
-            className="w-fit rounded-lg bg-indigo-500 px-3 py-2 font-semibold text-white no-underline transition hover:bg-indigo-700 disabled:opacity-75"
-            onClick={() => gridContext.fetchMore()}
-          >
-            Load More
-          </button>
-        )}
-      </div>
+      <div ref={ref}>{gridContext.hasMore() && <Spinner />}</div>
     </div>
   );
 };
@@ -159,7 +161,7 @@ const HighlightGrid: React.FC<{ group: HighlightGroup }> = ({ group }) => {
         {group.header}
       </h3>
       {!isEmpty && (
-        <div className="grid w-full grid-cols-2 justify-start gap-2 sm:grid-cols-3">
+        <div className="grid w-full grid-cols-2 justify-start gap-2 sm:grid-cols-3 lg:grid-cols-4">
           {group.highlights.map((highlight, index) => (
             <ImageComponent
               key={highlight.id}
@@ -205,7 +207,7 @@ const ImageComponent: React.FC<{
     return {
       pathname: `/${gridContext.basePath}/${encodeURIComponent(
         start
-      )}/${encodeURIComponent(length)}/${encodeURIComponent(index)}`,
+      )}/${encodeURIComponent(index + 1)}/${encodeURIComponent(length)}`,
     };
   }, [
     continuous,

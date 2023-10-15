@@ -1,5 +1,4 @@
 import * as Separator from "@radix-ui/react-separator";
-import * as ScrollArea from "@radix-ui/react-scroll-area";
 import { ChevronDownIcon, ChevronUpIcon } from "@radix-ui/react-icons";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { useEffect, useMemo, useState } from "react";
@@ -7,16 +6,14 @@ import { PoolComponent } from "./highlight-pool-card";
 import { ProfileList } from "./profile-scroll-components";
 import { ProfileFollowButton } from "./follow-profile";
 
-import type {
-  UserInfo,
-} from "../types/user-out";
+import type { UserInfo } from "../types/user-out";
 
 import { ProfileButtonProvider } from "./contexts/follow-profile-context";
 import type { ButtonContext } from "./contexts/button-types";
 import { api } from "../utils/trpc";
 import { HighlightGridsComponent } from "./highlight-components/highlight-grid";
-import type { GridActions } from "./contexts/grid-context";
-import { GridContextProvider } from "./contexts/grid-context";
+import type { HighlightGridActions } from "./contexts/highlight-grid-context";
+import { HighlightGridContextProvider } from "./contexts/highlight-grid-context";
 import type { HighlightThumbnail } from "../types/highlight-out";
 import { LoadingSpinner, Spinner } from "./misc/loading";
 import {
@@ -27,6 +24,7 @@ import { useAuth } from "@clerk/nextjs";
 import { useInView } from "react-intersection-observer";
 import { type PoolInfo } from "../types/pool-out";
 import { PoolButtonProvider } from "./contexts/follow-pool-context";
+import { ScrollArea, ScrollBar } from "@/shadcn/ui/scroll-area";
 
 export const PoolScroll: React.FC<{
   profileId: string;
@@ -100,11 +98,12 @@ export const PoolScroll: React.FC<{
       }
     },
     state: (poolId) => {
-      if (typeof poolId !== "number") return {
-        follows: false,
-        pending: false,
-        disabled: adding || removing,
-      };
+      if (typeof poolId !== "number")
+        return {
+          follows: false,
+          pending: false,
+          disabled: adding || removing,
+        };
       const poolInfo = poolMap.get(poolId);
       return {
         follows: poolInfo?.followInfo?.follows ?? false,
@@ -124,8 +123,6 @@ export const PoolScroll: React.FC<{
 
   if (!hasPools) return <></>;
 
-
-
   return (
     <Collapsible.Root open={open} onOpenChange={setOpen}>
       <div className="flex flex-col">
@@ -143,33 +140,26 @@ export const PoolScroll: React.FC<{
             </div>
           )}
         </Collapsible.Trigger>
-        <Collapsible.Content className="h-fit radix-state-open:animate-slide-down">
-          <ScrollArea.Root className="overflow-hidden">
-            <ScrollArea.Viewport className="h-full w-full snap-x scroll-pl-4">
-              <PoolButtonProvider value={buttonContext}>
-                {hasPools && (
-                  <div className="my-3 flex flex-row gap-4 px-3 pb-1 sm:px-6">
-                    {pools?.map((pool) => {
-                      if (!pool) return <></>;
-                      return (
-                        <div key={pool.id} className="snap-center">
-                          <PoolComponent key={pool.id} pool={pool} />
-                        </div>
-                      );
-                    })}
-                    <div ref={ref}>{hasNextPage && <Spinner />}</div>
-                  </div>
-                )}
-              </PoolButtonProvider>
-            </ScrollArea.Viewport>
-            <ScrollArea.Scrollbar
-              orientation="horizontal"
-              className="mx-8 flex h-2 flex-col rounded-full bg-slate-300 hover:bg-slate-400 dark:bg-slate-700 dark:hover:bg-slate-800"
-            >
-              <ScrollArea.Thumb className="relative flex-1 rounded-full bg-slate-900 dark:bg-white" />
-            </ScrollArea.Scrollbar>
-            <ScrollArea.Corner />
-          </ScrollArea.Root>
+        <Collapsible.Content className="radix-state-open:animate-slide-down h-fit">
+          <ScrollArea className="snap-x scroll-pl-4">
+            <PoolButtonProvider value={buttonContext}>
+              {hasPools && (
+                <div className="my-3 flex flex-row gap-4 px-3 pb-1 sm:px-6">
+                  {pools?.map((pool) => {
+                    if (!pool) return <></>;
+                    return (
+                      <div key={pool.id} className="snap-center">
+                        <PoolComponent key={pool.id} pool={pool} />
+                      </div>
+                    );
+                  })}
+                  <div ref={ref}>{hasNextPage && <Spinner />}</div>
+                </div>
+              )}
+            </PoolButtonProvider>
+
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
         </Collapsible.Content>
       </div>
     </Collapsible.Root>
@@ -182,7 +172,6 @@ export const ProfileData: React.FC<{
     following: number;
   };
 }> = ({ user }) => {
-
   const utils = api.useContext();
 
   const queryKey = user.id;
@@ -385,7 +374,7 @@ export const ProfileBookmarks: React.FC<{
 
   if (isLoading) return <LoadingSpinner loadingType={"Loading Highlights"} />;
 
-  const actions: GridActions = {
+  const actions: HighlightGridActions = {
     basePath: isOwner ? "bookmarks" : `profiles/${id}/feed`,
     fetchMore: () => {
       void fetchNextPage();
@@ -405,28 +394,28 @@ export const ProfileBookmarks: React.FC<{
   };
 
   return (
-    <GridContextProvider value={actions}>
+    <HighlightGridContextProvider value={actions}>
       <div className="mx-4 sm:mx-8">
         <HighlightGridsComponent
           highlights={highlights}
         ></HighlightGridsComponent>
       </div>
-    </GridContextProvider>
+    </HighlightGridContextProvider>
   );
 };
 
 export const ProfileComponent: React.FC<{
   userId: string;
 }> = ({ userId }) => {
-
   const { data: profile, isLoading } = api.user.profileQuery.useQuery(userId);
 
   if (isLoading) {
-    return <div className="flex flex-row items-center gap-2 justify-center text-xl text-slate-900 dark:text-white">
-      <Spinner />
-      Loading Profile
-    </div>
-
+    return (
+      <div className="flex flex-row items-center justify-center gap-2 text-xl text-slate-900 dark:text-white">
+        <Spinner />
+        Loading Profile
+      </div>
+    );
   }
 
   if (!profile) {

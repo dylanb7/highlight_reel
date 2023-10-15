@@ -9,8 +9,8 @@ import {
   HighlightGridsComponent,
   hourGrouping,
 } from "../../../components/highlight-components/highlight-grid";
-import type { GridActions } from "../../../components/contexts/grid-context";
-import { GridContextProvider } from "../../../components/contexts/grid-context";
+import type { HighlightGridActions } from "../../../components/contexts/highlight-grid-context";
+import { HighlightGridContextProvider } from "../../../components/contexts/highlight-grid-context";
 import type { HighlightThumbnail } from "../../../types/highlight-out";
 import {
   bookmarkActionUpdate,
@@ -129,7 +129,7 @@ const LoadFeed: React.FC<{
 
   if (isLoading) return <LoadingSpinner loadingType={"Loading Highlights"} />;
 
-  const actions: GridActions = {
+  const actions: HighlightGridActions = {
     basePath: `reels/${poolId}/feed`,
     fetchMore: () => {
       void fetchNextPage();
@@ -149,12 +149,12 @@ const LoadFeed: React.FC<{
   };
 
   return (
-    <GridContextProvider value={actions}>
+    <HighlightGridContextProvider value={actions}>
       <HighlightGridsComponent
         highlights={highlights}
         grouping={hourGrouping}
       />
-    </GridContextProvider>
+    </HighlightGridContextProvider>
   );
 };
 
