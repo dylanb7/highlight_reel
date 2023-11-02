@@ -703,52 +703,54 @@ const Overlay: React.FC<
           {highlight && <ActionRowCompactFeed highlight={highlight} />}
         </div>
       )}
-      <div className="z-1 absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-900 pb-1">
-        <div className="relative flex flex-row items-center justify-end gap-1 px-4">
-          <IconButton
-            onClick={() => {
-              setPlaying((playing: boolean) => !playing);
-            }}
-          >
-            {playing ? (
-              <PauseIcon className={twIcons(6, 1)} />
-            ) : (
-              <PlayIcon className={twIcons(6, 1)} />
-            )}
-          </IconButton>
+      {false && (
+        <div className="z-1 absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-900 pb-1">
+          <div className="relative flex flex-row items-center justify-end gap-1 px-4">
+            <IconButton
+              onClick={() => {
+                setPlaying((playing: boolean) => !playing);
+              }}
+            >
+              {playing ? (
+                <PauseIcon className={twIcons(6, 1)} />
+              ) : (
+                <PlayIcon className={twIcons(6, 1)} />
+              )}
+            </IconButton>
 
-          <div className="flex w-full flex-row items-center justify-center">
-            <div className="duration-[660ms] h-2 grow transition-transform">
-              <div className="h-2 w-full overflow-clip rounded-full bg-slate-800">
-                <div
-                  className=" h-2 bg-slate-600"
-                  style={{ width: `${videoProgress.loaded * 100}%` }}
-                >
+            <div className="flex w-full flex-row items-center justify-center">
+              <div className="duration-[660ms] h-2 grow transition-transform">
+                <div className="h-2 w-full overflow-clip rounded-full bg-slate-800">
                   <div
-                    className="duration-[660ms] h-2 bg-white transition-transform"
-                    style={{ width: `${videoProgress.played * 100}%` }}
-                  />
+                    className=" h-2 bg-slate-600"
+                    style={{ width: `${videoProgress.loaded * 100}%` }}
+                  >
+                    <div
+                      className="duration-[660ms] h-2 bg-white transition-transform"
+                      style={{ width: `${videoProgress.played * 100}%` }}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
+            <IconButton
+              onClick={() => {
+                if (fullScreenHandle.active) {
+                  void fullScreenHandle.exit();
+                } else {
+                  void fullScreenHandle.enter();
+                }
+              }}
+            >
+              {fullScreenHandle.active ? (
+                <ExitFullScreenIcon className={twIcons(6, 1)} />
+              ) : (
+                <EnterFullScreenIcon className={twIcons(6, 1)} />
+              )}
+            </IconButton>
           </div>
-          <IconButton
-            onClick={() => {
-              if (fullScreenHandle.active) {
-                void fullScreenHandle.exit();
-              } else {
-                void fullScreenHandle.enter();
-              }
-            }}
-          >
-            {fullScreenHandle.active ? (
-              <ExitFullScreenIcon className={twIcons(6, 1)} />
-            ) : (
-              <EnterFullScreenIcon className={twIcons(6, 1)} />
-            )}
-          </IconButton>
         </div>
-      </div>
+      )}
     </div>
   );
 };
@@ -862,7 +864,6 @@ const MobilePlayer: React.FC<
               url={highlight.url}
               aspect={aspect}
               setVideoProgress={setVideoProgress}
-              playing={playing}
             />
           </div>
         </FullScreen>
@@ -904,22 +905,22 @@ const MobilePlayer: React.FC<
 const Player: React.FC<{
   url: string;
   aspect: number;
-  playing: boolean;
+
   setVideoProgress: Dispatch<
     SetStateAction<{
       loaded: number;
       played: number;
     }>
   >;
-}> = ({ url, setVideoProgress, playing }) => {
+}> = ({ url, setVideoProgress }) => {
   return (
     <div className="absolute inset-0 mx-auto">
       <ReactPlayer
         url={url}
         loop={true}
         style={{ objectFit: "cover" }}
-        playing={playing}
-        controls={false}
+        controls={true}
+        playing={true}
         pip={true}
         width={"100%"}
         height={"100%"}
