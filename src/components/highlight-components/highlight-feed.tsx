@@ -921,6 +921,7 @@ const Player: React.FC<{
         style={{ objectFit: "cover" }}
         controls={true}
         playing={true}
+        playsinline={true}
         pip={true}
         width={"100%"}
         height={"100%"}
