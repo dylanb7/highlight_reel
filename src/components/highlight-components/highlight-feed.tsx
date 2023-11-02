@@ -13,8 +13,6 @@ import Image from "next/image";
 import { useRouter } from "next/router";
 
 import {
-  type Dispatch,
-  type SetStateAction,
   useCallback,
   useEffect,
   useMemo,
@@ -41,11 +39,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/shadcn/ui/sheet";
-import {
-  FullScreen,
-  FullScreenHandle,
-  useFullScreenHandle,
-} from "react-full-screen";
 
 dayjs.extend(reltiveTime.default);
 dayjs.extend(utc.default);
@@ -521,12 +514,16 @@ const BackNav: React.FC<{
   const size = iconSize ?? 8;
 
   return (
-    <div className="flex w-full flex-row items-center justify-start gap-2 py-1">
+    <div className="flex w-full flex-row items-center justify-start gap-2">
       <IconStyleLink url={backPath}>
-        <ChevronLeftIcon className={twIcons(size, 2)} />
+        <ChevronLeftIcon
+          className={
+            "m-1 h-6 w-6 text-slate-900 hover:text-slate-800 dark:text-white dark:hover:text-gray-100"
+          }
+        />
       </IconStyleLink>
 
-      <h3 className="text-xl font-semibold text-white">
+      <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
         {from ? `${from} - ` : ""}
         {relativeTime && <span>{relativeTime}</span>}
       </h3>
@@ -648,48 +645,17 @@ const IconStyleLink: React.FC<React.PropsWithChildren<{ url: string }>> = ({
 const Overlay: React.FC<
   {
     isLandscape: boolean;
-    backPath: string;
-    relativeTime: string | undefined;
-    from?: string;
     highlight: HighlightVideo | undefined;
     progress?: string;
-    videoProgress: { loaded: number; played: number };
-    playing: boolean;
-    setPlaying: Dispatch<SetStateAction<boolean>>;
-
-    fullScreenHandle: FullScreenHandle;
   } & NavProps
-> = ({
-  isLandscape,
-  backPath,
-  relativeTime,
-  from,
-  highlight,
-  hasNext,
-  hasPrev,
-  next,
-  prev,
-  progress,
-  videoProgress,
-  playing,
-  setPlaying,
-  fullScreenHandle,
-}) => {
+> = ({ isLandscape, highlight, hasNext, hasPrev, next, prev, progress }) => {
   return (
-    <div className="absolute inset-0 z-20">
-      <div className="absolute top-0 flex w-full flex-row items-center justify-between bg-gradient-to-b from-slate-900 px-2">
-        <BackNav
-          backPath={backPath}
-          from={from}
-          relativeTime={relativeTime}
-          iconSize={6}
-        />
-      </div>
+    <div className="absolute inset-0">
       {isLandscape && (
-        <div className="absolute right-2 top-1/2 flex -translate-y-1/2 flex-col items-center justify-center gap-1 rounded-md bg-slate-900/80 p-0.5 md:p-1">
+        <div className="absolute right-2 top-1/2 z-20 flex -translate-y-1/2 flex-col items-center justify-center gap-1 rounded-md bg-slate-900/80 p-0.5 md:p-1">
           <div className="flex flex-row">
             {progress && (
-              <h2 className="self-center text-xl font-semibold text-slate-900 dark:text-white">
+              <h2 className="self-center text-xl font-semibold text-white">
                 {progress}
               </h2>
             )}
@@ -701,54 +667,6 @@ const Overlay: React.FC<
             />
           </div>
           {highlight && <ActionRowCompactFeed highlight={highlight} />}
-        </div>
-      )}
-      {false && (
-        <div className="z-1 absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-900 pb-1">
-          <div className="relative flex flex-row items-center justify-end gap-1 px-4">
-            <IconButton
-              onClick={() => {
-                setPlaying((playing: boolean) => !playing);
-              }}
-            >
-              {playing ? (
-                <PauseIcon className={twIcons(6, 1)} />
-              ) : (
-                <PlayIcon className={twIcons(6, 1)} />
-              )}
-            </IconButton>
-
-            <div className="flex w-full flex-row items-center justify-center">
-              <div className="duration-[660ms] h-2 grow transition-transform">
-                <div className="h-2 w-full overflow-clip rounded-full bg-slate-800">
-                  <div
-                    className=" h-2 bg-slate-600"
-                    style={{ width: `${videoProgress.loaded * 100}%` }}
-                  >
-                    <div
-                      className="duration-[660ms] h-2 bg-white transition-transform"
-                      style={{ width: `${videoProgress.played * 100}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-            <IconButton
-              onClick={() => {
-                if (fullScreenHandle.active) {
-                  void fullScreenHandle.exit();
-                } else {
-                  void fullScreenHandle.enter();
-                }
-              }}
-            >
-              {fullScreenHandle.active ? (
-                <ExitFullScreenIcon className={twIcons(6, 1)} />
-              ) : (
-                <EnterFullScreenIcon className={twIcons(6, 1)} />
-              )}
-            </IconButton>
-          </div>
         </div>
       )}
     </div>
@@ -778,8 +696,6 @@ const MobilePlayer: React.FC<
   progress,
   highlight,
 }) => {
-  const videoFullScreen: FullScreenHandle = useFullScreenHandle();
-
   const landscape = useSyncExternalStore(
     (callback) => {
       window.addEventListener("resize", callback);
@@ -793,85 +709,83 @@ const MobilePlayer: React.FC<
     () => false
   );
 
-  const hasGutter = false;
+  const hasGutter = true;
 
   const [focused, setFocused] = useState(true);
 
-  const [playing, setPlaying] = useState(true);
-
-  const [videoProgress, setVideoProgress] = useState({ loaded: 0, played: 0 });
-
   return (
     <div className="relative flex h-full w-full flex-col items-start justify-start">
+      <div className="flex w-full flex-row items-center justify-between bg-white px-2 shadow-md dark:bg-slate-900">
+        <BackNav
+          backPath={backPath}
+          from={from}
+          relativeTime={relativeTime}
+          iconSize={6}
+        />
+        {landscape && (
+          <Sheet>
+            <SheetTrigger>
+              <InfoCircledIcon
+                className={
+                  "h-6 w-6 text-slate-900 hover:text-slate-800 dark:text-white dark:hover:text-gray-100"
+                }
+              />
+            </SheetTrigger>
+
+            <SheetContent>
+              <SheetHeader>
+                <SheetTitle>Highlight Info</SheetTitle>
+              </SheetHeader>
+              <div className="flex flex-col items-start justify-start">
+                {highlight && <Time highlight={highlight} />}
+                {highlight && highlight.poolId && (
+                  <Source
+                    poolId={highlight.poolId}
+                    wristbandId={highlight.wristbandId}
+                  />
+                )}
+              </div>
+            </SheetContent>
+          </Sheet>
+        )}
+      </div>
+
       <div
         className="relative h-full w-full overflow-clip"
         onMouseLeave={() => setFocused(false)}
         onMouseMove={() => setFocused(true)}
         onClick={() => setFocused((val) => !val)}
       >
-        <FullScreen handle={videoFullScreen}>
-          {focused && (
-            <Overlay
-              isLandscape={landscape}
-              backPath={backPath}
-              relativeTime={relativeTime}
-              progress={progress}
-              highlight={highlight}
-              videoProgress={videoProgress}
-              playing={playing}
-              setPlaying={setPlaying}
-              fullScreenHandle={videoFullScreen}
-              hasNext={hasNext}
-              hasPrev={hasPrev}
-              from={from}
-              next={next}
-              prev={prev}
-            />
-          )}
-          {landscape && (
-            <Sheet>
-              {focused && (
-                <SheetTrigger className="absolute right-2 top-2 z-20">
-                  <InfoCircledIcon className={twIcons(6, 0)} />
-                </SheetTrigger>
-              )}
-              <SheetContent>
-                <SheetHeader>
-                  <SheetTitle>Highlight Info</SheetTitle>
-                </SheetHeader>
-                <div className="flex flex-col items-start justify-start">
-                  {highlight && <Time highlight={highlight} />}
-                  {highlight && highlight.poolId && (
-                    <Source
-                      poolId={highlight.poolId}
-                      wristbandId={highlight.wristbandId}
-                    />
-                  )}
-                </div>
-              </SheetContent>
-            </Sheet>
-          )}
-          <div
-            style={{
-              maxHeight: hasGutter ? "calc(100vh - 16rem)" : "100vh",
-              maxWidth: "100%",
-              objectFit: "contain",
-              aspectRatio: aspect,
-            }}
-            className="items-center justify-center"
-          >
-            <Player
-              url={highlight.url}
-              aspect={aspect}
-              setVideoProgress={setVideoProgress}
-            />
-          </div>
-        </FullScreen>
+        {focused && (
+          <Overlay
+            isLandscape={landscape}
+            highlight={highlight}
+            progress={progress}
+            hasNext={hasNext}
+            hasPrev={hasPrev}
+            next={next}
+            prev={prev}
+          />
+        )}
+
+        <div
+          style={{
+            maxHeight: hasGutter ? "calc(100vh - 2.5rem)" : "100vh",
+            maxWidth: "100%",
+            objectFit: "contain",
+            aspectRatio: aspect,
+          }}
+          className="items-center justify-center"
+        >
+          <Player url={highlight.url} aspect={aspect} />
+        </div>
       </div>
 
       {!landscape && (
         <div className="flex h-full w-full flex-col gap-4 pb-4">
-          <ActionRow highlight={highlight} />
+          <div className="bg-white dark:bg-slate-900">
+            <ActionRow highlight={highlight} />
+          </div>
           <div className="flex flex-row items-start justify-between px-4">
             <div className="flex shrink flex-col">
               <Time highlight={highlight} />
@@ -905,14 +819,9 @@ const MobilePlayer: React.FC<
 const Player: React.FC<{
   url: string;
   aspect: number;
+}> = ({ url }) => {
+  const [playing, setPlaying] = useState(true);
 
-  setVideoProgress: Dispatch<
-    SetStateAction<{
-      loaded: number;
-      played: number;
-    }>
-  >;
-}> = ({ url, setVideoProgress }) => {
   return (
     <div className="absolute inset-0 mx-auto">
       <ReactPlayer
@@ -920,16 +829,15 @@ const Player: React.FC<{
         loop={true}
         style={{ objectFit: "cover" }}
         controls={true}
-        playing={true}
         playsinline={true}
+        onPause={() => setPlaying(false)}
+        onPlay={() => setPlaying(true)}
+        playing={playing}
         pip={true}
         width={"100%"}
         height={"100%"}
         muted={true}
         progressInterval={1}
-        onProgress={(state) => {
-          setVideoProgress({ loaded: state.loaded, played: state.played });
-        }}
       />
     </div>
   );

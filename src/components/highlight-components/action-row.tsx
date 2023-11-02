@@ -37,9 +37,17 @@ export const ActionRow: React.FC<{ highlight: HighlightVideo }> = ({
           disabled={noUser || feedContext.disabled}
         >
           {highlight.upvoted ? (
-            <HeartFilledIcon className={twIcons(5, 0)} />
+            <HeartFilledIcon
+              className={
+                "h-5 w-5 text-slate-900 hover:text-slate-800 dark:text-white dark:hover:text-gray-100"
+              }
+            />
           ) : (
-            <HeartIcon className={twIcons(5, 0)} />
+            <HeartIcon
+              className={
+                "h-5 w-5 text-slate-900 hover:text-slate-800 dark:text-white dark:hover:text-gray-100"
+              }
+            />
           )}
         </IconButton>
         <IconButton
@@ -49,9 +57,17 @@ export const ActionRow: React.FC<{ highlight: HighlightVideo }> = ({
           disabled={noUser || feedContext.disabled}
         >
           {highlight.bookmarked ? (
-            <BookmarkFilledIcon className={twIcons(5, 0)} />
+            <BookmarkFilledIcon
+              className={
+                "h-5 w-5 text-slate-900 hover:text-slate-800 dark:text-white dark:hover:text-gray-100"
+              }
+            />
           ) : (
-            <BookmarkIcon className={twIcons(5, 0)} />
+            <BookmarkIcon
+              className={
+                "h-5 w-5 text-slate-900 hover:text-slate-800 dark:text-white dark:hover:text-gray-100"
+              }
+            />
           )}
         </IconButton>
         <IconButton
@@ -60,7 +76,11 @@ export const ActionRow: React.FC<{ highlight: HighlightVideo }> = ({
             return;
           }}
         >
-          <Share2Icon className={twIcons(5, 0)} />
+          <Share2Icon
+            className={
+              "h-5 w-5 text-slate-900 hover:text-slate-800 dark:text-white dark:hover:text-gray-100"
+            }
+          />
         </IconButton>
       </div>
     </div>
@@ -78,12 +98,10 @@ export const ActionRowCompactFeed: React.FC<{
 
   return (
     <div className="flex w-full flex-row items-center justify-end gap-2 overflow-x-scroll rounded-sm px-3 pb-1 pt-1">
-      <div className="flex flex-row gap-1 rounded-full border border-slate-900 px-1 dark:border-white">
-        <h1 className="px-2 text-sm text-slate-900 dark:text-white">
-          {highlight.upvotes}
-        </h1>
+      <div className="flex flex-row gap-1 rounded-full border border-white px-1">
+        <h1 className="px-2 text-sm text-white">{highlight.upvotes}</h1>
         <Separator.Root
-          className="w-px bg-slate-900 dark:bg-white"
+          className="w-px bg-white"
           decorative
           orientation="vertical"
         />
