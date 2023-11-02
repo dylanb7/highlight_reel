@@ -55,7 +55,7 @@ export const NavBar = () => {
               <SheetHeader>
                 <SheetTitle>Menu</SheetTitle>
               </SheetHeader>
-              <div className="flex flex-wrap items-center justify-start gap-2 pt-2">
+              <div className="z-50 flex flex-wrap items-center justify-start gap-2 pt-2">
                 <ModeToggle />
                 <SignInComponent />
               </div>

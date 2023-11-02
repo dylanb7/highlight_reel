@@ -17,6 +17,7 @@ import {
 } from "@/shadcn/ui/select";
 import { CalendarIcon } from "@radix-ui/react-icons";
 import { Dialog, DialogContent, DialogTrigger } from "@/shadcn/ui/dialog";
+import { ScrollArea, ScrollBar } from "@/shadcn/ui/scroll-area";
 
 export const useInitialDate = () => {
   const { query } = useRouter();
@@ -53,7 +54,7 @@ export const DateFilter: React.FC = () => {
 
   return (
     <div className="flex flex-col items-start justify-start pb-3">
-      <h3 className="pb-3 text-2xl font-semibold text-slate-900 dark:text-white">
+      <h3 className="pb-3 text-lg font-semibold text-slate-900 dark:text-white">
         From
       </h3>
 
@@ -125,24 +126,27 @@ export const WristBands: React.FC<{ poolId: number }> = ({ poolId }) => {
 
   return (
     <div className="flex flex-col">
-      <h3 className="pb-3 text-2xl font-semibold text-slate-900 dark:text-white">
+      <h3 className="pb-3 text-lg font-semibold text-slate-900 dark:text-white">
         Wristband
       </h3>
-      <div className="flex flex-row items-center justify-start gap-2 overflow-x-scroll pb-3">
-        <WristbandChip
-          link={`/reels/${poolId}`}
-          active={!hasValue}
-          name={"All"}
-        />
-        {cleaned.map((data) => (
+      <ScrollArea className="pb-3">
+        <div className="flex flex-row items-center justify-start gap-2">
           <WristbandChip
-            link={`/reels/${poolId}/band/${data}`}
-            active={hasValue ? data === bandId : false}
-            name={data}
-            key={data}
+            link={`/reels/${poolId}`}
+            active={!hasValue}
+            name={"All"}
           />
-        ))}
-      </div>
+          {cleaned.map((data) => (
+            <WristbandChip
+              link={`/reels/${poolId}/band/${data}`}
+              active={hasValue ? data === bandId : false}
+              name={data}
+              key={data}
+            />
+          ))}
+        </div>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
     </div>
   );
 };

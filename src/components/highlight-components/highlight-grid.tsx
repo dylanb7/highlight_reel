@@ -231,8 +231,7 @@ const ImageComponent: React.FC<{
               src={highlight.thumbnailUrl}
               unoptimized
               alt={"Highlight"}
-              onLoadingComplete={() => setLoading(false)}
-              onLoad={() => setLoading(true)}
+              onLoad={() => setLoading(false)}
               width={highlight.aspectRatioNumerator ?? 500}
               height={highlight.aspectRatioDenominator ?? 500}
             />

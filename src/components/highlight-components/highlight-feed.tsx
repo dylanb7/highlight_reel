@@ -6,12 +6,16 @@ import {
   ChevronUpIcon,
   InfoCircledIcon,
   Cross1Icon,
+  EnterFullScreenIcon,
+  ExitFullScreenIcon,
 } from "@radix-ui/react-icons";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/router";
 
 import {
+  type Dispatch,
+  type SetStateAction,
   useCallback,
   useEffect,
   useMemo,
@@ -31,8 +35,18 @@ import * as utc from "dayjs/plugin/utc";
 import LocalizedFormat from "dayjs/plugin/localizedFormat";
 import { removeExt } from "../../utils/highlightUtils";
 import { z } from "zod";
-import { FocusProvider } from "../contexts/focus-context";
-import { Sheet } from "@/shadcn/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/shadcn/ui/sheet";
+import {
+  FullScreen,
+  FullScreenHandle,
+  useFullScreenHandle,
+} from "react-full-screen";
 
 dayjs.extend(reltiveTime.default);
 dayjs.extend(utc.default);
@@ -114,8 +128,6 @@ export const ContinuousFeed: React.FC<{
   const hasCachedPrev = current !== undefined && current > 0;
 
   const goNext = async () => {
-    console.log("next");
-    console.log(highlights);
     const nextHighlight =
       current !== undefined ? highlights.at(current + 1) : undefined;
     if (nextHighlight) {
@@ -133,7 +145,6 @@ export const ContinuousFeed: React.FC<{
       );
     }
     const id = await next();
-    console.log(id);
     if (!id) return;
     void push(
       {
@@ -400,156 +411,6 @@ const BaseCompontent: React.FC<
     );*/
 };
 
-const MobilePlayer: React.FC<
-  {
-    aspect: number;
-    relativeTime: string | undefined;
-    highlight: HighlightVideo;
-    nextHighlight?: string;
-    previousHighlight?: string;
-    backPath: string;
-    from?: string;
-    progress?: string;
-  } & NavProps
-> = ({
-  aspect,
-  relativeTime,
-  hasNext,
-  hasPrev,
-  next,
-  prev,
-  backPath,
-  from,
-  progress,
-  highlight,
-}) => {
-  const landscape = useSyncExternalStore(
-    (callback) => {
-      window.addEventListener("resize", callback);
-      return () => {
-        window.removeEventListener("resize", callback);
-      };
-    },
-    () => {
-      return window.innerWidth > window.innerHeight ? true : false;
-    },
-    () => false
-  );
-
-  const [info, setInfo] = useState(false);
-
-  return (
-    <div className="relative flex h-full w-full flex-col items-start justify-start">
-      <FocusProvider value={{ isFocused: false }}>
-        <div className="relative h-full w-full overflow-clip">
-          {landscape && (
-            <div
-              className={`absolute inset-y-0 right-0 w-1/3 ${
-                info ? "translate-x-0" : "translate-x-full"
-              } z-50 flex transform flex-col items-start justify-start gap-4 bg-white p-4 dark:bg-slate-900`}
-            >
-              <IconButton
-                onClick={() => {
-                  setInfo(false);
-                }}
-              >
-                <Cross1Icon className={twIcons(6, 0)} />
-              </IconButton>
-              <div className="w-full shrink">
-                <Time highlight={highlight} />
-              </div>
-
-              {highlight.poolId && (
-                <div className="self-center">
-                  <Source
-                    poolId={highlight.poolId}
-                    wristbandId={highlight.wristbandId}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          <Player
-            url={highlight.url}
-            aspect={aspect}
-            hasGutter={false}
-            highlight={landscape ? highlight : undefined}
-          />
-
-          <div className="absolute top-0 flex w-full flex-row items-center justify-between bg-gradient-to-b from-slate-900 px-2">
-            <BackNav
-              backPath={backPath}
-              from={from}
-              relativeTime={relativeTime}
-              iconSize={6}
-            />
-
-            {landscape && (
-              <IconButton
-                onClick={() => {
-                  setInfo(true);
-                }}
-              >
-                <InfoCircledIcon className={twIcons(6, 0)} />
-              </IconButton>
-            )}
-          </div>
-
-          {landscape && (
-            <div className="absolute right-2 top-1/2 flex -translate-y-1/2 flex-row items-center justify-center gap-1 rounded-md bg-slate-900/50 p-1">
-              {progress && (
-                <h2 className="self-center text-xl font-semibold text-slate-900 dark:text-white">
-                  {progress}
-                </h2>
-              )}
-              <ArrowNav
-                hasNext={hasNext}
-                hasPrev={hasPrev}
-                next={next}
-                prev={prev}
-              />
-            </div>
-          )}
-          {!landscape && (
-            <div className="flex h-full w-full flex-col gap-4 pb-4">
-              <ActionRow highlight={highlight} />
-              <div className="flex flex-row items-start justify-between px-4">
-                <div className="flex shrink flex-col">
-                  <Time highlight={highlight} />
-                  {highlight.poolId && (
-                    <Source
-                      poolId={highlight.poolId}
-                      wristbandId={highlight.wristbandId}
-                    />
-                  )}
-                </div>
-                <div className="flex flex-row items-start justify-start gap-2">
-                  {progress && (
-                    <h2 className="self-center text-xl font-semibold text-slate-900 dark:text-white">
-                      {progress}
-                    </h2>
-                  )}
-                  <ArrowNav
-                    hasNext={hasNext}
-                    hasPrev={hasPrev}
-                    next={next}
-                    prev={prev}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </FocusProvider>
-    </div>
-  );
-};
-
-const TopRow: React.FC<{ isLandscape: false }> = ({ isLandscape }) => {
-  return <></>;
-};
-
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const ThumbnailStack: React.FC<
   {
@@ -679,9 +540,7 @@ const ArrowNav: React.FC<{ iconSize?: number } & NavProps> = ({
   hasPrev,
   next,
   prev,
-  iconSize,
 }) => {
-  const size = iconSize ?? 8;
   return (
     <div className="flex flex-col justify-center gap-1">
       <IconButton
@@ -690,7 +549,11 @@ const ArrowNav: React.FC<{ iconSize?: number } & NavProps> = ({
           prev();
         }}
       >
-        <ChevronUpIcon className={twIcons(size, 0)} />
+        <ChevronUpIcon
+          className={
+            "m-0 h-5 w-5 text-white hover:text-slate-800 dark:hover:text-gray-100 md:h-8 md:w-8"
+          }
+        />
       </IconButton>
 
       <IconButton
@@ -699,7 +562,11 @@ const ArrowNav: React.FC<{ iconSize?: number } & NavProps> = ({
           next();
         }}
       >
-        <ChevronDownIcon className={twIcons(size, 0)} />
+        <ChevronDownIcon
+          className={
+            "m-0 h-5 w-5 text-white hover:text-slate-800 dark:hover:text-gray-100 md:h-8 md:w-8"
+          }
+        />
       </IconButton>
     </div>
   );
@@ -717,7 +584,7 @@ const Time: React.FC<{ highlight: HighlightVideo }> = ({ highlight }) => {
   }, [highlight]);
 
   return (
-    <div className="mx-auto flex h-full w-full flex-row items-start justify-center gap-8 ">
+    <div className="flex flex-row items-start justify-start gap-8 ">
       <p className="text-center text-lg font-bold text-slate-900 dark:text-white">
         {dateTime?.at(0) ?? ""}
         <br />
@@ -779,31 +646,275 @@ const IconStyleLink: React.FC<React.PropsWithChildren<{ url: string }>> = ({
   );
 };
 
+const Overlay: React.FC<
+  {
+    isLandscape: boolean;
+    backPath: string;
+    relativeTime: string | undefined;
+    from?: string;
+    highlight: HighlightVideo | undefined;
+    progress?: string;
+    videoProgress: { loaded: number; played: number };
+    playing: boolean;
+    setPlaying: Dispatch<SetStateAction<boolean>>;
+
+    fullScreenHandle: FullScreenHandle;
+  } & NavProps
+> = ({
+  isLandscape,
+  backPath,
+  relativeTime,
+  from,
+  highlight,
+  hasNext,
+  hasPrev,
+  next,
+  prev,
+  progress,
+  videoProgress,
+  playing,
+  setPlaying,
+  fullScreenHandle,
+}) => {
+  return (
+    <div className="absolute inset-0 z-20">
+      <div className="absolute top-0 flex w-full flex-row items-center justify-between bg-gradient-to-b from-slate-900 px-2">
+        <BackNav
+          backPath={backPath}
+          from={from}
+          relativeTime={relativeTime}
+          iconSize={6}
+        />
+      </div>
+      {isLandscape && (
+        <div className="absolute right-2 top-1/2 flex -translate-y-1/2 flex-col items-center justify-center gap-1 rounded-md bg-slate-900/80 p-0.5 md:p-1">
+          <div className="flex flex-row">
+            {progress && (
+              <h2 className="self-center text-xl font-semibold text-slate-900 dark:text-white">
+                {progress}
+              </h2>
+            )}
+            <ArrowNav
+              hasNext={hasNext}
+              hasPrev={hasPrev}
+              next={next}
+              prev={prev}
+            />
+          </div>
+          {highlight && <ActionRowCompactFeed highlight={highlight} />}
+        </div>
+      )}
+      <div className="z-1 absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-900 pb-1">
+        <div className="relative flex flex-row items-center justify-end gap-1 px-4">
+          <IconButton
+            onClick={() => {
+              setPlaying((playing: boolean) => !playing);
+            }}
+          >
+            {playing ? (
+              <PauseIcon className={twIcons(6, 1)} />
+            ) : (
+              <PlayIcon className={twIcons(6, 1)} />
+            )}
+          </IconButton>
+
+          <div className="flex w-full flex-row items-center justify-center">
+            <div className="duration-[660ms] h-2 grow transition-transform">
+              <div className="h-2 w-full overflow-clip rounded-full bg-slate-800">
+                <div
+                  className=" h-2 bg-slate-600"
+                  style={{ width: `${videoProgress.loaded * 100}%` }}
+                >
+                  <div
+                    className="duration-[660ms] h-2 bg-white transition-transform"
+                    style={{ width: `${videoProgress.played * 100}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          <IconButton
+            onClick={() => {
+              if (fullScreenHandle.active) {
+                void fullScreenHandle.exit();
+              } else {
+                void fullScreenHandle.enter();
+              }
+            }}
+          >
+            {fullScreenHandle.active ? (
+              <ExitFullScreenIcon className={twIcons(6, 1)} />
+            ) : (
+              <EnterFullScreenIcon className={twIcons(6, 1)} />
+            )}
+          </IconButton>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const MobilePlayer: React.FC<
+  {
+    aspect: number;
+    relativeTime: string | undefined;
+    highlight: HighlightVideo;
+    nextHighlight?: string;
+    previousHighlight?: string;
+    backPath: string;
+    from?: string;
+    progress?: string;
+  } & NavProps
+> = ({
+  aspect,
+  relativeTime,
+  hasNext,
+  hasPrev,
+  next,
+  prev,
+  backPath,
+  from,
+  progress,
+  highlight,
+}) => {
+  const videoFullScreen: FullScreenHandle = useFullScreenHandle();
+
+  const landscape = useSyncExternalStore(
+    (callback) => {
+      window.addEventListener("resize", callback);
+      return () => {
+        window.removeEventListener("resize", callback);
+      };
+    },
+    () => {
+      return window.innerWidth > window.innerHeight ? true : false;
+    },
+    () => false
+  );
+
+  const hasGutter = false;
+
+  const [focused, setFocused] = useState(true);
+
+  const [playing, setPlaying] = useState(true);
+
+  const [videoProgress, setVideoProgress] = useState({ loaded: 0, played: 0 });
+
+  return (
+    <div className="relative flex h-full w-full flex-col items-start justify-start">
+      <div
+        className="relative h-full w-full overflow-clip"
+        onMouseLeave={() => setFocused(false)}
+        onMouseMove={() => setFocused(true)}
+        onClick={() => setFocused((val) => !val)}
+      >
+        <FullScreen handle={videoFullScreen}>
+          {focused && (
+            <Overlay
+              isLandscape={landscape}
+              backPath={backPath}
+              relativeTime={relativeTime}
+              progress={progress}
+              highlight={highlight}
+              videoProgress={videoProgress}
+              playing={playing}
+              setPlaying={setPlaying}
+              fullScreenHandle={videoFullScreen}
+              hasNext={hasNext}
+              hasPrev={hasPrev}
+              from={from}
+              next={next}
+              prev={prev}
+            />
+          )}
+          {landscape && (
+            <Sheet>
+              {focused && (
+                <SheetTrigger className="absolute right-2 top-2 z-20">
+                  <InfoCircledIcon className={twIcons(6, 0)} />
+                </SheetTrigger>
+              )}
+              <SheetContent>
+                <SheetHeader>
+                  <SheetTitle>Highlight Info</SheetTitle>
+                </SheetHeader>
+                <div className="flex flex-col items-start justify-start">
+                  {highlight && <Time highlight={highlight} />}
+                  {highlight && highlight.poolId && (
+                    <Source
+                      poolId={highlight.poolId}
+                      wristbandId={highlight.wristbandId}
+                    />
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
+          )}
+          <div
+            style={{
+              maxHeight: hasGutter ? "calc(100vh - 16rem)" : "100vh",
+              maxWidth: "100%",
+              objectFit: "contain",
+              aspectRatio: aspect,
+            }}
+            className="items-center justify-center"
+          >
+            <Player
+              url={highlight.url}
+              aspect={aspect}
+              setVideoProgress={setVideoProgress}
+              playing={playing}
+            />
+          </div>
+        </FullScreen>
+      </div>
+
+      {!landscape && (
+        <div className="flex h-full w-full flex-col gap-4 pb-4">
+          <ActionRow highlight={highlight} />
+          <div className="flex flex-row items-start justify-between px-4">
+            <div className="flex shrink flex-col">
+              <Time highlight={highlight} />
+              {highlight.poolId && (
+                <Source
+                  poolId={highlight.poolId}
+                  wristbandId={highlight.wristbandId}
+                />
+              )}
+            </div>
+            <div className="flex flex-row items-start justify-start gap-2 text-xl">
+              {progress && (
+                <h2 className="self-center font-semibold text-slate-900 dark:text-white ">
+                  {progress}
+                </h2>
+              )}
+              <ArrowNav
+                hasNext={hasNext}
+                hasPrev={hasPrev}
+                next={next}
+                prev={prev}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const Player: React.FC<{
   url: string;
   aspect: number;
-  hasGutter: boolean;
-  highlight?: HighlightVideo;
-}> = ({ url, aspect, hasGutter, highlight }) => {
-  const [playing, setPlaying] = useState(true);
-
-  const [focused, setFocused] = useState(false);
-
-  const [progress, setProgress] = useState({ loaded: 0, played: 0 });
-
+  playing: boolean;
+  setVideoProgress: Dispatch<
+    SetStateAction<{
+      loaded: number;
+      played: number;
+    }>
+  >;
+}> = ({ url, setVideoProgress, playing }) => {
   return (
-    <div
-      onMouseEnter={() => setFocused(true)}
-      onMouseLeave={() => setFocused(false)}
-      onClick={() => setFocused((val) => !val)}
-      className="relative mx-auto"
-      style={{
-        maxHeight: hasGutter ? "calc(100vh - 16rem)" : "100vh",
-        maxWidth: "100%",
-        objectFit: "contain",
-        aspectRatio: aspect,
-      }}
-    >
+    <div className="absolute inset-0 mx-auto">
       <ReactPlayer
         url={url}
         loop={true}
@@ -817,48 +928,9 @@ const Player: React.FC<{
         muted={true}
         progressInterval={1}
         onProgress={(state) => {
-          setProgress({ loaded: state.loaded, played: state.played });
+          setVideoProgress({ loaded: state.loaded, played: state.played });
         }}
       />
-
-      {focused && (
-        <div className="z-1 absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-900 pb-1">
-          <div className="relative flex flex-row items-center justify-end gap-1 px-4">
-            <IconButton
-              onClick={() => {
-                setPlaying((playing) => !playing);
-              }}
-            >
-              {playing ? (
-                <PauseIcon className={twIcons(5, 1)} />
-              ) : (
-                <PlayIcon className={twIcons(5, 1)} />
-              )}
-            </IconButton>
-
-            <div className="flex w-full flex-row items-center justify-center">
-              <div className="duration-[660ms] h-2 grow transition-transform">
-                <div className="h-2 w-full overflow-clip rounded-full bg-slate-800">
-                  <div
-                    className=" h-2 bg-slate-600"
-                    style={{ width: `${progress.loaded * 100}%` }}
-                  >
-                    <div
-                      className="duration-[660ms] h-2 bg-white transition-transform"
-                      style={{ width: `${progress.played * 100}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-              {highlight && (
-                <div className="shrink">
-                  <ActionRowCompactFeed highlight={highlight} />
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
