@@ -9,7 +9,6 @@ import { type HighlightVideo } from "../../../../types/highlight-out";
 import { getServerHelpers } from "../../../../utils/ssgHelper";
 import { api } from "../../../../utils/trpc";
 
-
 interface PoolProps {
   poolId: number;
   initialCursor?: number | null;
@@ -17,7 +16,6 @@ interface PoolProps {
 }
 
 const PoolFeed: NextPage<PoolProps> = (props) => {
-  console.log(props)
   if (props.length && props.initialCursor)
     return (
       <GroupedPoolFeed

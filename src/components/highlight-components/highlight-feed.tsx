@@ -1,12 +1,8 @@
 import {
-  PauseIcon,
-  PlayIcon,
   ChevronLeftIcon,
   ChevronDownIcon,
   ChevronUpIcon,
   InfoCircledIcon,
-  EnterFullScreenIcon,
-  ExitFullScreenIcon,
 } from "@radix-ui/react-icons";
 import Link from "next/link";
 import Image from "next/image";
@@ -21,7 +17,7 @@ import {
 } from "react";
 import type { HighlightVideo } from "../../types/highlight-out";
 
-import { IconButton, twIcons } from "../misc/icon-button";
+import { IconButton } from "../misc/icon-button";
 
 import { ActionRow, ActionRowCompactFeed } from "./action-row";
 import dynamic from "next/dynamic";
@@ -649,10 +645,17 @@ const Overlay: React.FC<
     progress?: string;
   } & NavProps
 > = ({ isLandscape, highlight, hasNext, hasPrev, next, prev, progress }) => {
+  const [focused, setFocused] = useState(true);
+
   return (
-    <div className="absolute inset-0">
-      {isLandscape && (
-        <div className="absolute right-2 top-1/2 z-20 flex -translate-y-1/2 flex-col items-center justify-center gap-1 rounded-md bg-slate-900/80 p-0.5 md:p-1">
+    <div
+      className="absolute inset-0"
+      onMouseLeave={() => setFocused(false)}
+      onMouseMove={() => setFocused(true)}
+      onClick={() => setFocused((val) => !val)}
+    >
+      {isLandscape && focused && (
+        <div className="absolute right-2 top-1/2 z-40 flex -translate-y-1/2 flex-col items-center justify-center gap-1 rounded-md bg-slate-900/80 p-0.5 md:p-1">
           <div className="flex flex-row">
             {progress && (
               <h2 className="self-center text-xl font-semibold text-white">
@@ -711,8 +714,6 @@ const MobilePlayer: React.FC<
 
   const hasGutter = true;
 
-  const [focused, setFocused] = useState(true);
-
   return (
     <div className="relative flex h-full w-full flex-col items-start justify-start">
       <div className="flex w-full flex-row items-center justify-between bg-white px-2 shadow-md dark:bg-slate-900">
@@ -750,24 +751,7 @@ const MobilePlayer: React.FC<
         )}
       </div>
 
-      <div
-        className="relative h-full w-full overflow-clip"
-        onMouseLeave={() => setFocused(false)}
-        onMouseMove={() => setFocused(true)}
-        onClick={() => setFocused((val) => !val)}
-      >
-        {focused && (
-          <Overlay
-            isLandscape={landscape}
-            highlight={highlight}
-            progress={progress}
-            hasNext={hasNext}
-            hasPrev={hasPrev}
-            next={next}
-            prev={prev}
-          />
-        )}
-
+      <div className="relative h-full w-full overflow-clip">
         <div
           style={{
             maxHeight: hasGutter ? "calc(100vh - 2.5rem)" : "100vh",
@@ -781,37 +765,35 @@ const MobilePlayer: React.FC<
         </div>
       </div>
 
-      {!landscape && (
-        <div className="flex h-full w-full flex-col gap-4 pb-4">
-          <div className="bg-white dark:bg-slate-900">
-            <ActionRow highlight={highlight} />
-          </div>
-          <div className="flex flex-row items-start justify-between px-4">
-            <div className="flex shrink flex-col">
-              <Time highlight={highlight} />
-              {highlight.poolId && (
-                <Source
-                  poolId={highlight.poolId}
-                  wristbandId={highlight.wristbandId}
-                />
-              )}
-            </div>
-            <div className="flex flex-row items-start justify-start gap-2 text-xl">
-              {progress && (
-                <h2 className="self-center font-semibold text-slate-900 dark:text-white ">
-                  {progress}
-                </h2>
-              )}
-              <ArrowNav
-                hasNext={hasNext}
-                hasPrev={hasPrev}
-                next={next}
-                prev={prev}
+      <div className="flex h-full w-full flex-col gap-4 pb-4">
+        <div className="bg-white dark:bg-slate-900">
+          <ActionRow highlight={highlight} />
+        </div>
+        <div className="flex flex-row items-start justify-between px-4">
+          <div className="flex shrink flex-col">
+            <Time highlight={highlight} />
+            {highlight.poolId && (
+              <Source
+                poolId={highlight.poolId}
+                wristbandId={highlight.wristbandId}
               />
-            </div>
+            )}
+          </div>
+          <div className="flex flex-row items-start justify-start gap-2 text-xl">
+            {progress && (
+              <h2 className="self-center font-semibold text-slate-900 dark:text-white ">
+                {progress}
+              </h2>
+            )}
+            <ArrowNav
+              hasNext={hasNext}
+              hasPrev={hasPrev}
+              next={next}
+              prev={prev}
+            />
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };

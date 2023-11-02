@@ -6,6 +6,7 @@ import {
   Share2Icon,
 } from "@radix-ui/react-icons";
 import type {
+  BaseHighlight,
   HighlightThumbnail,
   HighlightVideo,
 } from "../../types/highlight-out";
@@ -14,6 +15,8 @@ import * as Separator from "@radix-ui/react-separator";
 import { useGridContext } from "../contexts/highlight-grid-context";
 import { useFeedContext } from "../contexts/feed-context";
 import { useAuth } from "@clerk/nextjs";
+import { RWebShare } from "react-web-share";
+import { useRouter } from "next/router";
 
 export const ActionRow: React.FC<{ highlight: HighlightVideo }> = ({
   highlight,
@@ -70,18 +73,7 @@ export const ActionRow: React.FC<{ highlight: HighlightVideo }> = ({
             />
           )}
         </IconButton>
-        <IconButton
-          onClick={() => {
-            //TODO: add share functionality
-            return;
-          }}
-        >
-          <Share2Icon
-            className={
-              "h-5 w-5 text-slate-900 hover:text-slate-800 dark:text-white dark:hover:text-gray-100"
-            }
-          />
-        </IconButton>
+        <ShareButton highlight={highlight} />
       </div>
     </div>
   );
@@ -130,14 +122,7 @@ export const ActionRowCompactFeed: React.FC<{
           <BookmarkIcon className={twIcons()} />
         )}
       </IconButton>
-      <IconButton
-        onClick={() => {
-          //TODO: add share functionality
-          return;
-        }}
-      >
-        <Share2Icon className={twIcons()} />
-      </IconButton>
+      <ShareButton highlight={highlight} />
     </div>
   );
 };
@@ -173,26 +158,39 @@ export const ActionRowCompact: React.FC<{
           )}
         </IconButton>
       </div>
+      <ShareButton highlight={highlight} />
+    </div>
+  );
+};
+
+const ShareButton: React.FC<{ highlight: BaseHighlight }> = ({ highlight }) => {
+  const router = useRouter();
+
+  const url = `${router.basePath}/reels/${highlight.poolId}/feed/${highlight.id}`;
+  const shareData: ShareData = {
+    url,
+    title: "Share Highlight",
+  };
+  if (navigator.share && navigator.canShare(shareData)) {
+    return (
       <IconButton
         onClick={() => {
-          gridContext.bookmark(highlight.id);
+          void navigator.share(shareData);
         }}
-        disabled={noUser || gridContext.disabled}
       >
-        {highlight.bookmarked ? (
-          <BookmarkFilledIcon className={twIcons()} />
-        ) : (
-          <BookmarkIcon className={twIcons()} />
-        )}
+        <Share2Icon className={twIcons()} />
       </IconButton>
+    );
+  }
+  return (
+    <RWebShare data={shareData}>
       <IconButton
         onClick={() => {
-          //TODO: add share functionality
           return;
         }}
       >
         <Share2Icon className={twIcons()} />
       </IconButton>
-    </div>
+    </RWebShare>
   );
 };
