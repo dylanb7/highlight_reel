@@ -5,7 +5,6 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   InfoCircledIcon,
-  Cross1Icon,
   EnterFullScreenIcon,
   ExitFullScreenIcon,
 } from "@radix-ui/react-icons";
