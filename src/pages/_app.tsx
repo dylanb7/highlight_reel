@@ -8,25 +8,29 @@ import Head from "next/head";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "~/components/theme-provider";
 import { Toaster } from "@/shadcn/ui/toaster";
+import { Analytics } from "@vercel/analytics/react";
 
 const MyApp: AppType = ({ Component, pageProps: { ...pageProps } }) => {
   return (
-    <ClerkProvider {...pageProps}>
-      <Head>
-        <title>Highlight Reel</title>
-        <meta name="description" content="💭" />
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
-      <ThemeProvider
-        attribute="class"
-        defaultTheme="system"
-        enableSystem
-        disableTransitionOnChange
-      >
-        <Component {...pageProps} />
-        <Toaster />
-      </ThemeProvider>
-    </ClerkProvider>
+    <>
+      <ClerkProvider {...pageProps}>
+        <Head>
+          <title>Highlight Reel</title>
+          <meta name="description" content="💭" />
+          <link rel="icon" href="/favicon.ico" />
+        </Head>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <Component {...pageProps} />
+          <Toaster />
+        </ThemeProvider>
+      </ClerkProvider>
+      <Analytics />
+    </>
   );
 };
 

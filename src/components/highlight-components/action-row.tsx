@@ -17,6 +17,9 @@ import { useFeedContext } from "../contexts/feed-context";
 import { useAuth } from "@clerk/nextjs";
 import { RWebShare } from "react-web-share";
 import { useRouter } from "next/router";
+import { useEffect } from "react";
+import { Dialog, DialogTrigger } from "@/shadcn/ui/dialog";
+import { DialogContent } from "@radix-ui/react-dialog";
 
 export const ActionRow: React.FC<{ highlight: HighlightVideo }> = ({
   highlight,
@@ -167,11 +170,18 @@ const ShareButton: React.FC<{ highlight: BaseHighlight }> = ({ highlight }) => {
   const router = useRouter();
 
   const url = `${router.basePath}/reels/${highlight.poolId}/feed/${highlight.id}`;
+
   const shareData: ShareData = {
     url,
     title: "Share Highlight",
   };
-  if (navigator.share && navigator.canShare(shareData)) {
+
+  if (
+    // eslint-disable-next-line @typescript-eslint/prefer-optional-chain
+    typeof navigator !== "undefined" &&
+    navigator.share &&
+    navigator.canShare(shareData)
+  ) {
     return (
       <IconButton
         onClick={() => {
@@ -183,14 +193,20 @@ const ShareButton: React.FC<{ highlight: BaseHighlight }> = ({ highlight }) => {
     );
   }
   return (
-    <RWebShare data={shareData}>
-      <IconButton
-        onClick={() => {
-          return;
-        }}
-      >
-        <Share2Icon className={twIcons()} />
-      </IconButton>
-    </RWebShare>
+    <div className="text-black">
+      <Dialog>
+        <DialogTrigger></DialogTrigger>
+        <DialogContent></DialogContent>
+      </Dialog>
+      <RWebShare data={shareData}>
+        <IconButton
+          onClick={() => {
+            return;
+          }}
+        >
+          <Share2Icon className={twIcons()} />
+        </IconButton>
+      </RWebShare>
+    </div>
   );
 };

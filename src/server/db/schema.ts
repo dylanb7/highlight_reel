@@ -54,7 +54,7 @@ export const highlightPool = mysqlTable(
     name: varchar("name", { length: 191 }),
     ownerId: varchar("ownerId", { length: 191 }).notNull(),
     public: tinyint("public").default(0).notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    createdAt: timestamp("createdAt").default(new Date()).notNull(),
   },
   (table) => {
     return {
@@ -76,7 +76,7 @@ export const poolsToMods = mysqlTable(
   {
     userId: varchar("user_id", { length: 191 }).notNull(),
     poolId: bigint("pool_id", { mode: "number" }).notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").default(new Date()).notNull(),
   },
   (table) => ({
     pk: primaryKey(table.userId, table.poolId),
@@ -89,7 +89,7 @@ export const poolsToFollowers = mysqlTable(
   {
     userId: varchar("user_id", { length: 191 }).notNull(),
     poolId: bigint("pool_id", { mode: "number" }).notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").default(new Date()).notNull(),
   },
   (table) => ({
     pk: primaryKey(table.userId, table.poolId),
@@ -102,11 +102,22 @@ export const poolsToRequested = mysqlTable(
   {
     userId: varchar("user_id", { length: 191 }).notNull(),
     poolId: bigint("pool_id", { mode: "number" }).notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").default(new Date()).notNull(),
   },
   (table) => ({
     pk: primaryKey(table.userId, table.poolId),
     updatedAtIndex: index("updated_at_idx").on(table.updatedAt),
+  })
+);
+
+export const viewedHighlightToUser = mysqlTable(
+  "view_to_user",
+  {
+    userId: varchar("user_id", { length: 191 }).notNull(),
+    highlightId: varchar("highlight_id", { length: 191 }).notNull(),
+  },
+  (table) => ({
+    pk: primaryKey(table.userId, table.highlightId),
   })
 );
 
@@ -157,6 +168,7 @@ export const requests = mysqlTable(
 export const userRelations = relations(users, ({ many }) => ({
   bookmarkedHighlights: many(bookmarkedHighlightToUser),
   upvotedHighlights: many(upvotedHighlightToUser),
+  views: many(viewedHighlightToUser),
   followedPools: many(poolsToFollowers),
   requestedPools: many(poolsToRequested),
   ownedPools: many(highlightPool),
@@ -185,6 +197,7 @@ export const highlightPoolRelations = relations(
       fields: [highlightPool.ownerId],
       references: [users.id],
     }),
+    viewer: many(viewedHighlightToUser),
     poolFollowers: many(poolsToFollowers),
     poolRequests: many(poolsToRequested),
   })
@@ -226,6 +239,20 @@ export const poolsToModsRelation = relations(poolsToMods, ({ one }) => ({
     references: [highlightPool.id],
   }),
 }));
+
+export const highlightsToViewers = relations(
+  viewedHighlightToUser,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [viewedHighlightToUser.userId],
+      references: [users.id],
+    }),
+    highlight: one(highlight, {
+      fields: [viewedHighlightToUser.highlightId],
+      references: [highlight.id],
+    }),
+  })
+);
 
 export const poolsToFollowersRelation = relations(
   poolsToFollowers,

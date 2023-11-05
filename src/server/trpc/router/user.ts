@@ -14,7 +14,11 @@ import type { HighlightReturn } from "../../../types/highlight-out";
 
 import { and, asc, desc, eq, gt, gte, inArray, lt, sql } from "drizzle-orm";
 import type { User } from "../../db/schema";
-import { bookmarkedHighlightToUser, highlight } from "../../db/schema";
+import {
+  bookmarkedHighlightToUser,
+  highlight,
+  viewedHighlightToUser,
+} from "../../db/schema";
 import {
   follows,
   highlightPool,
