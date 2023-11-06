@@ -36,8 +36,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/shadcn/ui/sheet";
-import { api } from "~/utils/trpc";
-import { LocateFixed } from "lucide-react";
 
 dayjs.extend(reltiveTime.default);
 dayjs.extend(utc.default);
@@ -702,18 +700,6 @@ const MobilePlayer: React.FC<
   progress,
   highlight,
 }) => {
-  const mounted = useRef(true);
-
-  const log = api.highlight.logView.useMutation();
-
-  useEffect(() => {
-    mounted.current = true;
-    log.mutate(highlight.id);
-    return () => {
-      mounted.current = false;
-    };
-  }, [highlight.id, log]);
-
   const landscape = useSyncExternalStore(
     (callback) => {
       window.addEventListener("resize", callback);

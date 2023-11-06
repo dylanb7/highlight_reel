@@ -8,6 +8,7 @@ export const highlightRouter = router({
     .mutation(async ({ ctx, input }) => {
       const uid = ctx.auth?.userId;
       if (!uid) return;
+
       return await ctx.db
         .insert(viewedHighlightToUser)
         .values({ userId: uid, highlightId: input });

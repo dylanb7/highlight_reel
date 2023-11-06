@@ -193,12 +193,8 @@ const ShareButton: React.FC<{ highlight: BaseHighlight }> = ({ highlight }) => {
     );
   }
   return (
-    <div className="text-black">
-      <Dialog>
-        <DialogTrigger></DialogTrigger>
-        <DialogContent></DialogContent>
-      </Dialog>
-      <RWebShare data={shareData}>
+    <Dialog>
+      <DialogTrigger>
         <IconButton
           onClick={() => {
             return;
@@ -206,7 +202,10 @@ const ShareButton: React.FC<{ highlight: BaseHighlight }> = ({ highlight }) => {
         >
           <Share2Icon className={twIcons()} />
         </IconButton>
-      </RWebShare>
-    </div>
+      </DialogTrigger>
+      <DialogContent>
+        <></>
+      </DialogContent>
+    </Dialog>
   );
 };

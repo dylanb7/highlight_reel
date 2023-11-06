@@ -184,6 +184,7 @@ export const highlightRelations = relations(highlight, ({ one, many }) => ({
     fields: [highlight.poolId],
     references: [highlightPool.id],
   }),
+  viewer: many(viewedHighlightToUser),
   userBookmarks: many(bookmarkedHighlightToUser),
   userUpvotes: many(upvotedHighlightToUser),
 }));
@@ -197,7 +198,6 @@ export const highlightPoolRelations = relations(
       fields: [highlightPool.ownerId],
       references: [users.id],
     }),
-    viewer: many(viewedHighlightToUser),
     poolFollowers: many(poolsToFollowers),
     poolRequests: many(poolsToRequested),
   })
