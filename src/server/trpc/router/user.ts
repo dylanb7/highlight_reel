@@ -127,7 +127,7 @@ export const userRouter = router({
           pool: {
             with: {
               poolFollowers: {},
-              highlights: { columns: { id: true } },
+              highlights: {},
               ...(!owns && ref
                 ? {
                     poolRequests: {
@@ -143,14 +143,15 @@ export const userRouter = router({
         orderBy: desc(poolsToFollowers.updatedAt),
       };
 
-      interface PoolInput {
+      const poolDataToInfo = (pool: {
         id: number;
         name: string | null;
         ownerId: string;
         public: number;
         createdAt: Date;
-        // eslint-disable-next-line @typescript-eslint/ban-types
-        highlights: {}[];
+        highlights: {
+          id: string;
+        }[];
         poolFollowers: {
           userId: string;
         }[];
@@ -160,9 +161,7 @@ export const userRouter = router({
             }
           | Record<string, never>
         )[];
-      }
-
-      const poolDataToInfo = (pool: PoolInput): PoolInfo => {
+      }): PoolInfo => {
         return {
           ...pool,
           highlightCount: pool.highlights.length,
