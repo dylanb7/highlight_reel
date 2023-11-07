@@ -153,9 +153,12 @@ export const userRouter = router({
         ownerId: string;
         public: number;
         createdAt: Date;
-        highlights: {
-          id: string;
-        }[];
+        highlights:
+          | {
+              id: string;
+            }[]
+          | undefined
+          | null;
         poolFollowers: {
           userId: string;
         }[];
@@ -168,7 +171,7 @@ export const userRouter = router({
       }): PoolInfo => {
         return {
           ...pool,
-          highlightCount: pool.highlights.length,
+          highlightCount: pool.highlights?.length ?? 0,
           followerCount: pool.poolFollowers.length,
           followInfo: {
             follows: pool.poolFollowers.find((user) => user.userId === ref)

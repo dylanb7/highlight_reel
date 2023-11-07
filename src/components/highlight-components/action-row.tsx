@@ -15,11 +15,24 @@ import * as Separator from "@radix-ui/react-separator";
 import { useGridContext } from "../contexts/highlight-grid-context";
 import { useFeedContext } from "../contexts/feed-context";
 import { useAuth } from "@clerk/nextjs";
-import { RWebShare } from "react-web-share";
 import { useRouter } from "next/router";
-import { useEffect } from "react";
-import { Dialog, DialogTrigger } from "@/shadcn/ui/dialog";
-import { DialogContent } from "@radix-ui/react-dialog";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/shadcn/ui/dialog";
+
+import {
+  EmailIcon,
+  EmailShareButton,
+  TwitterIcon,
+  TwitterShareButton,
+  WhatsappIcon,
+  WhatsappShareButton,
+} from "react-share";
 
 export const ActionRow: React.FC<{ highlight: HighlightVideo }> = ({
   highlight,
@@ -76,7 +89,7 @@ export const ActionRow: React.FC<{ highlight: HighlightVideo }> = ({
             />
           )}
         </IconButton>
-        <ShareButton highlight={highlight} />
+        <ShareButton highlight={highlight} adaptive={true} />
       </div>
     </div>
   );
@@ -125,7 +138,7 @@ export const ActionRowCompactFeed: React.FC<{
           <BookmarkIcon className={twIcons()} />
         )}
       </IconButton>
-      <ShareButton highlight={highlight} />
+      <ShareButton highlight={highlight} adaptive={false} />
     </div>
   );
 };
@@ -161,15 +174,20 @@ export const ActionRowCompact: React.FC<{
           )}
         </IconButton>
       </div>
-      <ShareButton highlight={highlight} />
+      <ShareButton highlight={highlight} adaptive={false} />
     </div>
   );
 };
 
-const ShareButton: React.FC<{ highlight: BaseHighlight }> = ({ highlight }) => {
+const ShareButton: React.FC<{
+  highlight: BaseHighlight;
+  adaptive: boolean;
+}> = ({ highlight, adaptive }) => {
   const router = useRouter();
 
-  const url = `${router.basePath}/reels/${highlight.poolId}/feed/${highlight.id}`;
+  const url = `${router.basePath}/reels/${encodeURIComponent(
+    highlight.poolId ?? ""
+  )}/feed/${encodeURIComponent(highlight.timestampUtc ?? "")}`;
 
   const shareData: ShareData = {
     url,
@@ -200,11 +218,44 @@ const ShareButton: React.FC<{ highlight: BaseHighlight }> = ({ highlight }) => {
             return;
           }}
         >
-          <Share2Icon className={twIcons()} />
+          <Share2Icon
+            className={
+              adaptive
+                ? "h-5 w-5 text-slate-900 hover:text-slate-800 dark:text-white dark:hover:text-gray-100"
+                : twIcons()
+            }
+          />
         </IconButton>
       </DialogTrigger>
       <DialogContent>
-        <></>
+        <DialogHeader>
+          <DialogTitle>Share Highlight</DialogTitle>
+          <DialogDescription></DialogDescription>
+        </DialogHeader>
+        <div className="flex-grid flex gap-2">
+          <EmailShareButton url={shareData.url!} title={shareData.title}>
+            <EmailIcon />
+          </EmailShareButton>
+          <TwitterShareButton url={shareData.url!} title={shareData.title}>
+            <TwitterIcon />
+          </TwitterShareButton>
+          <WhatsappShareButton url={shareData.url!} title={shareData.title}>
+            <WhatsappIcon />
+          </WhatsappShareButton>
+          <button
+            onClick={() => {
+              if (typeof navigator !== undefined) {
+                void navigator.clipboard.writeText(shareData.url!);
+              }
+            }}
+            className="rws-icon"
+            style={{ background: "#718096" }}
+          >
+            <svg fill="white" viewBox={"0 0 24 24"} width={64} height={64}>
+              <path d="M16 1H4a2 2 0 00-2 2v14h2V3h12V1zm3 4H8a2 2 0 00-2 2v14c0 1.1.9 2 2 2h11a2 2 0 002-2V7a2 2 0 00-2-2zm0 16H8V7h11v14z" />
+            </svg>
+          </button>
+        </div>
       </DialogContent>
     </Dialog>
   );

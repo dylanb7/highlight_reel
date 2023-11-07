@@ -16,7 +16,14 @@ import {
   SelectValue,
 } from "@/shadcn/ui/select";
 import { CalendarIcon } from "@radix-ui/react-icons";
-import { Dialog, DialogContent, DialogTrigger } from "@/shadcn/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/shadcn/ui/dialog";
 import { ScrollArea, ScrollBar } from "@/shadcn/ui/scroll-area";
 
 export const useInitialDate = () => {
@@ -75,29 +82,37 @@ export const DateFilter: React.FC = () => {
             )}
           </Button>
         </DialogTrigger>
-        <DialogContent className="flex w-auto flex-col space-y-2 p-2">
-          <Select
-            onValueChange={(value) =>
-              onSelect(dayjs().subtract(parseInt(value), "day").toDate())
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select" />
-            </SelectTrigger>
-            <SelectContent position="popper">
-              <SelectItem value="1">Yesterday</SelectItem>
-              <SelectItem value="3">3 days ago</SelectItem>
-              <SelectItem value="7">Last week</SelectItem>
-            </SelectContent>
-          </Select>
-          <div className="rounded-md border">
-            <Calendar
-              mode="single"
-              selected={startDate}
-              onSelect={(val) => {
-                if (val) setStartDate(val);
-              }}
-            />
+        <DialogContent className="mx-auto">
+          <DialogHeader>
+            <DialogTitle>Select Date</DialogTitle>
+            <DialogDescription></DialogDescription>
+          </DialogHeader>
+          <div className="mx-auto flex flex-col gap-2">
+            <Select
+              onValueChange={(value) =>
+                onSelect(dayjs().subtract(parseInt(value), "day").toDate())
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select" />
+              </SelectTrigger>
+              <SelectContent position="popper">
+                <SelectItem value="1">Yesterday</SelectItem>
+                <SelectItem value="3">3 days ago</SelectItem>
+                <SelectItem value="7">Last week</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="rounded-md border">
+              <Calendar
+                mode="single"
+                selected={startDate}
+                onSelect={(val) => {
+                  if (val) {
+                    setStartDate(val);
+                  }
+                }}
+              />
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -153,8 +168,8 @@ export const WristBands: React.FC<{ poolId: number }> = ({ poolId }) => {
 export const Filters: React.FC<{ poolId: number }> = ({ poolId }) => {
   return (
     <div className="flex flex-col">
-      <DateFilter />
       <WristBands poolId={poolId} />
+      <DateFilter />
     </div>
   );
 };
