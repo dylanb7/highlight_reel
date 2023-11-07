@@ -127,7 +127,7 @@ export const userRouter = router({
           pool: {
             with: {
               poolFollowers: {},
-              highlights: {},
+              highlights: { columns: { id: true } },
               ...(!owns && ref
                 ? {
                     poolRequests: {
@@ -149,9 +149,7 @@ export const userRouter = router({
         ownerId: string;
         public: number;
         createdAt: Date;
-        highlights: {
-          id: string;
-        }[];
+        highlights: Record<string, never>[];
         poolFollowers: {
           userId: string;
         }[];
