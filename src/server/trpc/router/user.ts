@@ -143,7 +143,7 @@ export const userRouter = router({
         orderBy: desc(poolsToFollowers.updatedAt),
       };
 
-      const poolDataToInfo = (pool: {
+      interface PoolInput {
         id: number;
         name: string | null;
         ownerId: string;
@@ -159,7 +159,9 @@ export const userRouter = router({
             }
           | Record<string, never>
         )[];
-      }): PoolInfo => {
+      }
+
+      const poolDataToInfo = (pool: PoolInput): PoolInfo => {
         return {
           ...pool,
           highlightCount: pool.highlights.length,
