@@ -175,6 +175,7 @@ export const userRouter = router({
           isPublic: publicToBool(pool.public),
         };
       };
+
       if (type === "followed") {
         const pools = await ctx.db.query.users.findFirst({
           where: eq(users.id, userId),
