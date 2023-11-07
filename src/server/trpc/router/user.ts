@@ -126,8 +126,8 @@ export const userRouter = router({
         with: {
           pool: {
             with: {
-              poolFollowers: { columns: { userId: true } },
-              highlights: { columns: { id: true } },
+              poolFollowers: {},
+              highlights: {},
               ...(!owns && ref
                 ? {
                     poolRequests: {
@@ -143,7 +143,7 @@ export const userRouter = router({
         orderBy: desc(poolsToFollowers.updatedAt),
       };
 
-      interface PoolInput {
+      const poolDataToInfo = (pool: {
         id: number;
         name: string | null;
         ownerId: string;
@@ -161,16 +161,10 @@ export const userRouter = router({
             }
           | Record<string, never>
         )[];
-      }
-
-      const poolDataToInfo = (pool: PoolInput): PoolInfo => {
+      }): PoolInfo => {
         return {
-          id: pool.id,
-          name: pool.name,
-          ownerId: pool.ownerId,
-          public: pool.public,
-          createdAt: pool.createdAt,
-          highlightCount: pool.highlights?.length ?? 0,
+          ...pool,
+          highlightCount: pool.highlights.length,
           followerCount: pool.poolFollowers.length,
           followInfo: {
             follows: pool.poolFollowers.find((user) => user.userId === ref)
@@ -181,37 +175,12 @@ export const userRouter = router({
           isPublic: publicToBool(pool.public),
         };
       };
-
       if (type === "followed") {
         const pools = await ctx.db.query.users.findFirst({
           where: eq(users.id, userId),
           columns: {},
           with: {
-            followedPools: {
-              where: () => {
-                if (!cursor) return gte(poolsToFollowers.poolId, 0);
-                return lt(poolsToFollowers.updatedAt, cursor);
-              },
-              limit: amount + 1,
-              with: {
-                pool: {
-                  with: {
-                    poolFollowers: { columns: { userId: true } },
-                    highlights: { columns: { id: true } },
-                    ...(!owns && ref
-                      ? {
-                          poolRequests: {
-                            limit: 1,
-                            where: eq(poolsToRequested.userId, ref),
-                          },
-                        }
-                      : {}),
-                  },
-                },
-              },
-
-              orderBy: desc(poolsToFollowers.updatedAt),
-            },
+            followedPools: innerPoolSelect,
           },
         });
 
@@ -236,31 +205,7 @@ export const userRouter = router({
           where: eq(users.id, userId),
           columns: {},
           with: {
-            moddedPools: {
-              where: () => {
-                if (!cursor) return gte(poolsToFollowers.poolId, 0);
-                return lt(poolsToFollowers.updatedAt, cursor);
-              },
-              limit: amount + 1,
-              with: {
-                pool: {
-                  with: {
-                    poolFollowers: { columns: { userId: true } },
-                    highlights: { columns: { id: true } },
-                    ...(!owns && ref
-                      ? {
-                          poolRequests: {
-                            limit: 1,
-                            where: eq(poolsToRequested.userId, ref),
-                          },
-                        }
-                      : {}),
-                  },
-                },
-              },
-
-              orderBy: desc(poolsToFollowers.updatedAt),
-            },
+            moddedPools: innerPoolSelect,
           },
         });
 
