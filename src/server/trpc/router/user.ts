@@ -149,7 +149,8 @@ export const userRouter = router({
         ownerId: string;
         public: number;
         createdAt: Date;
-        highlights: Record<string, never>[];
+        // eslint-disable-next-line @typescript-eslint/ban-types
+        highlights: {}[];
         poolFollowers: {
           userId: string;
         }[];
