@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import type { ProfileInfo, UserInfo } from "../../../types/user-out";
 import { z } from "zod";
 import { router, protectedProcedure, publicProcedure } from "../trpc";
@@ -11,8 +10,7 @@ import {
   packageThumbnailsPaginated,
 } from "../../../utils/highlightUtils";
 import type { HighlightReturn } from "../../../types/highlight-out";
-
-import { and, asc, desc, eq, gt, gte, inArray, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import type { User } from "../../db/schema";
 import { bookmarkedHighlightToUser, highlight } from "../../db/schema";
 import {
@@ -126,7 +124,7 @@ export const userRouter = router({
         with: {
           pool: {
             with: {
-              poolFollowers: { columns: { userId: true } },
+              poolFollowers: {},
               highlights: { columns: { id: true } },
               ...(!owns && ref
                 ? {
@@ -165,11 +163,7 @@ export const userRouter = router({
 
       const poolDataToInfo = (pool: PoolInput): PoolInfo => {
         return {
-          id: pool.id,
-          name: pool.name,
-          ownerId: pool.ownerId,
-          public: pool.public,
-          createdAt: pool.createdAt,
+          ...pool,
           highlightCount: pool.highlights?.length ?? 0,
           followerCount: pool.poolFollowers.length,
           followInfo: {
@@ -187,31 +181,7 @@ export const userRouter = router({
           where: eq(users.id, userId),
           columns: {},
           with: {
-            followedPools: {
-              where: () => {
-                if (!cursor) return gte(poolsToFollowers.poolId, 0);
-                return lt(poolsToFollowers.updatedAt, cursor);
-              },
-              limit: amount + 1,
-              with: {
-                pool: {
-                  with: {
-                    poolFollowers: { columns: { userId: true } },
-                    highlights: { columns: { id: true } },
-                    ...(!owns && ref
-                      ? {
-                          poolRequests: {
-                            limit: 1,
-                            where: eq(poolsToRequested.userId, ref),
-                          },
-                        }
-                      : {}),
-                  },
-                },
-              },
-
-              orderBy: desc(poolsToFollowers.updatedAt),
-            },
+            followedPools: innerPoolSelect,
           },
         });
 
@@ -236,31 +206,7 @@ export const userRouter = router({
           where: eq(users.id, userId),
           columns: {},
           with: {
-            moddedPools: {
-              where: () => {
-                if (!cursor) return gte(poolsToFollowers.poolId, 0);
-                return lt(poolsToFollowers.updatedAt, cursor);
-              },
-              limit: amount + 1,
-              with: {
-                pool: {
-                  with: {
-                    poolFollowers: { columns: { userId: true } },
-                    highlights: { columns: { id: true } },
-                    ...(!owns && ref
-                      ? {
-                          poolRequests: {
-                            limit: 1,
-                            where: eq(poolsToRequested.userId, ref),
-                          },
-                        }
-                      : {}),
-                  },
-                },
-              },
-
-              orderBy: desc(poolsToFollowers.updatedAt),
-            },
+            moddedPools: innerPoolSelect,
           },
         });
 

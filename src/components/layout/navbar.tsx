@@ -47,20 +47,7 @@ export const NavBar = () => {
 
       <div className="flex grow items-center justify-end">
         <div className="md:hidden">
-          <Sheet>
-            <SheetTrigger>
-              <HamburgerMenuIcon className="h-8 w-8" />
-            </SheetTrigger>
-            <SheetContent side={"right"}>
-              <SheetHeader>
-                <SheetTitle>Menu</SheetTitle>
-              </SheetHeader>
-              <div className="flex flex-wrap items-center justify-start gap-2 pt-2">
-                <ModeToggle />
-                <SignInComponent />
-              </div>
-            </SheetContent>
-          </Sheet>
+          <SignInComponent />
         </div>
 
         <div className="hidden justify-end md:flex md:flex-row md:items-center md:gap-3">

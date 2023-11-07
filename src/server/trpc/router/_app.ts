@@ -1,7 +1,7 @@
 import { router } from "../trpc";
 import { highlightRouter } from "./highlight";
 import { poolRouter } from "./pool";
-import { userRouter } from "./user";
+import { userRouter } from "./userRouter";
 
 export const appRouter = router({
   pool: poolRouter,
