@@ -11,7 +11,7 @@ import { ContinuousFeed } from "../../components/highlight-components/highlight-
 import { type HighlightVideo } from "../../types/highlight-out";
 
 const FeedWithStart: NextPage<{ startTime?: number }> = ({ startTime }) => {
-  const util = api.useContext();
+  const util = api.useUtils();
 
   const queryKey = {
     initialCursor: startTime,

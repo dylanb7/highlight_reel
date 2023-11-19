@@ -9,6 +9,7 @@ import {
   float,
   serial,
   timestamp,
+  text,
 } from "drizzle-orm/mysql-core";
 import type { InferModel } from "drizzle-orm";
 import { relations } from "drizzle-orm";
@@ -55,6 +56,8 @@ export const highlightPool = mysqlTable(
     ownerId: varchar("ownerId", { length: 191 }).notNull(),
     public: tinyint("public").default(0).notNull(),
     createdAt: timestamp("createdAt").default(new Date()).notNull(),
+    bio: text("bioText"),
+    icon: varchar("thumbnail", { length: 191 }),
   },
   (table) => {
     return {

@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 
 import type { HighlightThumbnail } from "../../types/highlight-out";
-import { ActionRowCompact } from "./action-row";
+import { ActionRowGrid } from "./action-row";
 import Link from "next/link";
 import { useGridContext } from "../contexts/highlight-grid-context";
 
@@ -244,7 +244,7 @@ const ImageComponent: React.FC<{
             <div className="absolute inset-x-0 bottom-[30px] top-0 z-30" />
           </Link>
           <div className="absolute inset-x-0 bottom-0 z-30">
-            <ActionRowCompact highlight={highlight} />
+            <ActionRowGrid highlight={highlight} />
           </div>
         </div>
       </div>

@@ -66,10 +66,10 @@ export const PoolInfo: React.FC<{ poolId: number }> = ({ poolId }) => {
 
   const auth = useAuth();
 
-  const privateNoSession = poolInfo && !poolInfo.public && !auth.userId;
+  const privateNoSession = poolInfo && !poolInfo.isPublic && !auth.userId;
 
   const privateNoFollow =
-    poolInfo && !poolInfo.public && !followInfo.follows && auth.userId;
+    poolInfo && !poolInfo.isPublic && !followInfo.follows && auth.userId;
 
   const buttonContext: ButtonContext = {
     action: () => {

@@ -12,8 +12,8 @@ import {
 } from "../../../utils/highlightUtils";
 import type { HighlightReturn } from "../../../types/highlight-out";
 
-import { and, asc, desc, eq, gt, gte, inArray, lt, sql } from "drizzle-orm";
-import type { User } from "../../db/schema";
+import { and, asc, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
+import type { HighlightPool, User } from "../../db/schema";
 import { bookmarkedHighlightToUser, highlight } from "../../db/schema";
 import {
   follows,
@@ -143,25 +143,22 @@ export const userRouter = router({
         orderBy: desc(poolsToFollowers.updatedAt),
       };
 
-      const poolDataToInfo = (pool: {
-        id: number;
-        name: string | null;
-        ownerId: string;
-        public: number;
-        createdAt: Date;
-        highlights: {
-          id: string;
-        }[];
-        poolFollowers: {
-          userId: string;
-        }[];
-        poolRequests: (
-          | {
-              poolId: number;
-            }
-          | Record<string, never>
-        )[];
-      }): PoolInfo => {
+      const poolDataToInfo = (
+        pool: HighlightPool & {
+          highlights: {
+            id: string;
+          }[];
+          poolFollowers: {
+            userId: string;
+          }[];
+          poolRequests: (
+            | {
+                poolId: number;
+              }
+            | Record<string, never>
+          )[];
+        }
+      ): PoolInfo => {
         return {
           ...pool,
           highlightCount: pool.highlights.length,

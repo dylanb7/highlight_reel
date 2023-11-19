@@ -9,7 +9,7 @@ export type PoolFollowing = HighlightPool & {
   followInfo?: FollowInfo;
 };
 
-export type PoolInfo = HighlightPool & {
+export type PoolInfo = Omit<HighlightPool, "public"> & {
   followInfo?: FollowInfo;
   highlightCount: number;
   followerCount: number;

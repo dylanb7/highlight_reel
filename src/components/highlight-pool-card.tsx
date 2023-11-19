@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { PoolInfo } from "../types/pool-out";
 import { PoolFollowButton } from "./follow-pool";
 import { ProfileList } from "./profile-scroll-components";
+import { Avatar, AvatarFallback, AvatarImage } from "@/shadcn/ui/avatar";
 
 export const PoolMessageCard: React.FC<React.PropsWithChildren> = ({
   children,
@@ -22,11 +23,33 @@ export const PoolData: React.FC<{
   return (
     <div className="justify-left flex flex-col">
       <div className="flex flex-row justify-between">
-        <h1 className="truncate text-2xl font-semibold text-slate-900 dark:text-white">
-          {pool.name}
-        </h1>
+        <div className="flex flex-row gap-2">
+          {pool.icon && (
+            <Avatar>
+              <AvatarImage src={pool.icon} />
+              <AvatarFallback>
+                {pool.name && pool.name?.length > 2
+                  ? pool.name.substring(0, 2)
+                  : "Re"}
+              </AvatarFallback>
+            </Avatar>
+          )}
+          <h1 className="truncate text-2xl font-semibold text-slate-900 dark:text-white">
+            {pool.name}
+          </h1>
+        </div>
         <PoolFollowButton poolId={pool.id} />
       </div>
+      {pool.bio && (
+        <>
+          <Separator.Root
+            orientation="horizontal"
+            decorative
+            className="mb-1 mt-1.5 h-px bg-gray-300 dark:bg-gray-500"
+          />
+          <h5>{pool.bio}</h5>
+        </>
+      )}
       <Separator.Root
         orientation="horizontal"
         decorative

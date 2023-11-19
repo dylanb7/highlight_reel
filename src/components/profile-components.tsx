@@ -32,7 +32,7 @@ export const PoolScroll: React.FC<{
   type: "followed" | "modded" | "owned";
   initialOpen: boolean;
 }> = ({ type, title, initialOpen, profileId }) => {
-  const util = api.useContext();
+  const util = api.useUtils();
 
   const queryKey = {
     type,
@@ -172,7 +172,7 @@ export const ProfileData: React.FC<{
     following: number;
   };
 }> = ({ user }) => {
-  const utils = api.useContext();
+  const utils = api.useUtils();
 
   const queryKey = user.id;
 
@@ -307,7 +307,7 @@ export const ProfileBookmarks: React.FC<{
       getNextPageParam: (lastPage) => lastPage.nextCursor,
     });
 
-  const util = api.useContext();
+  const util = api.useUtils();
 
   const highlights = useMemo(() => {
     return data?.pages.flatMap((page) => page.highlights) ?? [];
@@ -343,7 +343,7 @@ export const ProfileBookmarks: React.FC<{
         );
       },
       onSettled() {
-        void util.user.getUserBookmarksPaginated.invalidate();
+        void util.user.getUserBookmarksPaginated.invalidate(queryKey);
       },
     });
 
@@ -383,7 +383,7 @@ export const ProfileBookmarks: React.FC<{
     bookmark: (id: string) => {
       const highlight = highlightMap.get(id);
       if (!highlight) return;
-      bookmark({ highlightId: highlight.id, add: !highlight.bookmarked });
+      bookmark({ highlightId: highlight.id, add: highlight.bookmarked });
     },
     like: (id: string) => {
       const highlight = highlightMap.get(id);
@@ -396,9 +396,7 @@ export const ProfileBookmarks: React.FC<{
   return (
     <HighlightGridContextProvider value={actions}>
       <div className="mx-4 sm:mx-8">
-        <HighlightGridsComponent
-          highlights={highlights}
-        ></HighlightGridsComponent>
+        <HighlightGridsComponent highlights={highlights} />
       </div>
     </HighlightGridContextProvider>
   );

@@ -10,7 +10,7 @@ const FeedWithStart: NextPage<{ id: string; startTime?: number }> = ({
   id,
   startTime,
 }) => {
-  const util = api.useContext();
+  const util = api.useUtils();
 
   const queryKey = {
     profileId: id,

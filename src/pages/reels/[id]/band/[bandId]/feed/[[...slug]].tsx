@@ -41,7 +41,7 @@ const ContinuousBandFeed: React.FC<BandProps> = ({
   wristbandId,
   initialCursor,
 }) => {
-  const util = api.useContext();
+  const util = api.useUtils();
 
   const queryKey: BandProps = {
     poolId,

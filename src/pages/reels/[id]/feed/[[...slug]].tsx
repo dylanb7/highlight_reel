@@ -34,7 +34,7 @@ const PoolFeed: NextPage<PoolProps> = (props) => {
 };
 
 const ContinuousPoolFeed: React.FC<PoolProps> = ({ poolId, initialCursor }) => {
-  const util = api.useContext();
+  const util = api.useUtils();
 
   const queryKey: PoolProps = {
     poolId,

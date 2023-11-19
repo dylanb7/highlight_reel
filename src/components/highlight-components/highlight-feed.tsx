@@ -213,7 +213,7 @@ export const IndexedFeed: React.FC<{
   fetching?: boolean;
   from?: string;
   initial?: number;
-}> = ({ highlights, fetching, from, backPath }) => {
+}> = ({ highlights, fetching, from, backPath, initial }) => {
   const { push, query } = useRouter();
 
   const { slug } = query;
@@ -223,7 +223,7 @@ export const IndexedFeed: React.FC<{
   const validIndex =
     typeof current === "string" && !Number.isNaN(parseInt(current));
 
-  const index = validIndex ? parseInt(current) - 1 : 1;
+  const index = validIndex ? parseInt(current) - 1 : 0;
 
   const length = highlights.length;
 
@@ -236,7 +236,7 @@ export const IndexedFeed: React.FC<{
           query: {
             ...query,
             slug: [
-              removeExt(highlights[0]!.id),
+              encodeURIComponent(initial ?? 0),
               encodeURIComponent(newValue + 1),
               encodeURIComponent(length),
             ],
@@ -248,7 +248,7 @@ export const IndexedFeed: React.FC<{
         }
       );
     },
-    [highlights, length, push, query]
+    [initial, length, push, query]
   );
 
   const next = () => {
@@ -543,7 +543,7 @@ const ArrowNav: React.FC<{ iconSize?: number } & NavProps> = ({
       >
         <ChevronUpIcon
           className={
-            "m-0 h-5 w-5 text-white hover:text-slate-800 dark:hover:text-gray-100 md:h-8 md:w-8"
+            "m-0 h-5 w-5 text-slate-900 hover:text-slate-800 dark:text-white dark:hover:text-gray-100 md:h-8 md:w-8"
           }
         />
       </IconButton>
@@ -556,7 +556,7 @@ const ArrowNav: React.FC<{ iconSize?: number } & NavProps> = ({
       >
         <ChevronDownIcon
           className={
-            "m-0 h-5 w-5 text-white hover:text-slate-800 dark:hover:text-gray-100 md:h-8 md:w-8"
+            "m-0 h-5 w-5 text-slate-900 hover:text-slate-800 dark:text-white dark:hover:text-gray-100 md:h-8 md:w-8"
           }
         />
       </IconButton>
