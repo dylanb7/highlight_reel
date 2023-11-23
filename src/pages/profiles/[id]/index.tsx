@@ -1,9 +1,8 @@
 import type { NextPage, GetServerSideProps } from "next";
 import PageWrap from "../../../components/layout/page-wrap";
 import { ProfileComponent } from "../../../components/profile-components";
-import { getServerHelpers } from "../../../utils/ssgHelper";
+import { getServerHelpers } from "../../../utils/ssg-helper";
 import { buildClerkProps, getAuth } from "@clerk/nextjs/server";
-
 
 const ProfileView: NextPage<{ userId: string }> = ({ userId }) => {
   return (
@@ -36,13 +35,21 @@ export const getServerSideProps: GetServerSideProps<{
 
   await ssg.user.profileQuery.prefetch(id);
 
-  await ssg.user.profilePoolsQuery.prefetchInfinite({ userId: id, type: "followed" });
+  await ssg.user.profilePoolsQuery.prefetchInfinite({
+    userId: id,
+    type: "followed",
+  });
 
   if (owns) {
-    await ssg.user.profilePoolsQuery.prefetchInfinite({ userId: id, type: "modded" });
-    await ssg.user.profilePoolsQuery.prefetchInfinite({ userId: id, type: "owned" });
+    await ssg.user.profilePoolsQuery.prefetchInfinite({
+      userId: id,
+      type: "modded",
+    });
+    await ssg.user.profilePoolsQuery.prefetchInfinite({
+      userId: id,
+      type: "owned",
+    });
   }
-
 
   await ssg.user.getUserBookmarksPaginated.prefetchInfinite({
     userId: id,
@@ -53,7 +60,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       trpcState: ssg.dehydrate(),
       userId: id,
-      ...buildClerkProps(props.req)
+      ...buildClerkProps(props.req),
     },
   };
 };

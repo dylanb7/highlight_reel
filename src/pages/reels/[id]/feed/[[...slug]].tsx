@@ -5,8 +5,7 @@ import {
   ContinuousFeed,
   IndexedFeed,
 } from "../../../../components/highlight-components/highlight-feed";
-import { type HighlightVideo } from "../../../../types/highlight-out";
-import { getServerHelpers } from "../../../../utils/ssgHelper";
+import { getServerHelpers } from "../../../../utils/ssg-helper";
 import { api } from "../../../../utils/trpc";
 
 interface PoolProps {
@@ -58,15 +57,6 @@ const ContinuousPoolFeed: React.FC<PoolProps> = ({ poolId, initialCursor }) => {
     return data?.pages.flatMap((page) => page.highlights) ?? [];
   }, [data]);
 
-  const highlightMap = useMemo(() => {
-    const highlightMap = new Map<string, HighlightVideo>();
-
-    for (const highlight of highlights) {
-      highlightMap.set(highlight.id, highlight);
-    }
-    return highlightMap;
-  }, [highlights]);
-
   const { mutate: bookmark, isLoading: bookmarking } =
     api.user.toggleHighlight.useMutation({
       onSettled() {
@@ -84,14 +74,10 @@ const ContinuousPoolFeed: React.FC<PoolProps> = ({ poolId, initialCursor }) => {
   return (
     <FeedContextProvider
       value={{
-        bookmark: (id) => {
-          const highlight = highlightMap.get(id);
-          if (!highlight) return;
+        bookmark: (highlight) => {
           bookmark({ add: !highlight.bookmarked, highlightId: highlight.id });
         },
-        like: (id) => {
-          const highlight = highlightMap.get(id);
-          if (!highlight) return;
+        like: (highlight) => {
           upvote({
             like: !highlight.upvoted,
             highlightId: highlight.id,
@@ -108,11 +94,11 @@ const ContinuousPoolFeed: React.FC<PoolProps> = ({ poolId, initialCursor }) => {
         hasPrev={hasPreviousPage ?? false}
         next={async () => {
           return (await fetchNextPage()).data?.pages.at(-1)?.highlights.at(0)
-            ?.id;
+            ?.timestamp;
         }}
         prev={async () => {
           return (await fetchPreviousPage()).data?.pages.at(0)?.highlights.at(0)
-            ?.id;
+            ?.timestamp;
         }}
         from={""}
       />
@@ -125,7 +111,7 @@ const GroupedPoolFeed: React.FC<PoolProps> = ({
   initialCursor,
   length,
 }) => {
-  const util = api.useContext();
+  const util = api.useUtils();
 
   const queryKey = {
     poolId,
@@ -138,15 +124,6 @@ const GroupedPoolFeed: React.FC<PoolProps> = ({
   });
 
   const highlights = useMemo(() => data?.highlights ?? [], [data?.highlights]);
-
-  const highlightMap = useMemo(() => {
-    const highlightMap = new Map<string, HighlightVideo>();
-
-    for (const highlight of highlights) {
-      highlightMap.set(highlight.id, highlight);
-    }
-    return highlightMap;
-  }, [highlights]);
 
   const { mutate: bookmark, isLoading: bookmarking } =
     api.user.toggleHighlight.useMutation({
@@ -165,14 +142,10 @@ const GroupedPoolFeed: React.FC<PoolProps> = ({
   return (
     <FeedContextProvider
       value={{
-        bookmark: (id) => {
-          const highlight = highlightMap.get(id);
-          if (!highlight) return;
+        bookmark: (highlight) => {
           bookmark({ add: !highlight.bookmarked, highlightId: highlight.id });
         },
-        like: (id) => {
-          const highlight = highlightMap.get(id);
-          if (!highlight) return;
+        like: (highlight) => {
           upvote({
             like: !highlight.upvoted,
             highlightId: highlight.id,
@@ -182,7 +155,7 @@ const GroupedPoolFeed: React.FC<PoolProps> = ({
       }}
     >
       <IndexedFeed
-        highlights={data?.highlights ?? []}
+        highlights={highlights}
         from={data?.name ?? undefined}
         initial={initialCursor ?? undefined}
         fetching={isLoading}
@@ -215,7 +188,7 @@ export const getServerSideProps: GetServerSideProps<PoolProps> = async (
     };
 
   const initialCursorParse = Number(slug?.at(0));
-  const lengthParse = Number(slug?.at(1));
+  const lengthParse = Number(slug?.at(2));
 
   const initialCursor = Number.isNaN(initialCursorParse)
     ? undefined

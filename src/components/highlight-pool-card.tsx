@@ -41,14 +41,9 @@ export const PoolData: React.FC<{
         <PoolFollowButton poolId={pool.id} />
       </div>
       {pool.bio && (
-        <>
-          <Separator.Root
-            orientation="horizontal"
-            decorative
-            className="mb-1 mt-1.5 h-px bg-gray-300 dark:bg-gray-500"
-          />
-          <h5>{pool.bio}</h5>
-        </>
+        <h5 className="text-xs font-semibold text-slate-500 dark:text-gray-400">
+          {pool.bio}
+        </h5>
       )}
       <Separator.Root
         orientation="horizontal"

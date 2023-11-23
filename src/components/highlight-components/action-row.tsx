@@ -24,7 +24,7 @@ export const ActionRow: React.FC<{ highlight: HighlightVideo }> = ({
 
   const noUser = !auth.userId;
 
-  const feedContext = useFeedContext();
+  const { like, bookmark, disabled } = useFeedContext();
 
   return (
     <div className="flex h-12 w-full flex-row items-center justify-between px-3 shadow-sm shadow-gray-300 transition-opacity dark:shadow-slate-900">
@@ -34,9 +34,9 @@ export const ActionRow: React.FC<{ highlight: HighlightVideo }> = ({
       <div className="flex flex-row items-center justify-end gap-3">
         <IconButton
           onClick={() => {
-            feedContext.like(highlight.id);
+            like(highlight);
           }}
-          disabled={noUser || feedContext.disabled}
+          disabled={noUser || disabled}
         >
           {highlight.upvoted ? (
             <HeartFilledIcon
@@ -54,9 +54,9 @@ export const ActionRow: React.FC<{ highlight: HighlightVideo }> = ({
         </IconButton>
         <IconButton
           onClick={() => {
-            feedContext.bookmark(highlight.id);
+            bookmark(highlight);
           }}
-          disabled={noUser || feedContext.disabled}
+          disabled={noUser || disabled}
         >
           {highlight.bookmarked ? (
             <BookmarkFilledIcon
@@ -85,7 +85,7 @@ export const ActionRowCompactFeed: React.FC<{
 
   const noUser = !auth.userId;
 
-  const feedContext = useFeedContext();
+  const { like, bookmark, disabled } = useFeedContext();
 
   return (
     <div className="flex w-full flex-row items-center justify-end gap-2 overflow-x-scroll rounded-sm px-3 pb-1 pt-1">
@@ -98,9 +98,9 @@ export const ActionRowCompactFeed: React.FC<{
         />
         <IconButton
           onClick={() => {
-            feedContext.like(highlight.id);
+            like(highlight);
           }}
-          disabled={noUser || feedContext.disabled}
+          disabled={noUser || disabled}
         >
           {highlight.upvoted ? (
             <HeartFilledIcon className={twIcons()} />
@@ -111,9 +111,9 @@ export const ActionRowCompactFeed: React.FC<{
       </div>
       <IconButton
         onClick={() => {
-          feedContext.bookmark(highlight.id);
+          bookmark(highlight);
         }}
-        disabled={noUser || feedContext.disabled}
+        disabled={noUser || disabled}
       >
         {highlight.bookmarked ? (
           <BookmarkFilledIcon className={twIcons()} />
@@ -133,7 +133,7 @@ export const ActionRowGrid: React.FC<{
 
   const noUser = !auth.userId;
 
-  const gridContext = useGridContext();
+  const { like, bookmark, disabled } = useGridContext();
 
   return (
     <div className="flex w-full flex-row items-center justify-end gap-2 overflow-x-scroll rounded-sm bg-gradient-to-t from-slate-900 px-3 pb-1 pt-2">
@@ -146,9 +146,9 @@ export const ActionRowGrid: React.FC<{
         />
         <IconButton
           onClick={() => {
-            gridContext.like(highlight.id);
+            like(highlight);
           }}
-          disabled={noUser || gridContext.disabled}
+          disabled={noUser || disabled}
         >
           {highlight.upvoted ? (
             <HeartFilledIcon className={twIcons()} />
@@ -159,9 +159,9 @@ export const ActionRowGrid: React.FC<{
       </div>
       <IconButton
         onClick={() => {
-          gridContext.bookmark(highlight.id);
+          bookmark(highlight);
         }}
-        disabled={noUser || gridContext.disabled}
+        disabled={noUser || disabled}
       >
         {highlight.bookmarked ? (
           <BookmarkFilledIcon className={twIcons()} />

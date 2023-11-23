@@ -2,30 +2,23 @@ import type { NextPage, GetServerSideProps } from "next";
 import Head from "next/head";
 import { useMemo } from "react";
 
-import {
-  bookmarkActionUpdate,
-  likeActionUpdate,
-} from "../../../../../components/contexts/action-types";
-
 import type { HighlightGridActions } from "../../../../../components/contexts/highlight-grid-context";
 import { HighlightGridContextProvider } from "../../../../../components/contexts/highlight-grid-context";
-import {
-  HighlightGridsComponent,
-  dayGrouping,
-  hourGrouping,
-} from "../../../../../components/highlight-components/highlight-grid";
 
 import { LoadingSpinner } from "../../../../../components/misc/loading";
 
-import type { HighlightThumbnail } from "../../../../../types/highlight-out";
 import { api } from "../../../../../utils/trpc";
 import { PoolInfo } from "../../../../../components/pool-components/pool-info";
 import PageWrap from "../../../../../components/layout/page-wrap";
-import { getServerHelpers } from "../../../../../utils/ssgHelper";
+import { getServerHelpers } from "../../../../../utils/ssg-helper";
 import {
   Filters,
   useInitialDate,
 } from "~/components/pool-components/pool-filters";
+import {
+  HighlightGridGroupsComponent,
+  hourGrouping,
+} from "~/components/highlight-components/grouped-highlight-grid";
 
 interface PoolViewBandProps {
   poolId: number;
@@ -78,35 +71,8 @@ const LoadFeed: React.FC<{
     return data?.pages.flatMap((page) => page.highlights) ?? [];
   }, [data]);
 
-  const highlightMap = useMemo(() => {
-    const highlightMap = new Map<string, HighlightThumbnail>();
-
-    for (const highlight of highlights) {
-      highlightMap.set(highlight.id, highlight);
-    }
-    return highlightMap;
-  }, [highlights]);
-
   const { mutate: bookmark, isLoading: bookmarking } =
     api.user.toggleHighlight.useMutation({
-      async onMutate(variables) {
-        await util.pool.getWristbandHighlightsPaginated.cancel(queryKey);
-        const prev =
-          util.pool.getWristbandHighlightsPaginated.getInfiniteData(queryKey);
-        if (prev) {
-          util.pool.getWristbandHighlightsPaginated.setInfiniteData(queryKey, {
-            ...prev,
-            pages: bookmarkActionUpdate(prev, variables),
-          });
-        }
-        return { prev };
-      },
-      onError(_, __, context) {
-        util.pool.getWristbandHighlightsPaginated.setInfiniteData(
-          queryKey,
-          context?.prev
-        );
-      },
       onSettled() {
         void util.pool.getWristbandHighlightsPaginated.invalidate(queryKey);
       },
@@ -114,26 +80,8 @@ const LoadFeed: React.FC<{
 
   const { mutate: upvote, isLoading: upvoting } =
     api.user.upvoteHighlight.useMutation({
-      async onMutate(variables) {
-        await util.pool.getWristbandHighlightsPaginated.cancel(queryKey);
-        const prev =
-          util.pool.getWristbandHighlightsPaginated.getInfiniteData(queryKey);
-        if (prev) {
-          util.pool.getWristbandHighlightsPaginated.setInfiniteData(queryKey, {
-            ...prev,
-            pages: likeActionUpdate(prev, variables),
-          });
-        }
-        return { prev };
-      },
-      onError(_, __, context) {
-        util.pool.getPoolHighlightsPaginated.setInfiniteData(
-          queryKey,
-          context?.prev
-        );
-      },
       onSettled() {
-        void util.pool.getPoolHighlightsPaginated.invalidate();
+        void util.pool.getPoolHighlightsPaginated.invalidate(queryKey);
       },
     });
 
@@ -147,14 +95,10 @@ const LoadFeed: React.FC<{
       void fetchNextPage();
     },
     hasMore: () => hasNextPage ?? false,
-    bookmark: (id: string) => {
-      const highlight = highlightMap.get(id);
-      if (!highlight) return;
+    bookmark: (highlight) => {
       bookmark({ highlightId: highlight.id, add: !highlight.bookmarked });
     },
-    like: (id: string) => {
-      const highlight = highlightMap.get(id);
-      if (!highlight) return;
+    like: (highlight) => {
       upvote({ highlightId: highlight.id, like: !highlight.upvoted });
     },
     disabled: bookmarking || upvoting,
@@ -162,7 +106,7 @@ const LoadFeed: React.FC<{
 
   return (
     <HighlightGridContextProvider value={actions}>
-      <HighlightGridsComponent
+      <HighlightGridGroupsComponent
         highlights={highlights}
         grouping={hourGrouping}
       />

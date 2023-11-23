@@ -5,27 +5,29 @@ import type { PoolFollowing, PoolInfo } from "../../../types/pool-out";
 import type { UserInfo } from "../../../types/user-out";
 import {
   decodeCursor,
-  packageHighlights,
-  packageHighlightsPaginated,
-  packageThumbnailsPaginated,
-} from "../../../utils/highlightUtils";
+  groupHighlights,
+  packageHighlightGroups,
+  packageHighlightGroupsPaginated,
+  packageThumbnailGroupsPaginated,
+} from "../../../utils/highlight-utils";
 
 import { router, protectedProcedure, publicProcedure } from "../trpc";
 import type { NewHighlightPool } from "../../db/schema";
 import {
   bookmarkedHighlightToUser,
+  cameraAngle,
   highlight,
   highlightPool,
   poolsToFollowers,
   poolsToRequested,
 } from "../../db/schema";
-import { and, desc, eq, like, lt, lte, notInArray } from "drizzle-orm";
+import { and, desc, eq, like, lt, lte, notInArray, inArray } from "drizzle-orm";
 import {
   canViewPool,
   cursorWhereArgs,
   orderByArgs,
   publicToBool,
-} from "../../../utils/drizzleHelpers";
+} from "../../../utils/drizzle-helpers";
 
 export const poolRouter = router({
   getPoolById: publicProcedure
@@ -46,10 +48,14 @@ export const poolRouter = router({
               where: eq(poolsToRequested.userId, userId),
               limit: 1,
             },
-
-            highlights: {
-              columns: {
-                id: true,
+            cameras: {
+              columns: {},
+              with: {
+                highlights: {
+                  columns: {
+                    id: true,
+                  },
+                },
               },
             },
           },
@@ -65,7 +71,9 @@ export const poolRouter = router({
                   : false,
                 requested: poolInfo.poolRequests.length > 0,
               },
-              highlightCount: poolInfo.highlights.length,
+              highlightCount: poolInfo.cameras
+                .map((cam) => cam.highlights.length)
+                .reduce((a, b) => a + b, 0),
               followerCount: poolInfo.poolFollowers.length,
               isPublic: publicToBool(poolInfo.public),
             } as PoolInfo)
@@ -79,9 +87,14 @@ export const poolRouter = router({
               userId: true,
             },
           },
-          highlights: {
-            columns: {
-              id: true,
+          cameras: {
+            columns: {},
+            with: {
+              highlights: {
+                columns: {
+                  id: true,
+                },
+              },
             },
           },
         },
@@ -94,7 +107,9 @@ export const poolRouter = router({
               requested: false,
             },
             isPublic: publicToBool(poolInfo.public),
-            highlightCount: poolInfo.highlights.length,
+            highlightCount: poolInfo.cameras
+              .map((cam) => cam.highlights.length)
+              .reduce((a, b) => a + b, 0),
             followerCount: poolInfo.poolFollowers.length,
           } as PoolInfo)
         : undefined;
@@ -198,9 +213,14 @@ export const poolRouter = router({
           );
         },
         with: {
-          highlights: {
-            columns: {
-              id: true,
+          cameras: {
+            columns: {},
+            with: {
+              highlights: {
+                columns: {
+                  id: true,
+                },
+              },
             },
           },
           poolFollowers: {
@@ -234,7 +254,9 @@ export const poolRouter = router({
           },
           isPublic: publicToBool(pool.public),
           followerCount: pool.poolFollowers.length,
-          highlightCount: pool.highlights.length,
+          highlightCount: pool.cameras
+            .map((cam) => cam.highlights.length)
+            .reduce((a, b) => a + b, 0),
         };
       });
       const nextCursor = hasNext
@@ -252,12 +274,13 @@ export const poolRouter = router({
         poolId: z.number(),
         cursor: z.string().nullish(),
         initialCursor: z.number().nullish(),
+        angles: z.array(z.number()).nullish(),
         amount: z.number(),
       })
     )
     .query(async ({ ctx, input }) => {
       const userId = ctx.auth?.userId;
-      const { poolId, cursor, amount, initialCursor } = input;
+      const { poolId, cursor, amount, initialCursor, angles } = input;
 
       const parsedCursor = cursor ? decodeCursor(cursor) : undefined;
 
@@ -265,49 +288,69 @@ export const poolRouter = router({
         where: canViewPool(userId, poolId, ctx.db),
         columns: { name: true },
         with: {
-          highlights: {
-            where: cursorWhereArgs(parsedCursor, initialCursor),
-            orderBy: orderByArgs(parsedCursor),
-            limit: amount + 1,
+          cameras: {
+            where: (fields) => {
+              if (!angles) return undefined;
+              return inArray(fields.id, angles);
+            },
+            columns: {},
             with: {
-              userUpvotes: {
-                columns: {
-                  userId: true,
+              highlights: {
+                limit: amount + 1,
+                where: cursorWhereArgs(parsedCursor, initialCursor),
+                orderBy: orderByArgs(parsedCursor),
+                with: {
+                  userUpvotes: {
+                    columns: {
+                      userId: true,
+                    },
+                  },
+                  ...(userId
+                    ? {
+                        userBookmarks: {
+                          where: eq(bookmarkedHighlightToUser.userId, userId),
+                        },
+                      }
+                    : {}),
                 },
               },
-              ...(userId
-                ? {
-                    userBookmarks: {
-                      where: eq(bookmarkedHighlightToUser.userId, userId),
-                    },
-                  }
-                : {}),
             },
           },
         },
       });
 
-      const highlights = pool?.highlights;
+      const completeHighlights =
+        pool?.cameras.map((cam) =>
+          cam.highlights.map<HighlightReturn>((highlight) => ({
+            ...highlight,
+            poolId: poolId,
+            upvotes: highlight.userUpvotes.length,
+            upvoted: highlight.userUpvotes.find(
+              (upvote) => upvote.userId === userId
+            )
+              ? true
+              : false,
+            bookmarked: highlight.userBookmarks
+              ? highlight.userBookmarks.length > 0
+              : false,
+          }))
+        ) ?? [];
 
-      const hasNext = highlights ? highlights.length > amount : false;
-      if (hasNext) highlights?.pop();
+      const longestSublist = completeHighlights
+        .sort((a, b) => b.length - a.length)
+        .at(0)?.length;
 
-      const highlightReturns =
-        highlights?.map<HighlightReturn>((highlight) => ({
-          ...highlight,
-          upvotes: highlight.userUpvotes.length,
-          upvoted: highlight.userUpvotes.find(
-            (upvote) => upvote.userId === userId
-          )
-            ? true
-            : false,
-          bookmarked: highlight.userBookmarks
-            ? highlight.userBookmarks.length > 0
-            : false,
-        })) ?? [];
+      const hasNext = longestSublist ? longestSublist > amount : false;
 
-      return packageThumbnailsPaginated(
-        highlightReturns,
+      const groupedHighlights = groupHighlights(
+        completeHighlights,
+        amount,
+        parsedCursor?.dir
+      );
+
+      return packageThumbnailGroupsPaginated(
+        groupedHighlights,
+        poolId,
         hasNext,
         parsedCursor?.dir
       );
@@ -328,31 +371,36 @@ export const poolRouter = router({
         where: canViewPool(userId, poolId, ctx.db),
         columns: { name: true },
         with: {
-          highlights: {
-            where: and(lte(highlight.timestampUtc, cursor)),
-            orderBy: [desc(highlight.timestampUtc)],
-            limit: amount,
+          cameras: {
+            columns: {},
             with: {
-              userUpvotes: {
-                columns: {
-                  userId: true,
+              highlights: {
+                where: and(lte(highlight.timestampUtc, cursor)),
+                orderBy: [desc(highlight.timestampUtc)],
+                limit: amount,
+                with: {
+                  userUpvotes: {
+                    columns: {
+                      userId: true,
+                    },
+                  },
+                  ...(userId
+                    ? {
+                        userBookmarks: {
+                          where: eq(bookmarkedHighlightToUser.userId, userId),
+                        },
+                      }
+                    : {}),
                 },
               },
-              ...(userId
-                ? {
-                    userBookmarks: {
-                      where: eq(bookmarkedHighlightToUser.userId, userId),
-                    },
-                  }
-                : {}),
             },
           },
         },
       });
-      return {
-        name: bundle?.name,
-        highlights: await packageHighlights(
-          bundle?.highlights.map((highlight) => ({
+
+      const completeHighlights =
+        bundle?.cameras.map((cam) =>
+          cam.highlights.map<HighlightReturn>((highlight) => ({
             ...highlight,
             upvotes: highlight.userUpvotes.length,
             upvoted: highlight.userUpvotes.find(
@@ -364,7 +412,12 @@ export const poolRouter = router({
               ? highlight.userBookmarks.length > 0
               : false,
           }))
-        ),
+        ) ?? [];
+
+      const grouped = groupHighlights(completeHighlights, amount);
+      return {
+        name: bundle?.name,
+        highlights: await packageHighlightGroups(grouped, poolId),
       };
     }),
 
@@ -388,51 +441,66 @@ export const poolRouter = router({
         where: canViewPool(userId, poolId, ctx.db),
         columns: { name: true },
         with: {
-          highlights: {
-            where: cursorWhereArgs(parsedCursor, initialCursor),
-            orderBy: orderByArgs(parsedCursor),
-            limit: amount + 1,
+          cameras: {
+            columns: {},
             with: {
-              userUpvotes: {
-                columns: {
-                  userId: true,
+              highlights: {
+                where: cursorWhereArgs(parsedCursor, initialCursor),
+                orderBy: orderByArgs(parsedCursor),
+                limit: amount + 1,
+                with: {
+                  userUpvotes: {
+                    columns: {
+                      userId: true,
+                    },
+                  },
+                  ...(userId
+                    ? {
+                        userBookmarks: {
+                          where: eq(bookmarkedHighlightToUser.userId, userId),
+                        },
+                      }
+                    : {}),
                 },
               },
-              ...(userId
-                ? {
-                    userBookmarks: {
-                      where: eq(bookmarkedHighlightToUser.userId, userId),
-                    },
-                  }
-                : {}),
             },
           },
         },
       });
 
-      const highlights = pool?.highlights;
+      const completeHighlights =
+        pool?.cameras.map((cam) =>
+          cam.highlights.map<HighlightReturn>((highlight) => ({
+            ...highlight,
+            upvotes: highlight.userUpvotes.length,
+            upvoted: highlight.userUpvotes.find(
+              (upvote) => upvote.userId === userId
+            )
+              ? true
+              : false,
+            bookmarked: highlight.userBookmarks
+              ? highlight.userBookmarks.length > 0
+              : false,
+          }))
+        ) ?? [];
 
-      const hasNext = highlights ? highlights.length > amount : false;
-      if (hasNext) highlights?.pop();
+      const longestSublist = completeHighlights
+        .sort((a, b) => b.length - a.length)
+        .at(0)?.length;
 
-      const highlightReturns =
-        highlights?.map<HighlightReturn>((highlight) => ({
-          ...highlight,
-          upvotes: highlight.userUpvotes.length,
-          upvoted: highlight.userUpvotes.find(
-            (upvote) => upvote.userId === userId
-          )
-            ? true
-            : false,
-          bookmarked: highlight.userBookmarks
-            ? highlight.userBookmarks.length > 0
-            : false,
-        })) ?? [];
+      const hasNext = longestSublist ? longestSublist > amount : false;
+
+      const groups = groupHighlights(
+        completeHighlights,
+        amount,
+        parsedCursor?.dir
+      );
 
       return {
         name: pool?.name,
-        ...(await packageHighlightsPaginated(
-          highlightReturns,
+        ...(await packageHighlightGroupsPaginated(
+          groups,
+          poolId,
           hasNext,
           parsedCursor?.dir
         )),
@@ -442,10 +510,14 @@ export const poolRouter = router({
   getWristbands: publicProcedure
     .input(z.number())
     .query(async ({ ctx, input }) => {
+      const camsSelect = ctx.db
+        .select({ cameraId: cameraAngle.id })
+        .from(cameraAngle)
+        .where(eq(cameraAngle.poolId, input));
       const bands = await ctx.db
         .selectDistinct({ bandId: highlight.wristbandId })
         .from(highlight)
-        .where(eq(highlight.poolId, input));
+        .where(inArray(highlight.cameraId, camsSelect));
 
       const bandValues: string[] = [];
 
@@ -476,52 +548,67 @@ export const poolRouter = router({
         where: canViewPool(userId, poolId, ctx.db),
         columns: { name: true },
         with: {
-          highlights: {
-            where: and(
-              eq(highlight.wristbandId, wristbandId),
-              cursorWhereArgs(parsedCursor, initialCursor)
-            ),
-            orderBy: orderByArgs(parsedCursor),
-            limit: amount + 1,
+          cameras: {
+            columns: {},
             with: {
-              userUpvotes: {
-                columns: {
-                  userId: true,
+              highlights: {
+                where: and(
+                  eq(highlight.wristbandId, wristbandId),
+                  cursorWhereArgs(parsedCursor, initialCursor)
+                ),
+                orderBy: orderByArgs(parsedCursor),
+                limit: amount + 1,
+                with: {
+                  userUpvotes: {
+                    columns: {
+                      userId: true,
+                    },
+                  },
+                  ...(userId
+                    ? {
+                        userBookmarks: {
+                          where: eq(bookmarkedHighlightToUser.userId, userId),
+                        },
+                      }
+                    : {}),
                 },
               },
-              ...(userId
-                ? {
-                    userBookmarks: {
-                      where: eq(bookmarkedHighlightToUser.userId, userId),
-                    },
-                  }
-                : {}),
             },
           },
         },
       });
 
-      const highlights = pool?.highlights;
+      const completeHighlights =
+        pool?.cameras.map((cam) =>
+          cam.highlights.map<HighlightReturn>((highlight) => ({
+            ...highlight,
+            upvotes: highlight.userUpvotes.length,
+            upvoted: highlight.userUpvotes.find(
+              (upvote) => upvote.userId === userId
+            )
+              ? true
+              : false,
+            bookmarked: highlight.userBookmarks
+              ? highlight.userBookmarks.length > 0
+              : false,
+          }))
+        ) ?? [];
 
-      const hasNext = highlights ? highlights.length > amount : false;
-      if (hasNext) highlights?.pop();
+      const longestSublist = completeHighlights
+        .sort((a, b) => b.length - a.length)
+        .at(0)?.length;
 
-      const highlightReturns =
-        highlights?.map<HighlightReturn>((highlight) => ({
-          ...highlight,
-          upvotes: highlight.userUpvotes.length,
-          upvoted: highlight.userUpvotes.find(
-            (upvote) => upvote.userId === userId
-          )
-            ? true
-            : false,
-          bookmarked: highlight.userBookmarks
-            ? highlight.userBookmarks.length > 0
-            : false,
-        })) ?? [];
+      const hasNext = longestSublist ? longestSublist > amount : false;
 
-      return packageThumbnailsPaginated(
-        highlightReturns,
+      const groups = groupHighlights(
+        completeHighlights,
+        amount,
+        parsedCursor?.dir
+      );
+
+      return packageThumbnailGroupsPaginated(
+        groups,
+        poolId,
         hasNext,
         parsedCursor?.dir
       );
@@ -548,53 +635,69 @@ export const poolRouter = router({
         where: canViewPool(userId, poolId, ctx.db),
         columns: { name: true },
         with: {
-          highlights: {
-            where: and(
-              eq(highlight.wristbandId, wristbandId),
-              cursorWhereArgs(parsedCursor, initialCursor)
-            ),
-            orderBy: orderByArgs(parsedCursor),
-            limit: amount + 1,
+          cameras: {
+            columns: {},
             with: {
-              userUpvotes: {
-                columns: {
-                  userId: true,
+              highlights: {
+                where: and(
+                  eq(highlight.wristbandId, wristbandId),
+                  cursorWhereArgs(parsedCursor, initialCursor)
+                ),
+                orderBy: orderByArgs(parsedCursor),
+                limit: amount + 1,
+                with: {
+                  userUpvotes: {
+                    columns: {
+                      userId: true,
+                    },
+                  },
+                  ...(userId
+                    ? {
+                        userBookmarks: {
+                          where: eq(bookmarkedHighlightToUser.userId, userId),
+                        },
+                      }
+                    : {}),
                 },
               },
-              ...(userId
-                ? {
-                    userBookmarks: {
-                      where: eq(bookmarkedHighlightToUser.userId, userId),
-                    },
-                  }
-                : {}),
             },
           },
         },
       });
 
-      const highlights = pool?.highlights;
+      const completeHighlights =
+        pool?.cameras.map((cam) =>
+          cam.highlights.map<HighlightReturn>((highlight) => ({
+            ...highlight,
+            upvotes: highlight.userUpvotes.length,
+            upvoted: highlight.userUpvotes.find(
+              (upvote) => upvote.userId === userId
+            )
+              ? true
+              : false,
+            bookmarked: highlight.userBookmarks
+              ? highlight.userBookmarks.length > 0
+              : false,
+          }))
+        ) ?? [];
 
-      const hasNext = highlights ? highlights.length > amount : false;
-      if (hasNext) highlights?.pop();
+      const longestSublist = completeHighlights
+        .sort((a, b) => b.length - a.length)
+        .at(0)?.length;
 
-      const highlightReturns =
-        highlights?.map<HighlightReturn>((highlight) => ({
-          ...highlight,
-          upvotes: highlight.userUpvotes.length,
-          upvoted: highlight.userUpvotes.find(
-            (upvote) => upvote.userId === userId
-          )
-            ? true
-            : false,
-          bookmarked: highlight.userBookmarks
-            ? highlight.userBookmarks.length > 0
-            : false,
-        })) ?? [];
+      const hasNext = longestSublist ? longestSublist > amount : false;
+
+      const groups = groupHighlights(
+        completeHighlights,
+        amount,
+        parsedCursor?.dir
+      );
+
       return {
         name: pool?.name,
-        ...(await packageHighlightsPaginated(
-          highlightReturns,
+        ...(await packageHighlightGroupsPaginated(
+          groups,
+          poolId,
           hasNext,
           parsedCursor?.dir
         )),
@@ -617,34 +720,38 @@ export const poolRouter = router({
         where: canViewPool(userId, poolId, ctx.db),
         columns: { name: true },
         with: {
-          highlights: {
-            where: and(
-              eq(highlight.wristbandId, bandId),
-              lte(highlight.timestampUtc, cursor)
-            ),
-            orderBy: [desc(highlight.timestampUtc)],
-            limit: amount,
+          cameras: {
+            columns: {},
             with: {
-              userUpvotes: {
-                columns: {
-                  userId: true,
+              highlights: {
+                where: and(
+                  eq(highlight.wristbandId, bandId),
+                  lte(highlight.timestampUtc, cursor)
+                ),
+                orderBy: [desc(highlight.timestampUtc)],
+                limit: amount,
+                with: {
+                  userUpvotes: {
+                    columns: {
+                      userId: true,
+                    },
+                  },
+                  ...(userId
+                    ? {
+                        userBookmarks: {
+                          where: eq(bookmarkedHighlightToUser.userId, userId),
+                        },
+                      }
+                    : {}),
                 },
               },
-              ...(userId
-                ? {
-                    userBookmarks: {
-                      where: eq(bookmarkedHighlightToUser.userId, userId),
-                    },
-                  }
-                : {}),
             },
           },
         },
       });
-      return {
-        name: bundle?.name,
-        highlights: await packageHighlights(
-          bundle?.highlights.map((highlight) => ({
+      const completeHighlights =
+        bundle?.cameras.map((cam) =>
+          cam.highlights.map<HighlightReturn>((highlight) => ({
             ...highlight,
             upvotes: highlight.userUpvotes.length,
             upvoted: highlight.userUpvotes.find(
@@ -656,7 +763,13 @@ export const poolRouter = router({
               ? highlight.userBookmarks.length > 0
               : false,
           }))
-        ),
+        ) ?? [];
+
+      const grouped = groupHighlights(completeHighlights, amount);
+
+      return {
+        name: bundle?.name,
+        highlights: await packageHighlightGroups(grouped, poolId),
       };
     }),
 

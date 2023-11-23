@@ -1,16 +1,4 @@
-import {
-  and,
-  eq,
-  or,
-  exists,
-  asc,
-  desc,
-  gt,
-  isNotNull,
-  lt,
-  lte,
-  gte,
-} from "drizzle-orm";
+import { and, eq, or, exists, asc, desc, gt, isNotNull, lt } from "drizzle-orm";
 import {
   users,
   follows,
@@ -19,7 +7,7 @@ import {
   highlightPool,
 } from "../server/db/schema";
 import type { dbType } from "../server/db";
-import { type highlightCursor } from "./highlightUtils";
+import { type highlightCursor } from "./highlight-utils";
 
 export const userWhereArgs = (
   currentId: string | null | undefined,

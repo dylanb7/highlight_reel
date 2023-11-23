@@ -183,7 +183,7 @@ const HighlightGrid: React.FC<{ group: HighlightGroup }> = ({ group }) => {
   );
 };
 
-const ImageComponent: React.FC<{
+export const ImageComponent: React.FC<{
   start: number;
   length: number;
   index: number;

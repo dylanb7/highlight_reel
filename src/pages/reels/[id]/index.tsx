@@ -3,19 +3,12 @@ import React, { useMemo } from "react";
 
 import { api } from "../../../utils/trpc";
 import { LoadingSpinner } from "../../../components/misc/loading";
-import { getServerHelpers } from "../../../utils/ssgHelper";
+import { getServerHelpers } from "../../../utils/ssg-helper";
 import Head from "next/head";
-import {
-  HighlightGridsComponent,
-  hourGrouping,
-} from "../../../components/highlight-components/highlight-grid";
+
 import type { HighlightGridActions } from "../../../components/contexts/highlight-grid-context";
 import { HighlightGridContextProvider } from "../../../components/contexts/highlight-grid-context";
 import type { HighlightThumbnail } from "../../../types/highlight-out";
-import {
-  bookmarkActionUpdate,
-  likeActionUpdate,
-} from "../../../components/contexts/action-types";
 
 import { PoolInfo } from "../../../components/pool-components/pool-info";
 import PageWrap from "../../../components/layout/page-wrap";
@@ -23,6 +16,10 @@ import {
   Filters,
   useInitialDate,
 } from "~/components/pool-components/pool-filters";
+import {
+  HighlightGridGroupsComponent,
+  hourGrouping,
+} from "~/components/highlight-components/grouped-highlight-grid";
 
 const PoolView: NextPage<{ poolId: number }> = ({ poolId }) => {
   const { data: poolInfo } = api.pool.getPoolById.useQuery(poolId);
@@ -57,7 +54,7 @@ const LoadFeed: React.FC<{
     initialCursor,
   };
 
-  const util = api.useContext();
+  const util = api.useUtils();
 
   const { data, isLoading, hasNextPage, fetchNextPage } =
     api.pool.getPoolHighlightsPaginated.useInfiniteQuery(queryKey, {
@@ -66,37 +63,10 @@ const LoadFeed: React.FC<{
 
   const highlights = useMemo(() => {
     return data?.pages.flatMap((page) => page.highlights) ?? [];
-  }, [data]);
-
-  const highlightMap = useMemo(() => {
-    const highlightMap = new Map<string, HighlightThumbnail>();
-
-    for (const highlight of highlights) {
-      highlightMap.set(highlight.id, highlight);
-    }
-    return highlightMap;
-  }, [highlights]);
+  }, [data?.pages]);
 
   const { mutate: bookmark, isLoading: bookmarking } =
     api.user.toggleHighlight.useMutation({
-      async onMutate(variables) {
-        await util.pool.getPoolHighlightsPaginated.cancel(queryKey);
-        const prev =
-          util.pool.getPoolHighlightsPaginated.getInfiniteData(queryKey);
-        if (prev) {
-          util.pool.getPoolHighlightsPaginated.setInfiniteData(queryKey, {
-            ...prev,
-            pages: bookmarkActionUpdate(prev, variables),
-          });
-        }
-        return { prev };
-      },
-      onError(_, __, context) {
-        util.pool.getPoolHighlightsPaginated.setInfiniteData(
-          queryKey,
-          context?.prev
-        );
-      },
       onSettled() {
         void util.pool.getPoolHighlightsPaginated.invalidate(queryKey);
       },
@@ -104,24 +74,6 @@ const LoadFeed: React.FC<{
 
   const { mutate: upvote, isLoading: upvoting } =
     api.user.upvoteHighlight.useMutation({
-      async onMutate(variables) {
-        await util.pool.getPoolHighlightsPaginated.cancel(queryKey);
-        const prev =
-          util.pool.getPoolHighlightsPaginated.getInfiniteData(queryKey);
-        if (prev) {
-          util.pool.getPoolHighlightsPaginated.setInfiniteData(queryKey, {
-            ...prev,
-            pages: likeActionUpdate(prev, variables),
-          });
-        }
-        return { prev };
-      },
-      onError(_, __, context) {
-        util.pool.getPoolHighlightsPaginated.setInfiniteData(
-          queryKey,
-          context?.prev
-        );
-      },
       onSettled() {
         void util.pool.getPoolHighlightsPaginated.invalidate(queryKey);
       },
@@ -135,14 +87,10 @@ const LoadFeed: React.FC<{
       void fetchNextPage();
     },
     hasMore: () => hasNextPage ?? false,
-    bookmark: (id: string) => {
-      const highlight = highlightMap.get(id);
-      if (!highlight) return;
+    bookmark: (highlight: HighlightThumbnail) => {
       bookmark({ highlightId: highlight.id, add: !highlight.bookmarked });
     },
-    like: (id: string) => {
-      const highlight = highlightMap.get(id);
-      if (!highlight) return;
+    like: (highlight: HighlightThumbnail) => {
       upvote({ highlightId: highlight.id, like: !highlight.upvoted });
     },
     disabled: bookmarking || upvoting,
@@ -150,7 +98,7 @@ const LoadFeed: React.FC<{
 
   return (
     <HighlightGridContextProvider value={actions}>
-      <HighlightGridsComponent
+      <HighlightGridGroupsComponent
         highlights={highlights}
         grouping={hourGrouping}
       />

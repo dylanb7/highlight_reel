@@ -24,7 +24,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/shadcn/ui/dialog";
-import { ScrollArea, ScrollBar } from "@/shadcn/ui/scroll-area";
 
 export const useInitialDate = () => {
   const { query } = useRouter();
@@ -140,28 +139,26 @@ export const WristBands: React.FC<{ poolId: number }> = ({ poolId }) => {
   if (!data || data.length == 0) return <></>;
 
   return (
-    <div className="flex flex-col">
+    <div className="flex w-full flex-col pb-3">
       <h3 className="pb-3 text-lg font-semibold text-slate-900 dark:text-white">
         Wristband
       </h3>
-      <ScrollArea className="pb-3">
-        <div className="flex flex-row items-center justify-start gap-2">
+
+      <div className="flex w-full flex-wrap gap-2">
+        <WristbandChip
+          link={`/reels/${poolId}`}
+          active={!hasValue}
+          name={"All"}
+        />
+        {cleaned.map((data) => (
           <WristbandChip
-            link={`/reels/${poolId}`}
-            active={!hasValue}
-            name={"All"}
+            link={`/reels/${poolId}/band/${data}`}
+            active={hasValue ? data === bandId : false}
+            name={data}
+            key={data}
           />
-          {cleaned.map((data) => (
-            <WristbandChip
-              link={`/reels/${poolId}/band/${data}`}
-              active={hasValue ? data === bandId : false}
-              name={data}
-              key={data}
-            />
-          ))}
-        </div>
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
+        ))}
+      </div>
     </div>
   );
 };

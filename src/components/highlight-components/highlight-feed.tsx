@@ -15,7 +15,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import type { HighlightVideo } from "../../types/highlight-out";
+import type { HighlightVideo, VideoAngles } from "../../types/highlight-out";
 
 import { IconButton } from "../misc/icon-button";
 
@@ -26,8 +26,7 @@ import dayjs from "dayjs";
 import * as reltiveTime from "dayjs/plugin/relativeTime";
 import * as utc from "dayjs/plugin/utc";
 import LocalizedFormat from "dayjs/plugin/localizedFormat";
-import { removeExt } from "../../utils/highlightUtils";
-import { z } from "zod";
+
 import {
   Sheet,
   SheetContent,
@@ -35,6 +34,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/shadcn/ui/sheet";
+import * as AspectRatio from "@radix-ui/react-aspect-ratio";
 
 dayjs.extend(reltiveTime.default);
 dayjs.extend(utc.default);
@@ -49,19 +49,15 @@ interface NavProps {
   prev: () => void;
 }
 
-export const continuousSlug = z.string();
-
-export const indexedSlug = z.object({});
-
 export const ContinuousFeed: React.FC<{
-  highlights: HighlightVideo[];
+  highlights: HighlightVideo[] | VideoAngles[];
   backPath: string;
   fetching?: boolean;
   from: string;
   hasNext: boolean;
   hasPrev: boolean;
-  next: () => Promise<string | undefined>;
-  prev: () => Promise<string | undefined>;
+  next: () => Promise<number | undefined>;
+  prev: () => Promise<number | undefined>;
 }> = ({
   highlights,
   backPath,
@@ -74,23 +70,24 @@ export const ContinuousFeed: React.FC<{
 }) => {
   const { push, replace, query } = useRouter();
 
-  const { slug } = query;
+  const { slug, angle } = query;
 
-  const currentId = !slug || typeof slug === "string" ? undefined : slug[0];
+  const timestampSlug = !slug || typeof slug === "string" ? undefined : slug[0];
+
+  const currentTimestamp = Number.isSafeInteger(timestampSlug)
+    ? Number(timestampSlug)
+    : undefined;
 
   const length = highlights.length;
 
   useEffect(() => {
     const initial = highlights.at(0);
-    if (
-      (currentId === undefined || Number.isInteger(Number(currentId))) &&
-      initial
-    ) {
+    if (timestampSlug === undefined && initial) {
       void replace(
         {
           query: {
             ...query,
-            slug: [encodeURIComponent(removeExt(initial.id))],
+            slug: [encodeURIComponent(getTimestamp(initial))],
           },
         },
         undefined,
@@ -99,17 +96,20 @@ export const ContinuousFeed: React.FC<{
         }
       );
     }
-  }, [highlights, query, currentId, replace]);
+  }, [highlights, query, timestampSlug, replace]);
 
   const current = useMemo(() => {
-    if (typeof currentId !== "string") return undefined;
+    if (typeof timestampSlug !== "string") return undefined;
     const index = highlights.findIndex((highlight) => {
-      return removeExt(highlight.id) === currentId;
+      return getTimestamp(highlight) === currentTimestamp;
     });
-    return index == -1 ? undefined : index;
-  }, [highlights, currentId]);
+    return index == -1 ? 0 : index;
+  }, [currentTimestamp, highlights, timestampSlug]);
+  console.log(`curr ${current}`);
 
-  const highlight = current !== undefined ? highlights.at(current) : undefined;
+  const value = current !== undefined ? highlights.at(current) : undefined;
+
+  const highlight = getHighlight(value, angle);
 
   const hasCachedNext = current !== undefined && current < length - 1;
 
@@ -123,7 +123,7 @@ export const ContinuousFeed: React.FC<{
         {
           query: {
             ...query,
-            slug: [encodeURIComponent(removeExt(nextHighlight.id))],
+            slug: [encodeURIComponent(getTimestamp(nextHighlight))],
           },
         },
         undefined,
@@ -132,11 +132,11 @@ export const ContinuousFeed: React.FC<{
         }
       );
     }
-    const id = await next();
-    if (!id) return;
+    const stamp = await next();
+    if (!stamp) return;
     void push(
       {
-        query: { ...query, slug: [encodeURIComponent(removeExt(id))] },
+        query: { ...query, slug: [encodeURIComponent(stamp)] },
       },
       undefined,
       {
@@ -152,7 +152,7 @@ export const ContinuousFeed: React.FC<{
       return push(
         {
           query: {
-            slug: encodeURIComponent(removeExt(prevHighlight.id)),
+            slug: [encodeURIComponent(getTimestamp(prevHighlight))],
           },
         },
         undefined,
@@ -161,11 +161,13 @@ export const ContinuousFeed: React.FC<{
         }
       );
     }
-    const id = await prev();
-    if (!id) return;
+    const stamp = await prev();
+    if (!stamp) return;
     void push(
       {
-        query: { slug: encodeURIComponent(removeExt(id)) },
+        query: {
+          slug: encodeURIComponent(stamp),
+        },
       },
       undefined,
       {
@@ -183,6 +185,8 @@ export const ContinuousFeed: React.FC<{
       </div>
     );
 
+  console.log(value);
+
   return (
     <BaseCompontent
       hasNext={hasCachedNext || hasNext}
@@ -194,13 +198,12 @@ export const ContinuousFeed: React.FC<{
         void goPrev();
       }}
       highlight={highlight}
-      nextHighlight={
-        hasNext ? highlights.at(current ?? 0 + 1)?.thumbnailUrl : undefined
-      }
-      previousHighlight={
-        hasPrev ? highlights.at(current ?? 0 - 1)?.thumbnailUrl : undefined
-      }
       fetching={fetching ?? false}
+      angles={
+        value && "angles" in value && value.angles.length > 1
+          ? value
+          : undefined
+      }
       backPath={backPath}
       from={from}
     />
@@ -208,7 +211,7 @@ export const ContinuousFeed: React.FC<{
 };
 
 export const IndexedFeed: React.FC<{
-  highlights: HighlightVideo[];
+  highlights: HighlightVideo[] | VideoAngles[];
   backPath: string;
   fetching?: boolean;
   from?: string;
@@ -216,7 +219,7 @@ export const IndexedFeed: React.FC<{
 }> = ({ highlights, fetching, from, backPath, initial }) => {
   const { push, query } = useRouter();
 
-  const { slug } = query;
+  const { slug, angle } = query;
 
   const current = slug?.at(1);
 
@@ -265,7 +268,9 @@ export const IndexedFeed: React.FC<{
     return Promise.resolve(undefined);
   };
 
-  const highlight = highlights.at(index);
+  const value = highlights.at(index);
+
+  const highlight = getHighlight(value, angle);
 
   if (length == 0)
     return (
@@ -292,21 +297,46 @@ export const IndexedFeed: React.FC<{
         void prev();
       }}
       fetching={fetching ?? false}
+      angles={
+        value && "angles" in value && value.angles.length > 1
+          ? value
+          : undefined
+      }
       backPath={backPath}
-      nextHighlight={
-        hasNext ? highlights.at(index + 1)?.thumbnailUrl : undefined
-      }
-      previousHighlight={
-        hasPrev ? highlights.at(index - 1)?.thumbnailUrl : undefined
-      }
     />
   );
+};
+
+const getHighlight = (
+  ob: HighlightVideo | VideoAngles | undefined,
+  angle: string | string[] | undefined
+): HighlightVideo | undefined => {
+  if (!ob) return undefined;
+
+  if ("s3Bucket" in ob) return ob;
+
+  const angleCam = typeof angle === "string" ? parseInt(angle) : undefined;
+
+  const validAngle = Number.isSafeInteger(angleCam);
+
+  const fallback = ob.angles.at(0);
+
+  if (!validAngle) return fallback;
+
+  return ob.angles.find((val) => val.cameraId === angleCam) ?? fallback;
+};
+
+const getTimestamp = (ob: HighlightVideo | VideoAngles | undefined) => {
+  if (!ob) return 0;
+  if ("s3Bucket" in ob) return ob.timestampUtc ?? 0;
+  return ob.timestamp;
 };
 
 const BaseCompontent: React.FC<
   {
     fetching: boolean;
     highlight?: HighlightVideo;
+    angles?: VideoAngles;
     nextHighlight?: string;
     previousHighlight?: string;
     backPath: string;
@@ -322,8 +352,7 @@ const BaseCompontent: React.FC<
   backPath,
   from,
   progress,
-  nextHighlight,
-  previousHighlight,
+  angles,
 }) => {
   const relativeTime = useMemo(() => {
     if (!highlight || !highlight.timestampUtc) return undefined;
@@ -358,10 +387,9 @@ const BaseCompontent: React.FC<
       from={from}
       next={next}
       prev={prev}
+      angles={angles}
       progress={progress}
       highlight={highlight}
-      previousHighlight={previousHighlight}
-      nextHighlight={nextHighlight}
       backPath={backPath}
     />
   );
@@ -501,14 +529,87 @@ const ThumbnailStack: React.FC<
   );
 };
 
+const AnglesGrid: React.FC<{ vid: VideoAngles }> = ({ vid }) => {
+  const angles = vid.angles;
+
+  const { query } = useRouter();
+
+  const { angle } = query;
+  const current =
+    typeof angle === "string" ? parseInt(angle) : vid.angles.at(0)?.cameraId;
+
+  return (
+    <div className="flex w-full flex-col">
+      <div className="text-lg font-bold text-slate-900 dark:text-white">
+        Angles
+      </div>
+      <div className="flex w-full flex-row gap-1">
+        {angles.map((angle) => {
+          if (current && current === angle.cameraId)
+            return (
+              <div className="flex flex-col">
+                <AngleThumb highlight={angle} />
+                <div className="text-xs font-bold text-slate-900 dark:text-white">
+                  Current
+                </div>
+              </div>
+            );
+          if (!angle.cameraId) return <AngleThumb highlight={angle} />;
+          return (
+            <Link
+              className="w-18"
+              key={angle.id}
+              href={{
+                query: { ...query, angle: encodeURIComponent(angle.cameraId) },
+              }}
+            >
+              <AngleThumb highlight={angle} />
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const AngleThumb: React.FC<{ highlight: HighlightVideo }> = ({ highlight }) => {
+  const [loading, setLoading] = useState(true);
+
+  const aspect =
+    highlight.aspectRatioNumerator && highlight.aspectRatioDenominator
+      ? highlight.aspectRatioDenominator / highlight.aspectRatioNumerator
+      : 9 / 16;
+
+  return (
+    <AspectRatio.Root ratio={aspect} className="w-18 h-full">
+      <div
+        key={highlight.id}
+        className="group relative h-full w-full overflow-clip rounded-md border border-gray-300 hover:border-slate-900 hover:shadow-xl dark:border-gray-500 dark:hover:border-white"
+      >
+        {highlight.thumbnailUrl && (
+          <Image
+            className="z-10 group-hover:opacity-50"
+            src={highlight.thumbnailUrl}
+            unoptimized
+            alt={"Highlight"}
+            onLoad={() => setLoading(false)}
+            width={highlight.aspectRatioNumerator ?? 500}
+            height={highlight.aspectRatioDenominator ?? 500}
+          />
+        )}
+        {(highlight.thumbnailUrl === undefined || loading) && (
+          <div className="absolute inset-0 z-20 animate-pulse bg-gray-100 dark:bg-slate-900" />
+        )}
+      </div>
+    </AspectRatio.Root>
+  );
+};
+
 const BackNav: React.FC<{
   backPath: string;
   from?: string;
   relativeTime?: string;
-  iconSize?: number;
-}> = ({ backPath, from, relativeTime, iconSize }) => {
-  const size = iconSize ?? 8;
-
+}> = ({ backPath, from, relativeTime }) => {
   return (
     <div className="flex w-full flex-row items-center justify-start gap-2">
       <IconStyleLink url={backPath}>
@@ -681,8 +782,7 @@ const MobilePlayer: React.FC<
     aspect: number;
     relativeTime: string | undefined;
     highlight: HighlightVideo;
-    nextHighlight?: string;
-    previousHighlight?: string;
+    angles?: VideoAngles;
     backPath: string;
     from?: string;
     progress?: string;
@@ -690,6 +790,7 @@ const MobilePlayer: React.FC<
 > = ({
   aspect,
   relativeTime,
+  angles,
   hasNext,
   hasPrev,
   next,
@@ -717,12 +818,7 @@ const MobilePlayer: React.FC<
   return (
     <div className="relative flex h-full w-full flex-col items-start justify-start">
       <div className="flex w-full flex-row items-center justify-between bg-white px-2 shadow-md dark:bg-slate-900">
-        <BackNav
-          backPath={backPath}
-          from={from}
-          relativeTime={relativeTime}
-          iconSize={6}
-        />
+        <BackNav backPath={backPath} from={from} relativeTime={relativeTime} />
         {landscape && (
           <Sheet>
             <SheetTrigger>
@@ -737,14 +833,15 @@ const MobilePlayer: React.FC<
               <SheetHeader>
                 <SheetTitle>Highlight Info</SheetTitle>
               </SheetHeader>
-              <div className="flex flex-col items-start justify-start">
+              <div className="flex h-full w-full flex-col items-start justify-start">
                 {highlight && <Time highlight={highlight} />}
-                {highlight && highlight.poolId && (
+                {angles && <AnglesGrid vid={angles} />}
+                {/*highlight && highlight.poolId && (
                   <Source
                     poolId={highlight.poolId}
                     wristbandId={highlight.wristbandId}
                   />
-                )}
+                )*/}
               </div>
             </SheetContent>
           </Sheet>
@@ -770,14 +867,15 @@ const MobilePlayer: React.FC<
           <ActionRow highlight={highlight} />
         </div>
         <div className="flex flex-row items-start justify-between px-4">
-          <div className="flex shrink flex-col">
+          <div className="flex w-full flex-col">
             <Time highlight={highlight} />
-            {highlight.poolId && (
+            {angles && <AnglesGrid vid={angles} />}
+            {/*highlight.poolId && (
               <Source
                 poolId={highlight.poolId}
                 wristbandId={highlight.wristbandId}
               />
-            )}
+            )*/}
           </div>
           <div className="flex flex-row items-start justify-start gap-2 text-xl">
             {progress && (

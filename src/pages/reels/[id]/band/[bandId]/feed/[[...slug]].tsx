@@ -5,9 +5,8 @@ import {
   ContinuousFeed,
   IndexedFeed,
 } from "../../../../../../components/highlight-components/highlight-feed";
-import { type HighlightVideo } from "../../../../../../types/highlight-out";
 import { api } from "../../../../../../utils/trpc";
-import { getServerHelpers } from "../../../../../../utils/ssgHelper";
+import { getServerHelpers } from "../../../../../../utils/ssg-helper";
 
 interface BandProps {
   wristbandId: string;
@@ -66,15 +65,6 @@ const ContinuousBandFeed: React.FC<BandProps> = ({
     return data?.pages.flatMap((page) => page.highlights) ?? [];
   }, [data]);
 
-  const highlightMap = useMemo(() => {
-    const highlightMap = new Map<string, HighlightVideo>();
-
-    for (const highlight of highlights) {
-      highlightMap.set(highlight.id, highlight);
-    }
-    return highlightMap;
-  }, [highlights]);
-
   const { mutate: bookmark, isLoading: bookmarking } =
     api.user.toggleHighlight.useMutation({
       onSettled() {
@@ -92,14 +82,10 @@ const ContinuousBandFeed: React.FC<BandProps> = ({
   return (
     <FeedContextProvider
       value={{
-        bookmark: (id) => {
-          const highlight = highlightMap.get(id);
-          if (!highlight) return;
+        bookmark: (highlight) => {
           bookmark({ add: !highlight.bookmarked, highlightId: highlight.id });
         },
-        like: (id) => {
-          const highlight = highlightMap.get(id);
-          if (!highlight) return;
+        like: (highlight) => {
           upvote({
             like: !highlight.upvoted,
             highlightId: highlight.id,
@@ -109,7 +95,7 @@ const ContinuousBandFeed: React.FC<BandProps> = ({
       }}
     >
       <ContinuousFeed
-        highlights={highlights ?? []}
+        highlights={highlights}
         fetching={isFetching}
         backPath={`/reels/${encodeURIComponent(
           poolId
@@ -118,11 +104,11 @@ const ContinuousBandFeed: React.FC<BandProps> = ({
         hasPrev={hasPreviousPage ?? false}
         next={async () => {
           return (await fetchNextPage()).data?.pages.at(-1)?.highlights.at(0)
-            ?.id;
+            ?.timestamp;
         }}
         prev={async () => {
           return (await fetchPreviousPage()).data?.pages.at(0)?.highlights.at(0)
-            ?.id;
+            ?.timestamp;
         }}
         from={""}
       />
@@ -154,15 +140,6 @@ const GroupedBandFeed: React.FC<BandProps> = ({
 
   const highlights = useMemo(() => data?.highlights ?? [], [data?.highlights]);
 
-  const highlightMap = useMemo(() => {
-    const highlightMap = new Map<string, HighlightVideo>();
-
-    for (const highlight of highlights) {
-      highlightMap.set(highlight.id, highlight);
-    }
-    return highlightMap;
-  }, [highlights]);
-
   const { mutate: bookmark, isLoading: bookmarking } =
     api.user.toggleHighlight.useMutation({
       onSettled() {
@@ -180,14 +157,10 @@ const GroupedBandFeed: React.FC<BandProps> = ({
   return (
     <FeedContextProvider
       value={{
-        bookmark: (id) => {
-          const highlight = highlightMap.get(id);
-          if (!highlight) return;
+        bookmark: (highlight) => {
           bookmark({ add: !highlight.bookmarked, highlightId: highlight.id });
         },
-        like: (id) => {
-          const highlight = highlightMap.get(id);
-          if (!highlight) return;
+        like: (highlight) => {
           upvote({
             like: !highlight.upvoted,
             highlightId: highlight.id,
@@ -197,7 +170,7 @@ const GroupedBandFeed: React.FC<BandProps> = ({
       }}
     >
       <IndexedFeed
-        highlights={data?.highlights ?? []}
+        highlights={highlights}
         from={data?.name ?? undefined}
         initial={initialCursor ?? undefined}
         fetching={isLoading}
@@ -232,7 +205,7 @@ export const getServerSideProps: GetServerSideProps<BandProps> = async (
     };
 
   const initialCursorParse = Number(slug?.at(0));
-  const lengthParse = Number(slug?.at(1));
+  const lengthParse = Number(slug?.at(2));
 
   const initialCursor = Number.isNaN(initialCursorParse)
     ? undefined

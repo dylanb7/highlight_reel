@@ -28,7 +28,7 @@ export const ShareButton: React.FC<{
   const router = useRouter();
 
   const url = `${router.basePath}/reels/${encodeURIComponent(
-    highlight.poolId ?? ""
+    ""
   )}/feed/${encodeURIComponent(highlight.timestampUtc ?? "")}`;
 
   const shareData: ShareData = {
@@ -55,19 +55,13 @@ export const ShareButton: React.FC<{
   return (
     <Dialog>
       <DialogTrigger>
-        <IconButton
-          onClick={() => {
-            return;
-          }}
-        >
-          <Share2Icon
-            className={
-              adaptive
-                ? "h-5 w-5 text-slate-900 hover:text-slate-800 dark:text-white dark:hover:text-gray-100"
-                : twIcons()
-            }
-          />
-        </IconButton>
+        <Share2Icon
+          className={
+            adaptive
+              ? "h-5 w-5 text-slate-900 hover:text-slate-800 dark:text-white dark:hover:text-gray-100"
+              : twIcons()
+          }
+        />
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

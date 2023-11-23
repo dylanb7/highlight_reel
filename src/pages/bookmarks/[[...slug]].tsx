@@ -1,5 +1,5 @@
 import { type GetServerSideProps, type NextPage } from "next";
-import { getServerHelpers } from "../../utils/ssgHelper";
+import { getServerHelpers } from "../../utils/ssg-helper";
 import { api } from "../../utils/trpc";
 import { useMemo } from "react";
 import {
@@ -8,7 +8,6 @@ import {
 } from "../../components/contexts/action-types";
 import { FeedContextProvider } from "../../components/contexts/feed-context";
 import { ContinuousFeed } from "../../components/highlight-components/highlight-feed";
-import { type HighlightVideo } from "../../types/highlight-out";
 
 const FeedWithStart: NextPage<{ startTime?: number }> = ({ startTime }) => {
   const util = api.useUtils();
@@ -33,15 +32,6 @@ const FeedWithStart: NextPage<{ startTime?: number }> = ({ startTime }) => {
   const highlights = useMemo(() => {
     return data?.pages.flatMap((page) => page.highlights) ?? [];
   }, [data]);
-
-  const highlightMap = useMemo(() => {
-    const highlightMap = new Map<string, HighlightVideo>();
-
-    for (const highlight of highlights) {
-      highlightMap.set(highlight.id, highlight);
-    }
-    return highlightMap;
-  }, [highlights]);
 
   const { mutate: bookmark, isLoading: bookmarking } =
     api.user.toggleHighlight.useMutation({
@@ -93,14 +83,10 @@ const FeedWithStart: NextPage<{ startTime?: number }> = ({ startTime }) => {
   return (
     <FeedContextProvider
       value={{
-        bookmark: (id) => {
-          const highlight = highlightMap.get(id);
-          if (!highlight) return;
+        bookmark: (highlight) => {
           bookmark({ add: !highlight.bookmarked, highlightId: highlight.id });
         },
-        like: (id) => {
-          const highlight = highlightMap.get(id);
-          if (!highlight) return;
+        like: (highlight) => {
           upvote({
             like: !highlight.upvoted,
             highlightId: highlight.id,
@@ -116,12 +102,16 @@ const FeedWithStart: NextPage<{ startTime?: number }> = ({ startTime }) => {
         hasNext={hasNextPage ?? false}
         hasPrev={hasPreviousPage ?? false}
         next={async () => {
-          return (await fetchNextPage()).data?.pages.at(-1)?.highlights.at(0)
-            ?.id;
+          return (
+            (await fetchNextPage()).data?.pages.at(0)?.highlights.at(0)
+              ?.timestampUtc ?? undefined
+          );
         }}
         prev={async () => {
-          return (await fetchPreviousPage()).data?.pages.at(0)?.highlights.at(0)
-            ?.id;
+          return (
+            (await fetchPreviousPage()).data?.pages.at(-1)?.highlights.at(0)
+              ?.timestampUtc ?? undefined
+          );
         }}
         from={"Bookmarked Videos"}
       />

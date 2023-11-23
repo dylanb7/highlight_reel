@@ -36,7 +36,7 @@ export const highlight = mysqlTable(
     duration: float("duration"),
     aspectRatioNumerator: smallint("aspectRatioNumerator"),
     aspectRatioDenominator: smallint("aspectRatioDenominator"),
-    poolId: bigint("poolId", { mode: "number" }),
+    cameraId: bigint("cameraId", { mode: "number" }),
     thumbnail: varchar("thumbnail", { length: 191 }),
   },
   (table) => {
@@ -65,6 +65,11 @@ export const highlightPool = mysqlTable(
     };
   }
 );
+
+export const cameraAngle = mysqlTable("CameraAngle", {
+  id: serial("id").primaryKey(),
+  poolId: bigint("poolId", { mode: "number" }),
+});
 
 export const users = mysqlTable("User", {
   id: varchar("id", { length: 191 }).notNull().primaryKey(),
@@ -183,9 +188,9 @@ export const userRelations = relations(users, ({ many }) => ({
 }));
 
 export const highlightRelations = relations(highlight, ({ one, many }) => ({
-  pool: one(highlightPool, {
-    fields: [highlight.poolId],
-    references: [highlightPool.id],
+  camera: one(cameraAngle, {
+    fields: [highlight.cameraId],
+    references: [cameraAngle.id],
   }),
   viewer: many(viewedHighlightToUser),
   userBookmarks: many(bookmarkedHighlightToUser),
@@ -195,7 +200,7 @@ export const highlightRelations = relations(highlight, ({ one, many }) => ({
 export const highlightPoolRelations = relations(
   highlightPool,
   ({ many, one }) => ({
-    highlights: many(highlight),
+    cameras: many(cameraAngle),
     mods: many(poolsToMods),
     owner: one(users, {
       fields: [highlightPool.ownerId],
@@ -205,6 +210,14 @@ export const highlightPoolRelations = relations(
     poolRequests: many(poolsToRequested),
   })
 );
+
+export const cameraRelations = relations(cameraAngle, ({ one, many }) => ({
+  highlightPool: one(highlightPool, {
+    fields: [cameraAngle.poolId],
+    references: [highlightPool.id],
+  }),
+  highlights: many(highlight),
+}));
 
 export const followerRelations = relations(follows, ({ one }) => ({
   follower: one(users, {

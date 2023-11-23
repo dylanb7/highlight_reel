@@ -1,7 +1,8 @@
 import { createContext, useContext } from "react";
 import type { VideoActions } from "./action-types";
+import { type HighlightVideo } from "~/types/highlight-out";
 
-const FeedContext = createContext<VideoActions>({
+const FeedContext = createContext<VideoActions<HighlightVideo>>({
   bookmark: function (): void {
     return;
   },
@@ -12,7 +13,7 @@ const FeedContext = createContext<VideoActions>({
 });
 
 export const FeedContextProvider: React.FC<
-  React.PropsWithChildren<{ value: VideoActions }>
+  React.PropsWithChildren<{ value: VideoActions<HighlightVideo> }>
 > = ({ value, children }) => {
   return <FeedContext.Provider value={value}>{children}</FeedContext.Provider>;
 };

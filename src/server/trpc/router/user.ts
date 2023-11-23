@@ -3,13 +3,13 @@ import type { ProfileInfo, UserInfo } from "../../../types/user-out";
 import { z } from "zod";
 import { router, protectedProcedure, publicProcedure } from "../trpc";
 import type { PoolInfo } from "../../../types/pool-out";
-import type { highlightCursor } from "../../../utils/highlightUtils";
+import type { highlightCursor } from "../../../utils/highlight-utils";
 import {
   addExt,
   decodeCursor,
   packageHighlightsPaginated,
   packageThumbnailsPaginated,
-} from "../../../utils/highlightUtils";
+} from "../../../utils/highlight-utils";
 import type { HighlightReturn } from "../../../types/highlight-out";
 
 import { and, asc, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
@@ -29,7 +29,7 @@ import {
   orderByArgs,
   publicToBool,
   userWhereArgs,
-} from "../../../utils/drizzleHelpers";
+} from "../../../utils/drizzle-helpers";
 
 export const userRouter = router({
   fromId: protectedProcedure.input(z.string()).query(async ({ ctx, input }) => {
@@ -127,7 +127,16 @@ export const userRouter = router({
           pool: {
             with: {
               poolFollowers: {},
-              highlights: {},
+              cameras: {
+                columns: {},
+                with: {
+                  highlights: {
+                    columns: {
+                      id: true,
+                    },
+                  },
+                },
+              },
               ...(!owns && ref
                 ? {
                     poolRequests: {
@@ -145,8 +154,8 @@ export const userRouter = router({
 
       const poolDataToInfo = (
         pool: HighlightPool & {
-          highlights: {
-            id: string;
+          cameras: {
+            highlights: object[];
           }[];
           poolFollowers: {
             userId: string;
@@ -161,7 +170,9 @@ export const userRouter = router({
       ): PoolInfo => {
         return {
           ...pool,
-          highlightCount: pool.highlights.length,
+          highlightCount: pool.cameras
+            .map((cam) => cam.highlights.length)
+            .reduce((a, b) => a + b, 0),
           followerCount: pool.poolFollowers.length,
           followInfo: {
             follows: pool.poolFollowers.find((user) => user.userId === ref)
@@ -234,8 +245,13 @@ export const userRouter = router({
             limit: amount + 1,
             with: {
               poolFollowers: {},
-              highlights: {
-                columns: { id: true },
+              cameras: {
+                columns: {},
+                with: {
+                  highlights: {
+                    columns: { id: true },
+                  },
+                },
               },
               ...(!owns && ref
                 ? {
@@ -258,7 +274,9 @@ export const userRouter = router({
       const poolsInfo =
         pools?.ownedPools.map<PoolInfo>((owned) => ({
           ...owned,
-          highlightCount: owned.highlights.length,
+          highlightCount: owned.cameras
+            .map((cam) => cam.highlights.length)
+            .reduce((a, b) => a + b, 0),
           followerCount: owned.poolFollowers.length,
           followInfo: {
             follows: owned.poolFollowers.find((user) => user.userId === ref)

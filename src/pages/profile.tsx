@@ -1,6 +1,6 @@
 import { type GetServerSideProps, type NextPage } from "next";
 import { buildClerkProps, getAuth } from "@clerk/nextjs/server";
-import { getServerHelpers } from "~/utils/ssgHelper";
+import { getServerHelpers } from "~/utils/ssg-helper";
 import { api } from "~/utils/trpc";
 import { LoadingSpinner } from "~/components/misc/loading";
 import { UserFinish } from "~/components/user-finish";

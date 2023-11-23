@@ -313,15 +313,6 @@ export const ProfileBookmarks: React.FC<{
     return data?.pages.flatMap((page) => page.highlights) ?? [];
   }, [data]);
 
-  const highlightMap = useMemo(() => {
-    const highlightMap = new Map<string, HighlightThumbnail>();
-
-    for (const highlight of highlights) {
-      highlightMap.set(highlight.id, highlight);
-    }
-    return highlightMap;
-  }, [highlights]);
-
   const { mutate: bookmark, isLoading: bookmarking } =
     api.user.toggleHighlight.useMutation({
       async onMutate(variables) {
@@ -380,14 +371,10 @@ export const ProfileBookmarks: React.FC<{
       void fetchNextPage();
     },
     hasMore: () => hasNextPage ?? false,
-    bookmark: (id: string) => {
-      const highlight = highlightMap.get(id);
-      if (!highlight) return;
+    bookmark: (highlight) => {
       bookmark({ highlightId: highlight.id, add: highlight.bookmarked });
     },
-    like: (id: string) => {
-      const highlight = highlightMap.get(id);
-      if (!highlight) return;
+    like: (highlight) => {
       upvote({ highlightId: highlight.id, like: !highlight.upvoted });
     },
     disabled: bookmarking || upvoting,
