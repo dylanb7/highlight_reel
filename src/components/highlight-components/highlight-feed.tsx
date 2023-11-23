@@ -543,7 +543,7 @@ const AnglesGrid: React.FC<{ vid: VideoAngles }> = ({ vid }) => {
       <div className="text-lg font-bold text-slate-900 dark:text-white">
         Angles
       </div>
-      <div className="flex w-full flex-row gap-1">
+      <div className="flex w-1/2 flex-row gap-1">
         {angles.map((angle) => {
           if (current && current === angle.cameraId)
             return (
@@ -557,7 +557,7 @@ const AnglesGrid: React.FC<{ vid: VideoAngles }> = ({ vid }) => {
           if (!angle.cameraId) return <AngleThumb highlight={angle} />;
           return (
             <Link
-              className="w-18"
+              className="grow"
               key={angle.id}
               href={{
                 query: { ...query, angle: encodeURIComponent(angle.cameraId) },

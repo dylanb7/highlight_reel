@@ -49,7 +49,7 @@ const LoadFeed: React.FC<{
   poolId: number;
   bandId: string;
 }> = ({ poolId, bandId }) => {
-  const loadAmount = 6;
+  const loadAmount = 12;
 
   const initialCursor = useInitialDate();
 
@@ -146,7 +146,7 @@ export const getServerSideProps: GetServerSideProps<PoolViewBandProps> = async (
   await ssg.pool.getWristbandHighlightsPaginated.prefetchInfinite({
     poolId,
     wristbandId: bandId,
-    amount: 6,
+    amount: 12,
   });
 
   await ssg.pool.getWristbands.prefetch(poolId);

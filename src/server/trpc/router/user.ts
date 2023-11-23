@@ -170,9 +170,10 @@ export const userRouter = router({
       ): PoolInfo => {
         return {
           ...pool,
-          highlightCount: pool.cameras
-            .map((cam) => cam.highlights.length)
-            .reduce((a, b) => a + b, 0),
+          highlightCount:
+            pool.cameras
+              ?.map((cam) => cam.highlights.length)
+              .reduce((a, b) => a + b, 0) ?? 0,
           followerCount: pool.poolFollowers.length,
           followInfo: {
             follows: pool.poolFollowers.find((user) => user.userId === ref)
@@ -274,9 +275,10 @@ export const userRouter = router({
       const poolsInfo =
         pools?.ownedPools.map<PoolInfo>((owned) => ({
           ...owned,
-          highlightCount: owned.cameras
-            .map((cam) => cam.highlights.length)
-            .reduce((a, b) => a + b, 0),
+          highlightCount:
+            owned.cameras
+              ?.map((cam) => cam.highlights.length)
+              .reduce((a, b) => a + b, 0) ?? [],
           followerCount: owned.poolFollowers.length,
           followInfo: {
             follows: owned.poolFollowers.find((user) => user.userId === ref)

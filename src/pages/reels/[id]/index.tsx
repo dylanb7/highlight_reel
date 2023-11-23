@@ -44,7 +44,7 @@ const PoolView: NextPage<{ poolId: number }> = ({ poolId }) => {
 const LoadFeed: React.FC<{
   poolId: number;
 }> = ({ poolId }) => {
-  const loadAmount = 6;
+  const loadAmount = 12;
 
   const initialCursor = useInitialDate();
 
@@ -131,7 +131,7 @@ export const getServerSideProps: GetServerSideProps<{
   await ssgHelper.pool.getPoolById.prefetch(poolId);
 
   await ssgHelper.pool.getPoolHighlightsPaginated.prefetchInfinite({
-    amount: 6,
+    amount: 12,
     poolId: poolId,
   });
 

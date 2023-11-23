@@ -128,7 +128,9 @@ export const groupHighlights = (
             (initialAngle.timestampUtc ?? Number.MIN_SAFE_INTEGER)
         );
 
-        if (timeDifference > 5) continue;
+        const secondsTolerance = 10;
+
+        if (timeDifference > secondsTolerance) continue;
 
         otherAngles.push(test);
         angles[i] = angleHighlights.splice(j, 1);
