@@ -814,6 +814,7 @@ const MobilePlayer: React.FC<
   );
 
   const hasGutter = true;
+  const logo = require("../../images/jcc_logo.png");
 
   return (
     <div className="relative flex h-full w-full flex-col items-start justify-start">
@@ -876,6 +877,18 @@ const MobilePlayer: React.FC<
                 wristbandId={highlight.wristbandId}
               />
             )*/}
+          </div>
+          <div className="flex w-full flex-col ">
+              <div className="w-1/2 max-w-xs h-full">
+                <a href="https://jccabq.org/">
+                  <Image
+                    src={logo}
+                    alt="gym logo"
+                    layout="responsive" 
+                    style={{ objectFit: "cover" }}
+                  />
+                  </a>
+              </div>  
           </div>
           <div className="flex flex-row items-start justify-start gap-2 text-xl">
             {progress && (
