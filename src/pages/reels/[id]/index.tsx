@@ -21,6 +21,9 @@ import {
   hourGrouping,
 } from "~/components/highlight-components/grouped-highlight-grid";
 
+import Image from 'next/image'
+import { useEffect, useState } from "react";
+
 const PoolView: NextPage<{ poolId: number }> = ({ poolId }) => {
   const { data: poolInfo } = api.pool.getPoolById.useQuery(poolId);
 
@@ -44,67 +47,111 @@ const PoolView: NextPage<{ poolId: number }> = ({ poolId }) => {
 const LoadFeed: React.FC<{
   poolId: number;
 }> = ({ poolId }) => {
-  const loadAmount = 12;
+  // const loadAmount = 12;
 
-  const initialCursor = useInitialDate();
+  // const initialCursor = useInitialDate();
 
-  const queryKey = {
-    amount: loadAmount,
-    poolId: poolId,
-    initialCursor,
-  };
+  // const queryKey = {
+  //   amount: loadAmount,
+  //   poolId: poolId,
+  //   initialCursor,
+  // };
 
-  const util = api.useUtils();
+  // const util = api.useUtils();
 
-  const { data, isLoading, hasNextPage, fetchNextPage } =
-    api.pool.getPoolHighlightsPaginated.useInfiniteQuery(queryKey, {
-      getNextPageParam: (lastPage) => lastPage.nextCursor,
-    });
+  // const { data, isLoading, hasNextPage, fetchNextPage } =
+  //   api.pool.getPoolHighlightsPaginated.useInfiniteQuery(queryKey, {
+  //     getNextPageParam: (lastPage) => lastPage.nextCursor,
+  //   });
 
-  const highlights = useMemo(() => {
-    return data?.pages.flatMap((page) => page.highlights) ?? [];
-  }, [data?.pages]);
+  // const highlights = useMemo(() => {
+  //   return data?.pages.flatMap((page) => page.highlights) ?? [];
+  // }, [data?.pages]);
 
-  const { mutate: bookmark, isLoading: bookmarking } =
-    api.user.toggleHighlight.useMutation({
-      onSettled() {
-        void util.pool.getPoolHighlightsPaginated.invalidate(queryKey);
-      },
-    });
+  // const { mutate: bookmark, isLoading: bookmarking } =
+  //   api.user.toggleHighlight.useMutation({
+  //     onSettled() {
+  //       void util.pool.getPoolHighlightsPaginated.invalidate(queryKey);
+  //     },
+  //   });
 
-  const { mutate: upvote, isLoading: upvoting } =
-    api.user.upvoteHighlight.useMutation({
-      onSettled() {
-        void util.pool.getPoolHighlightsPaginated.invalidate(queryKey);
-      },
-    });
+  // const { mutate: upvote, isLoading: upvoting } =
+  //   api.user.upvoteHighlight.useMutation({
+  //     onSettled() {
+  //       void util.pool.getPoolHighlightsPaginated.invalidate(queryKey);
+  //     },
+  //   });
 
-  if (isLoading) return <LoadingSpinner loadingType={"Loading Highlights"} />;
+  // if (isLoading) return <LoadingSpinner loadingType={"Loading Highlights"} />;
 
-  const actions: HighlightGridActions = {
-    basePath: `reels/${poolId}/feed`,
-    fetchMore: () => {
-      void fetchNextPage();
-    },
-    hasMore: () => hasNextPage ?? false,
-    bookmark: (highlight: HighlightThumbnail) => {
-      bookmark({ highlightId: highlight.id, add: !highlight.bookmarked });
-    },
-    like: (highlight: HighlightThumbnail) => {
-      upvote({ highlightId: highlight.id, like: !highlight.upvoted });
-    },
-    disabled: bookmarking || upvoting,
-  };
+  // const actions: HighlightGridActions = {
+  //   basePath: `reels/${poolId}/feed`,
+  //   fetchMore: () => {
+  //     void fetchNextPage();
+  //   },
+  //   hasMore: () => hasNextPage ?? false,
+  //   bookmark: (highlight: HighlightThumbnail) => {
+  //     bookmark({ highlightId: highlight.id, add: !highlight.bookmarked });
+  //   },
+  //   like: (highlight: HighlightThumbnail) => {
+  //     upvote({ highlightId: highlight.id, like: !highlight.upvoted });
+  //   },
+  //   disabled: bookmarking || upvoting,
+  // };
+
+  // return (
+  //   <HighlightGridContextProvider value={actions}>
+  //     <HighlightGridGroupsComponent
+  //       highlights={highlights}
+  //       grouping={hourGrouping}
+  //     />
+  //   </HighlightGridContextProvider>
+  // );
+
 
   return (
-    <HighlightGridContextProvider value={actions}>
-      <HighlightGridGroupsComponent
-        highlights={highlights}
-        grouping={hourGrouping}
-      />
-    </HighlightGridContextProvider>
+    <div className="border-2 border-black w-full max-w-lg flex h-32 m-auto rounded-md bg-sky-800 hover:bg-sky-900 hover:border-gray-300 hover:cursor-pointer">
+      <div className="flex-1 w-[144px] h-[81px] m-auto relative ml-2">
+        <ImageFallback src="/e3ec697b-9d84-416a-8ee6-134e2bb91081.jpg" fallbackSrc="/basketball-basket-png-39939.png"/>
+      </div>
+      <div className="flex-1 text-center m-auto">
+        <p>January 1st</p>
+        <p>2023</p>
+        <p>9:23 am</p>
+      </div>
+      <div className="flex-1 w-[144px] h-[81px] m-auto relative mr-2">
+        <ImageFallback src="/3f02bbfd-e07b-48f3-8a36-976ac967bd89.jpg" fallbackSrc="/basketball-basket-png-39939.png"/>
+      </div>
+    </div>
   );
 };
+
+function ImageFallback({ src, fallbackSrc, ...rest }: {src: any, fallbackSrc: any }) {
+  const [imgSrc, set_imgSrc] = useState(src);
+
+  useEffect(() => {
+    set_imgSrc(src);
+  }, [src]);
+
+  return (
+    <Image
+      {...rest}
+      src={imgSrc}
+      alt="thumbnail"
+      fill={true}
+      className="object-contain"
+      onLoadingComplete={(result) => {
+        if (result.naturalWidth === 0) {
+          // Broken image
+          set_imgSrc(fallbackSrc);
+        }
+      }}
+      onError={() => {
+        set_imgSrc(fallbackSrc);
+      }}
+    />
+  );
+}
 
 export const getServerSideProps: GetServerSideProps<{
   poolId: number;
