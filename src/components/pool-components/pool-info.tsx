@@ -8,7 +8,7 @@ import SignInComponent from "../misc/sign-in";
 import { PoolButtonProvider } from "../contexts/follow-pool-context";
 
 export const PoolInfo: React.FC<{ poolId: number }> = ({ poolId }) => {
-  const util = api.useContext();
+  const util = api.useUtils();
 
   const { data: poolInfo, isLoading } = api.pool.getPoolById.useQuery(poolId);
 

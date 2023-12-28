@@ -34,7 +34,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/shadcn/ui/sheet";
-import * as AspectRatio from "@radix-ui/react-aspect-ratio";
+import { AspectRatio } from "@/shadcn/ui/aspect-ratio";
 
 dayjs.extend(reltiveTime.default);
 dayjs.extend(utc.default);
@@ -543,27 +543,28 @@ const AnglesGrid: React.FC<{ vid: VideoAngles }> = ({ vid }) => {
       <div className="text-lg font-bold text-slate-900 dark:text-white">
         Angles
       </div>
-      <div className="flex w-1/2 flex-row gap-1">
+      <div className="flex w-full flex-row gap-1">
         {angles.map((angle) => {
           if (current && current === angle.cameraId)
             return (
-              <div className="flex flex-col">
-                <AngleThumb highlight={angle} />
-                <div className="text-xs font-bold text-slate-900 dark:text-white">
-                  Current
-                </div>
+              <div className="flex h-full w-full flex-col">
+                <AngleThumb highlight={angle} selected={true} />
+                <h2 className="text-center text-sm font-semibold text-slate-900 dark:text-white">
+                  Selected
+                </h2>
               </div>
             );
-          if (!angle.cameraId) return <AngleThumb highlight={angle} />;
+          if (!angle.cameraId)
+            return <AngleThumb highlight={angle} selected={false} />;
           return (
             <Link
-              className="grow"
+              className="h-full w-full"
               key={angle.id}
               href={{
                 query: { ...query, angle: encodeURIComponent(angle.cameraId) },
               }}
             >
-              <AngleThumb highlight={angle} />
+              <AngleThumb highlight={angle} selected={false} />
             </Link>
           );
         })}
@@ -572,7 +573,10 @@ const AnglesGrid: React.FC<{ vid: VideoAngles }> = ({ vid }) => {
   );
 };
 
-const AngleThumb: React.FC<{ highlight: HighlightVideo }> = ({ highlight }) => {
+const AngleThumb: React.FC<{
+  highlight: HighlightVideo;
+  selected: boolean;
+}> = ({ highlight, selected }) => {
   const [loading, setLoading] = useState(true);
 
   const aspect =
@@ -581,27 +585,33 @@ const AngleThumb: React.FC<{ highlight: HighlightVideo }> = ({ highlight }) => {
       : 9 / 16;
 
   return (
-    <AspectRatio.Root ratio={aspect} className="w-18 h-full">
-      <div
-        key={highlight.id}
-        className="group relative h-full w-full overflow-clip rounded-md border border-gray-300 hover:border-slate-900 hover:shadow-xl dark:border-gray-500 dark:hover:border-white"
-      >
-        {highlight.thumbnailUrl && (
-          <Image
-            className="z-10 group-hover:opacity-50"
-            src={highlight.thumbnailUrl}
-            unoptimized
-            alt={"Highlight"}
-            onLoad={() => setLoading(false)}
-            width={highlight.aspectRatioNumerator ?? 500}
-            height={highlight.aspectRatioDenominator ?? 500}
-          />
-        )}
-        {(highlight.thumbnailUrl === undefined || loading) && (
-          <div className="absolute inset-0 z-20 animate-pulse bg-gray-100 dark:bg-slate-900" />
-        )}
-      </div>
-    </AspectRatio.Root>
+    <div className="h-full w-full">
+      <AspectRatio ratio={aspect}>
+        <div
+          key={highlight.id}
+          className={`group relative h-full w-full overflow-clip rounded-md ${
+            selected
+              ? "border-2 border-slate-900 dark:border-white"
+              : "border border-gray-300 hover:border-slate-900 hover:shadow-xl dark:border-gray-500 dark:hover:border-white"
+          } `}
+        >
+          {highlight.thumbnailUrl && (
+            <Image
+              className={`z-10 ${!selected && "group-hover:opacity-50"}`}
+              src={highlight.thumbnailUrl}
+              unoptimized
+              alt={"Highlight"}
+              onLoad={() => setLoading(false)}
+              width={highlight.aspectRatioNumerator ?? 500}
+              height={highlight.aspectRatioDenominator ?? 500}
+            />
+          )}
+          {(highlight.thumbnailUrl === undefined || loading) && (
+            <div className="absolute inset-0 z-20 animate-pulse bg-gray-100 dark:bg-slate-900" />
+          )}
+        </div>
+      </AspectRatio>
+    </div>
   );
 };
 

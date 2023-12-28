@@ -1,5 +1,3 @@
-import * as AspectRatio from "@radix-ui/react-aspect-ratio";
-
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 
@@ -16,6 +14,14 @@ import type { UrlObject } from "url";
 import { useInView } from "react-intersection-observer";
 import { Spinner } from "../misc/loading";
 import { ImageComponent } from "./highlight-grid";
+import { AspectRatio } from "@/shadcn/ui/aspect-ratio";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/shadcn/ui/carousel";
 
 dayjs.extend(utc.default);
 
@@ -164,9 +170,9 @@ const HighlightGrid: React.FC<{ group: HighlightGroup }> = ({ group }) => {
         {group.header}
       </h3>
       {!isEmpty && (
-        <div className="grid w-full grid-cols-2 justify-start gap-2 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid w-full grid-cols-1 justify-start gap-4 md:grid-cols-2 ">
           {group.highlights.map((angles, index) => (
-            <AngleStack
+            <CarouselRow
               key={index}
               angles={angles}
               length={length}
@@ -182,6 +188,67 @@ const HighlightGrid: React.FC<{ group: HighlightGroup }> = ({ group }) => {
           No Highlights
         </h3>
       )}
+    </div>
+  );
+};
+
+const CarouselRow: React.FC<{
+  start: number;
+  length: number;
+  index: number;
+  continuous: boolean;
+  angles: ThumbnailAngles;
+}> = ({ start, length, index, continuous, angles }) => {
+  const highlights = angles.angles.length;
+
+  const first = angles.angles.at(0);
+
+  return (
+    <div className="relative flex max-w-md flex-row justify-between gap-4 rounded-lg border border-gray-300 bg-white p-2 shadow-sm dark:border-gray-500 dark:bg-slate-900">
+      {first && (
+        <div className="flex flex-col">
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
+            {dayjs.unix(Number(first.timestampUtc)).utc().local().format("LT")}
+          </h2>
+          {highlights > 1 && (
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
+              {highlights} angles
+            </h2>
+          )}
+        </div>
+      )}
+      <div className="w-full max-w-xs pr-9">
+        {highlights == 1 && first && (
+          <ImageComponent
+            start={start}
+            length={length}
+            index={index}
+            continuous={continuous}
+            highlight={first}
+          />
+        )}
+        {highlights > 1 && (
+          <Carousel orientation="horizontal" className="w-full" opts={{}}>
+            <CarouselContent>
+              {angles.angles.map((angle, index) => {
+                return (
+                  <CarouselItem key={index}>
+                    <ImageComponent
+                      start={start}
+                      length={length}
+                      index={index}
+                      continuous={continuous}
+                      highlight={angle}
+                    />
+                  </CarouselItem>
+                );
+              })}
+            </CarouselContent>
+            <CarouselPrevious />
+            <CarouselNext />
+          </Carousel>
+        )}
+      </div>
     </div>
   );
 };
@@ -212,7 +279,7 @@ const AngleStack: React.FC<{
   const first = angles.angles.at(0);
 
   return (
-    <div className="relative grid">
+    <div className="grid">
       {highlights > 1 && (
         <Link href={href}>
           {angles.angles.map((val, index) => {
@@ -258,7 +325,7 @@ const PlainImage: React.FC<{
       : 9 / 16;
 
   return (
-    <AspectRatio.Root ratio={aspect}>
+    <AspectRatio ratio={aspect}>
       <div
         key={highlight.id}
         className="group relative h-full w-full overflow-clip rounded-md border border-gray-300 hover:border-slate-900 hover:shadow-xl dark:border-gray-500 dark:hover:border-white"
@@ -278,6 +345,6 @@ const PlainImage: React.FC<{
           <div className="absolute inset-0 z-20 animate-pulse bg-gray-100 dark:bg-slate-900" />
         )}
       </div>
-    </AspectRatio.Root>
+    </AspectRatio>
   );
 };
