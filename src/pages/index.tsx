@@ -20,7 +20,7 @@ const PoolsFeed: React.FC<{ discover: boolean }> = ({ discover }) => {
 
   const amount = 5;
 
-  const util = api.useContext();
+  const util = api.useUtils();
 
   const queryKey = {
     amount,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useDeferredValue, useState } from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { ScrollArea } from "@/shadcn/ui/scroll-area";
 import { api } from "../../utils/trpc";
@@ -68,6 +68,8 @@ const PoolRow: React.FC<{
 const PoolSearchComponent: React.FC = () => {
   const [search, setSearch] = useState("");
 
+  const searchTerm = useDeferredValue(search);
+
   const [searching, setSearching] = useState(false);
 
   const setClosed = () => {
@@ -131,7 +133,7 @@ const PoolSearchComponent: React.FC = () => {
 
           {searching && (
             <FetchResults
-              searchTerm={search}
+              searchTerm={searchTerm}
               setClosed={setClosed}
               width={width ?? 0}
             />

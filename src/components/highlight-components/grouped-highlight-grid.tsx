@@ -208,7 +208,11 @@ const CarouselRow: React.FC<{
       {first && (
         <div className="flex flex-col">
           <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
-            {dayjs.unix(Number(first.timestampUtc)).utc().local().format("LT")}
+            {dayjs
+              .unix(Number(first.timestampUtc))
+              .utc()
+              .local()
+              .format("h:mm A")}
           </h2>
           {highlights > 1 && (
             <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
