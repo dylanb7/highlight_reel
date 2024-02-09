@@ -1,10 +1,10 @@
 import { router } from "../trpc";
 import { highlightRouter } from "./highlight";
-import { poolRouter } from "./pool";
+import { reelRouter } from "./reel";
 import { userRouter } from "./user";
 
 export const appRouter = router({
-  pool: poolRouter,
+  reel: reelRouter,
   user: userRouter,
   highlight: highlightRouter,
 });

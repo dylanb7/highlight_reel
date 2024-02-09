@@ -1,15 +1,15 @@
-import type { HighlightPool } from "../server/db/schema";
+import type { HighlightPool } from "../db/schema";
 
 export interface FollowInfo {
   follows: boolean;
   requested: boolean;
 }
 
-export type PoolFollowing = HighlightPool & {
+export type ReelFollowing = HighlightPool & {
   followInfo?: FollowInfo;
 };
 
-export type PoolInfo = Omit<HighlightPool, "public"> & {
+export type ReelInfo = Omit<HighlightPool, "public"> & {
   followInfo?: FollowInfo;
   highlightCount: number;
   followerCount: number;

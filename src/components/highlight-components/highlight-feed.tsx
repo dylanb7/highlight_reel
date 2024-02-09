@@ -15,7 +15,10 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import type { HighlightVideo, VideoAngles } from "../../types/highlight-out";
+import type {
+  HighlightVideo,
+  VideoAngles,
+} from "../../server/types/highlight-out";
 
 import { IconButton } from "../misc/icon-button";
 
@@ -35,6 +38,7 @@ import {
   SheetTrigger,
 } from "@/shadcn/ui/sheet";
 import { AspectRatio } from "@/shadcn/ui/aspect-ratio";
+import { type UrlObject } from "url";
 
 dayjs.extend(reltiveTime.default);
 dayjs.extend(utc.default);
@@ -51,7 +55,7 @@ interface NavProps {
 
 export const ContinuousFeed: React.FC<{
   highlights: HighlightVideo[] | VideoAngles[];
-  backPath: string;
+  backPath: UrlObject;
   fetching?: boolean;
   from: string;
   hasNext: boolean;
@@ -72,11 +76,20 @@ export const ContinuousFeed: React.FC<{
 
   const { slug, angle } = query;
 
+  console.log(slug);
+
   const timestampSlug = !slug || typeof slug === "string" ? undefined : slug[0];
 
-  const currentTimestamp = Number.isSafeInteger(timestampSlug)
-    ? Number(timestampSlug)
-    : undefined;
+  console.log(timestampSlug);
+
+  const currentTimestamp =
+    timestampSlug === undefined
+      ? undefined
+      : Number.isSafeInteger(parseInt(timestampSlug))
+      ? Number(timestampSlug)
+      : undefined;
+
+  console.log(`parsed time ${currentTimestamp}`);
 
   const length = highlights.length;
 
@@ -99,12 +112,14 @@ export const ContinuousFeed: React.FC<{
   }, [highlights, query, timestampSlug, replace]);
 
   const current = useMemo(() => {
-    if (typeof timestampSlug !== "string") return undefined;
+    if (currentTimestamp === undefined) return undefined;
+    console.log(currentTimestamp);
     const index = highlights.findIndex((highlight) => {
+      console.log(getTimestamp(highlight));
       return getTimestamp(highlight) === currentTimestamp;
     });
     return index == -1 ? 0 : index;
-  }, [currentTimestamp, highlights, timestampSlug]);
+  }, [currentTimestamp, highlights]);
   console.log(`curr ${current}`);
 
   const value = current !== undefined ? highlights.at(current) : undefined;
@@ -152,6 +167,7 @@ export const ContinuousFeed: React.FC<{
       return push(
         {
           query: {
+            ...query,
             slug: [encodeURIComponent(getTimestamp(prevHighlight))],
           },
         },
@@ -166,6 +182,7 @@ export const ContinuousFeed: React.FC<{
     void push(
       {
         query: {
+          ...query,
           slug: encodeURIComponent(stamp),
         },
       },
@@ -185,7 +202,7 @@ export const ContinuousFeed: React.FC<{
       </div>
     );
 
-  console.log(value);
+  console.log(highlights);
 
   return (
     <BaseCompontent
@@ -212,7 +229,7 @@ export const ContinuousFeed: React.FC<{
 
 export const IndexedFeed: React.FC<{
   highlights: HighlightVideo[] | VideoAngles[];
-  backPath: string;
+  backPath: UrlObject;
   fetching?: boolean;
   from?: string;
   initial?: number;
@@ -339,7 +356,7 @@ const BaseCompontent: React.FC<
     angles?: VideoAngles;
     nextHighlight?: string;
     previousHighlight?: string;
-    backPath: string;
+    backPath: UrlObject;
     from?: string;
     progress?: string;
   } & NavProps
@@ -547,7 +564,7 @@ const AnglesGrid: React.FC<{ vid: VideoAngles }> = ({ vid }) => {
         {angles.map((angle) => {
           if (current && current === angle.cameraId)
             return (
-              <div className="flex h-full w-full flex-col">
+              <div className="flex h-full w-full flex-col" key={angle.id}>
                 <AngleThumb highlight={angle} selected={true} />
                 <h2 className="text-center text-sm font-semibold text-slate-900 dark:text-white">
                   Selected
@@ -555,7 +572,9 @@ const AnglesGrid: React.FC<{ vid: VideoAngles }> = ({ vid }) => {
               </div>
             );
           if (!angle.cameraId)
-            return <AngleThumb highlight={angle} selected={false} />;
+            return (
+              <AngleThumb highlight={angle} selected={false} key={angle.id} />
+            );
           return (
             <Link
               className="h-full w-full"
@@ -616,7 +635,7 @@ const AngleThumb: React.FC<{
 };
 
 const BackNav: React.FC<{
-  backPath: string;
+  backPath: UrlObject;
   from?: string;
   relativeTime?: string;
 }> = ({ backPath, from, relativeTime }) => {
@@ -735,10 +754,9 @@ const Source: React.FC<{ poolId: number; wristbandId?: string | null }> = ({
   );
 };
 
-const IconStyleLink: React.FC<React.PropsWithChildren<{ url: string }>> = ({
-  url,
-  children,
-}) => {
+const IconStyleLink: React.FC<
+  React.PropsWithChildren<{ url: string | UrlObject }>
+> = ({ url, children }) => {
   return (
     <Link
       href={url}
@@ -793,7 +811,7 @@ const MobilePlayer: React.FC<
     relativeTime: string | undefined;
     highlight: HighlightVideo;
     angles?: VideoAngles;
-    backPath: string;
+    backPath: UrlObject;
     from?: string;
     progress?: string;
   } & NavProps

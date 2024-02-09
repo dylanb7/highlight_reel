@@ -1,15 +1,16 @@
 import { createContext, useContext } from "react";
 import type { VideoActions } from "./action-types";
-import { type HighlightThumbnail } from "~/types/highlight-out";
+import { type HighlightThumbnail } from "~/server/types/highlight-out";
+import { type UrlObject } from "url";
 
 export type HighlightGridActions = {
-  basePath: string;
+  basePath: UrlObject;
   fetchMore: () => void;
   hasMore: () => boolean;
 } & VideoActions<HighlightThumbnail>;
 
 const noPlay: HighlightGridActions = {
-  basePath: "",
+  basePath: {},
   fetchMore() {
     return;
   },

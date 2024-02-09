@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
 import type { VideoActions } from "./action-types";
-import { type HighlightVideo } from "~/types/highlight-out";
+import { type HighlightVideo } from "~/server/types/highlight-out";
 
 const FeedContext = createContext<VideoActions<HighlightVideo>>({
   bookmark: function (): void {

@@ -1,14 +1,15 @@
-import { type GetServerSideProps, type NextPage } from "next";
-import { buildClerkProps, getAuth } from "@clerk/nextjs/server";
-import { getServerHelpers } from "~/utils/ssg-helper";
 import { api } from "~/utils/trpc";
 import { LoadingSpinner } from "~/components/misc/loading";
-import { UserFinish } from "~/components/user-finish";
-import { ProfileComponent } from "~/components/profile-components";
+import { UserFinish } from "~/components/profileComponents/user-finish";
+
 import PageWrap from "~/components/layout/page-wrap";
 import { HomeTabs } from "~/components/layout/home-nav";
+import { type NextPage } from "next";
+import { useAuth } from "@clerk/nextjs";
+import { Label } from "@/shadcn/ui/label";
+import { ProfilePage } from "~/components/profileComponents/profile-page";
 
-const ProfilePage: NextPage<{ userId: string }> = ({ userId }) => {
+const LoadedAuth: React.FC<{ userId: string }> = ({ userId }) => {
   const { data: profile, isLoading } = api.user.profileQuery.useQuery(userId);
 
   return (
@@ -20,53 +21,26 @@ const ProfilePage: NextPage<{ userId: string }> = ({ userId }) => {
       ) : !profile ? (
         <UserFinish />
       ) : (
-        <ProfileComponent userId={userId} />
+        <ProfilePage />
       )}
       <HomeTabs selected={"profile"} />
     </PageWrap>
   );
 };
 
-export default ProfilePage;
+const UserProfilePage: NextPage<{ userId: string }> = () => {
+  const { userId, isLoaded } = useAuth();
 
-export const getServerSideProps: GetServerSideProps = async (props) => {
-  const auth = getAuth(props.req);
+  if (!isLoaded) return <LoadingSpinner loadingType={"Loading Session"} />;
 
-  const id = auth.userId;
+  if (!userId)
+    return (
+      <div className="container mx-auto">
+        <Label>You are signed out</Label>
+      </div>
+    );
 
-  if (!id)
-    return {
-      notFound: true,
-    };
-
-  const ssg = getServerHelpers(props.req);
-
-  await ssg.user.profileQuery.prefetch(id);
-
-  await ssg.user.profilePoolsQuery.prefetchInfinite({
-    userId: id,
-    type: "followed",
-  });
-
-  await ssg.user.profilePoolsQuery.prefetchInfinite({
-    userId: id,
-    type: "modded",
-  });
-  await ssg.user.profilePoolsQuery.prefetchInfinite({
-    userId: id,
-    type: "owned",
-  });
-
-  await ssg.user.getUserBookmarksPaginated.prefetchInfinite({
-    userId: id,
-    amount: 6,
-  });
-
-  return {
-    props: {
-      trpcState: ssg.dehydrate(),
-      userId: id,
-      ...buildClerkProps(props.req),
-    },
-  };
+  return <LoadedAuth userId={userId} />;
 };
+
+export default UserProfilePage;

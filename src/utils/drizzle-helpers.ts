@@ -8,6 +8,12 @@ import {
 } from "../server/db/schema";
 import type { dbType } from "../server/db";
 import { type highlightCursor } from "./highlight-utils";
+import type {
+  BuildQueryResult,
+  DBQueryConfig,
+  ExtractTablesWithRelations,
+} from "drizzle-orm";
+import type * as schema from "../server/db/schema";
 
 export const userWhereArgs = (
   currentId: string | null | undefined,
@@ -81,3 +87,24 @@ export const publicToBool = (value: number | null) => {
   if (value === null) return false;
   return value === 1;
 };
+
+type Schema = typeof schema;
+type TSchema = ExtractTablesWithRelations<Schema>;
+
+export type IncludeRelation<TableName extends keyof TSchema> = DBQueryConfig<
+  "one" | "many",
+  boolean,
+  TSchema,
+  TSchema[TableName]
+>["with"];
+
+export type InferResultType<
+  TableName extends keyof TSchema,
+  With extends IncludeRelation<TableName> | undefined = undefined
+> = BuildQueryResult<
+  TSchema,
+  TSchema[TableName],
+  {
+    with: With;
+  }
+>;

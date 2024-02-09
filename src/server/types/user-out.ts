@@ -1,5 +1,5 @@
-import type { User } from "../server/db/schema";
-import type { FollowInfo, PoolInfo } from "./pool-out";
+import type { User } from "../db/schema";
+import type { FollowInfo, ReelInfo } from "./pool-out";
 
 export type UserInfo = User & {
   followInfo?: FollowInfo;
@@ -14,9 +14,9 @@ export type ProfileInfo = UserInfo & {
 export type ProfilePoolsInfo = UserInfo & {
   following: number;
   followedBy: number;
-  followed: PoolInfo[];
-  modded?: PoolInfo[];
-  owned?: PoolInfo[];
+  followed: ReelInfo[];
+  modded?: ReelInfo[];
+  owned?: ReelInfo[];
 };
 
 export interface FetchInfo {

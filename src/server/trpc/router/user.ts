@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import type { ProfileInfo, UserInfo } from "../../../types/user-out";
+import type { ProfileInfo, UserInfo } from "../../types/user-out";
 import { z } from "zod";
 import { router, protectedProcedure, publicProcedure } from "../trpc";
-import type { PoolInfo } from "../../../types/pool-out";
+import type { FollowInfo, ReelInfo } from "../../types/pool-out";
 import type { highlightCursor } from "../../../utils/highlight-utils";
 import {
   addExt,
@@ -10,11 +10,28 @@ import {
   packageHighlightsPaginated,
   packageThumbnailsPaginated,
 } from "../../../utils/highlight-utils";
-import type { HighlightReturn } from "../../../types/highlight-out";
+import type { HighlightReturn } from "../../types/highlight-out";
 
-import { and, asc, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  countDistinct,
+  desc,
+  eq,
+  exists,
+  gte,
+  inArray,
+  lt,
+  sql,
+} from "drizzle-orm";
 import type { HighlightPool, User } from "../../db/schema";
-import { bookmarkedHighlightToUser, highlight } from "../../db/schema";
+import {
+  bookmarkedHighlightToUser,
+  cameraAngle,
+  highlight,
+  userRelations,
+} from "../../db/schema";
 import {
   follows,
   highlightPool,
@@ -25,11 +42,13 @@ import {
   users,
 } from "../../db/schema";
 import {
+  type InferResultType,
   cursorWhereArgs,
   orderByArgs,
   publicToBool,
   userWhereArgs,
 } from "../../../utils/drizzle-helpers";
+import { MySqlSelect } from "drizzle-orm/mysql-core";
 
 export const userRouter = router({
   fromId: protectedProcedure.input(z.string()).query(async ({ ctx, input }) => {
@@ -102,7 +121,7 @@ export const userRouter = router({
         : undefined;
     }),
 
-  profilePoolsQuery: publicProcedure
+  profileReelsQuery: publicProcedure
     .input(
       z.object({
         userId: z.string(),
@@ -117,6 +136,129 @@ export const userRouter = router({
       const amount = input.amount ?? 6;
       const owns = userId === ref;
       if (type !== "followed" && !owns) return undefined;
+      const tableName: "followedPools" | "moddedPools" | "ownedPools" =
+        type === "followed"
+          ? "followedPools"
+          : type === "modded"
+          ? "moddedPools"
+          : "ownedPools";
+
+      const pools = await ctx.db.query.users.findFirst({
+        where: eq(users.id, userId),
+        columns: {},
+        with: {
+          [tableName]: {
+            columns: {},
+            where: () => {
+              if (!cursor) return gte(poolsToFollowers.poolId, 0);
+              return lt(poolsToFollowers.updatedAt, cursor);
+            },
+            limit: amount + 1,
+            with: {
+              pool: {
+                with: {
+                  poolFollowers: {},
+                  cameras: {
+                    columns: {},
+                    with: {
+                      highlights: {
+                        columns: { id: true },
+                      },
+                    },
+                  },
+
+                  ...(!owns &&
+                    ref && {
+                      poolRequests: {
+                        limit: 1,
+                        where: eq(poolsToRequested.userId, ref),
+                        columns: {
+                          userId: true,
+                        },
+                      },
+                    }),
+                },
+              },
+            },
+            orderBy: desc(poolsToFollowers.updatedAt),
+          },
+        },
+      });
+
+      if (!pools || pools[tableName]) return [];
+
+      type ReturnType = (
+        | {
+            pool: {
+              id: number;
+              name: string | null;
+              ownerId: string;
+              public: number;
+              createdAt: Date;
+              bio: string | null;
+              icon: string | null;
+              cameras: {
+                highlights: { id: string }[];
+              }[];
+              poolFollowers: Record<string, never>[];
+              poolRequests: { userId: number }[] | undefined;
+            };
+          }
+        | Record<string, never>
+      )[];
+
+      const reels = pools[tableName] as ReturnType;
+      const nonEmpty: ReelInfo[] = [];
+      for (const reel of reels) {
+        if (Object.keys(reel).length) return;
+        const pool = reel.pool;
+        nonEmpty.push({
+          ...pool,
+          highlightCount: 0,
+          followerCount: pool.poolFollowers.length,
+          followInfo: {
+            follows: pool.poolFollowers.find((user) => user.userId === ref)
+              ? true
+              : false,
+            requested: pool.poolRequests?.length ?? 0 > 0 ?? false,
+          },
+          isPublic: publicToBool(pool.public),
+        } as ReelInfo);
+      }
+
+      const hasNext = nonEmpty.length === amount + 1;
+      if (hasNext) nonEmpty.pop();
+
+      return {
+        poolsInfo: nonEmpty,
+        nextCursor: hasNext ? nonEmpty[-1]?.createdAt : undefined,
+      };
+      /*
+      const poolsInfo = reels.map<ReelInfo>((holder) => {
+        return {
+          ...pool,
+
+          highlightCount:
+            pool.cameras
+              ?.map((cam) => cam.highlights.length)
+              .reduce((a, b) => a + b, 0) ?? 0,
+          followerCount: pool.poolFollowers.length,
+          followInfo: {
+            follows: pool.poolFollowers.find((user) => user.userId === ref)
+              ? true
+              : false,
+            requested: pool.poolRequests?.length > 0 ?? false,
+          },
+          isPublic: publicToBool(pool.public),
+        } as ReelInfo;
+      });
+      return {
+        poolsInfo,
+        nextCursor: hasNext
+          ? pools?.moddedPools[amount - 1]?.updatedAt
+          : undefined,
+      };
+      
       const innerPoolSelect = {
         where: () => {
           if (!cursor) return gte(poolsToFollowers.poolId, 0);
@@ -167,7 +309,7 @@ export const userRouter = router({
             | Record<string, never>
           )[];
         }
-      ): PoolInfo => {
+      ): ReelInfo => {
         return {
           ...pool,
           highlightCount:
@@ -199,7 +341,7 @@ export const userRouter = router({
         if (hasNext) pools?.followedPools.pop();
 
         const poolsInfo =
-          pools?.followedPools.map<PoolInfo>((followed) =>
+          pools?.followedPools.map<ReelInfo>((followed) =>
             poolDataToInfo(followed.pool)
           ) ?? [];
 
@@ -224,7 +366,7 @@ export const userRouter = router({
         if (hasNext) pools?.moddedPools.pop();
 
         const poolsInfo =
-          pools?.moddedPools.map<PoolInfo>((modded) =>
+          pools?.moddedPools.map<ReelInfo>((modded) =>
             poolDataToInfo(modded.pool)
           ) ?? [];
         return {
@@ -273,7 +415,7 @@ export const userRouter = router({
       if (hasNext) pools?.ownedPools.pop();
 
       const poolsInfo =
-        pools?.ownedPools.map<PoolInfo>((owned) => ({
+        pools?.ownedPools.map<ReelInfo>((owned) => ({
           ...owned,
           highlightCount:
             owned.cameras
@@ -294,6 +436,7 @@ export const userRouter = router({
           ? pools?.ownedPools[amount - 1]?.createdAt
           : undefined,
       };
+      */
     }),
 
   toggleHighlight: protectedProcedure
@@ -347,16 +490,16 @@ export const userRouter = router({
         );
     }),
 
-  addPool: protectedProcedure
+  addReel: protectedProcedure
     .input(
       z.object({
-        poolId: z.number(),
+        reelId: z.number(),
         isPublic: z.boolean(),
       })
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.auth.userId;
-      const { poolId, isPublic } = input;
+      const { reelId: poolId, isPublic } = input;
       if (isPublic) {
         return await ctx.db
           .insert(poolsToFollowers)
@@ -367,10 +510,10 @@ export const userRouter = router({
         .values({ poolId: poolId, userId });
     }),
 
-  removePool: protectedProcedure
+  removeReel: protectedProcedure
     .input(
       z.object({
-        poolId: z.number(),
+        reelId: z.number(),
         requested: z.boolean(),
       })
     )
@@ -382,7 +525,7 @@ export const userRouter = router({
           .where(
             and(
               eq(poolsToRequested.userId, userId),
-              eq(poolsToRequested.poolId, input.poolId)
+              eq(poolsToRequested.poolId, input.reelId)
             )
           );
       }
@@ -391,7 +534,7 @@ export const userRouter = router({
         .where(
           and(
             eq(poolsToFollowers.userId, userId),
-            eq(poolsToFollowers.poolId, input.poolId)
+            eq(poolsToFollowers.poolId, input.reelId)
           )
         );
     }),

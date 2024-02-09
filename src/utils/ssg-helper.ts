@@ -1,10 +1,10 @@
 import { appRouter } from "../server/trpc/router/_app";
 import { createServerSideHelpers } from "@trpc/react-query/server";
-import superjson from "superjson";
 import { createContextInner } from "../server/trpc/context";
-import { getAuth } from '@clerk/nextjs/server';
+import { getAuth } from "@clerk/nextjs/server";
 import { type NextRequest } from "next/server";
 import { type GetServerSidePropsContext } from "next";
+import { transformer } from "./transformer";
 
 export const getServerHelpers = (
   req: NextRequest | GetServerSidePropsContext["req"] | null
@@ -13,7 +13,7 @@ export const getServerHelpers = (
     return createServerSideHelpers({
       router: appRouter,
       ctx: createContextInner({ req, auth: null }),
-      transformer: superjson,
+      transformer,
     });
   }
   const auth = getAuth(req);
@@ -21,6 +21,6 @@ export const getServerHelpers = (
   return createServerSideHelpers({
     router: appRouter,
     ctx: createContextInner({ req, auth }),
-    transformer: superjson,
+    transformer,
   });
 };

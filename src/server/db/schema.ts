@@ -11,18 +11,18 @@ import {
   timestamp,
   text,
 } from "drizzle-orm/mysql-core";
-import type { InferModel } from "drizzle-orm";
+import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import { relations } from "drizzle-orm";
 
-export type User = InferModel<typeof users>;
+export type User = InferSelectModel<typeof users>;
 
-export type Highlight = InferModel<typeof highlight>;
+export type Highlight = InferSelectModel<typeof highlight>;
 
-export type HighlightPool = InferModel<typeof highlightPool>;
+export type HighlightPool = InferSelectModel<typeof highlightPool>;
 
-export type NewHighlightPool = InferModel<typeof highlightPool, "insert">;
+export type NewHighlightPool = InferInsertModel<typeof highlightPool>;
 
-export type SelectHighlightPool = InferModel<typeof highlightPool, "select">;
+export type SelectHighlightPool = InferSelectModel<typeof highlightPool>;
 
 export const highlight = mysqlTable(
   "Highlight",
@@ -87,7 +87,7 @@ export const poolsToMods = mysqlTable(
     updatedAt: timestamp("updatedAt").default(new Date()).notNull(),
   },
   (table) => ({
-    pk: primaryKey(table.userId, table.poolId),
+    pk: primaryKey({ columns: [table.userId, table.poolId] }),
     updatedAtIndex: index("updated_at_idx").on(table.updatedAt),
   })
 );
@@ -100,7 +100,7 @@ export const poolsToFollowers = mysqlTable(
     updatedAt: timestamp("updatedAt").default(new Date()).notNull(),
   },
   (table) => ({
-    pk: primaryKey(table.userId, table.poolId),
+    pk: primaryKey({ columns: [table.userId, table.poolId] }),
     updatedAtIndex: index("updated_at_idx").on(table.updatedAt),
   })
 );
@@ -113,7 +113,7 @@ export const poolsToRequested = mysqlTable(
     updatedAt: timestamp("updatedAt").default(new Date()).notNull(),
   },
   (table) => ({
-    pk: primaryKey(table.userId, table.poolId),
+    pk: primaryKey({ columns: [table.userId, table.poolId] }),
     updatedAtIndex: index("updated_at_idx").on(table.updatedAt),
   })
 );
@@ -125,7 +125,7 @@ export const viewedHighlightToUser = mysqlTable(
     highlightId: varchar("highlight_id", { length: 191 }).notNull(),
   },
   (table) => ({
-    pk: primaryKey(table.userId, table.highlightId),
+    pk: primaryKey({ columns: [table.userId, table.highlightId] }),
   })
 );
 
@@ -136,7 +136,7 @@ export const bookmarkedHighlightToUser = mysqlTable(
     highlightId: varchar("highlight_id", { length: 191 }).notNull(),
   },
   (table) => ({
-    pk: primaryKey(table.userId, table.highlightId),
+    pk: primaryKey({ columns: [table.userId, table.highlightId] }),
   })
 );
 
@@ -147,7 +147,7 @@ export const upvotedHighlightToUser = mysqlTable(
     highlightId: varchar("highlight_id", { length: 191 }).notNull(),
   },
   (table) => ({
-    pk: primaryKey(table.userId, table.highlightId),
+    pk: primaryKey({ columns: [table.userId, table.highlightId] }),
   })
 );
 
@@ -158,7 +158,7 @@ export const follows = mysqlTable(
     followedId: varchar("followed_id", { length: 191 }).notNull(),
   },
   (table) => ({
-    pk: primaryKey(table.followerId, table.followedId),
+    pk: primaryKey({ columns: [table.followerId, table.followedId] }),
   })
 );
 
@@ -169,7 +169,7 @@ export const requests = mysqlTable(
     requestedId: varchar("requested_id", { length: 191 }).notNull(),
   },
   (table) => ({
-    pk: primaryKey(table.requesterId, table.requestedId),
+    pk: primaryKey({ columns: [table.requesterId, table.requestedId] }),
   })
 );
 

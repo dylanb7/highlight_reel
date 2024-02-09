@@ -1,5 +1,5 @@
 import type { InfiniteData } from "@tanstack/react-query";
-import type { BaseHighlight } from "../../types/highlight-out";
+import type { BaseHighlight } from "../../server/types/highlight-out";
 
 export interface VideoActions<T extends BaseHighlight> {
   bookmark: (arg0: T) => void;

@@ -1,8 +1,8 @@
 import { z } from "zod";
-import type { HighlightReturn } from "../../../types/highlight-out";
+import type { HighlightReturn } from "../../types/highlight-out";
 
-import type { PoolFollowing, PoolInfo } from "../../../types/pool-out";
-import type { UserInfo } from "../../../types/user-out";
+import type { ReelFollowing, ReelInfo } from "../../types/pool-out";
+import type { UserInfo } from "../../types/user-out";
 import {
   decodeCursor,
   groupHighlights,
@@ -29,8 +29,8 @@ import {
   publicToBool,
 } from "../../../utils/drizzle-helpers";
 
-export const poolRouter = router({
-  getPoolById: publicProcedure
+export const reelRouter = router({
+  getReelById: publicProcedure
     .input(z.number())
     .query(async ({ ctx, input }) => {
       const userId = ctx.auth?.userId;
@@ -76,7 +76,7 @@ export const poolRouter = router({
                 .reduce((a, b) => a + b, 0),
               followerCount: poolInfo.poolFollowers.length,
               isPublic: publicToBool(poolInfo.public),
-            } as PoolInfo)
+            } as ReelInfo)
           : undefined;
       }
       const poolInfo = await ctx.db.query.highlightPool.findFirst({
@@ -111,21 +111,21 @@ export const poolRouter = router({
               .map((cam) => cam.highlights.length)
               .reduce((a, b) => a + b, 0),
             followerCount: poolInfo.poolFollowers.length,
-          } as PoolInfo)
+          } as ReelInfo)
         : undefined;
     }),
 
-  createPool: protectedProcedure
+  createReel: protectedProcedure
     .input(
       z.object({
-        poolName: z.string().min(2).max(25),
+        reelName: z.string().min(2).max(25),
         public: z.boolean(),
         ownerId: z.string().cuid(),
       })
     )
     .mutation(({ ctx, input }) => {
       const newPool: NewHighlightPool = {
-        name: input.poolName,
+        name: input.reelName,
         public: input.public ? 1 : 0,
         ownerId: input.ownerId,
       };
@@ -133,7 +133,7 @@ export const poolRouter = router({
       return ctx.db.insert(highlightPool).values(newPool);
     }),
 
-  poolSearch: publicProcedure
+  reelSearch: publicProcedure
     .input(z.string())
     .query(async ({ ctx, input }) => {
       const userId = ctx.auth?.userId;
@@ -153,7 +153,7 @@ export const poolRouter = router({
           },
           limit: searchLimit,
         });
-        return res.map<PoolFollowing>((poolData) => ({
+        return res.map<ReelFollowing>((poolData) => ({
           ...poolData,
           followInfo: {
             follows: poolData.poolFollowers.length > 0,
@@ -166,7 +166,7 @@ export const poolRouter = router({
           where: like(highlightPool.name, input),
           limit: searchLimit,
         })
-      ).map<PoolFollowing>((poolData) => ({
+      ).map<ReelFollowing>((poolData) => ({
         ...poolData,
         followInfo: {
           follows: false,
@@ -175,7 +175,7 @@ export const poolRouter = router({
       }));
     }),
 
-  getPublicPoolsPaginated: publicProcedure
+  getPublicReelsPaginated: publicProcedure
     .input(
       z.object({
         cursor: z.date().nullish(),
@@ -243,7 +243,7 @@ export const poolRouter = router({
 
       const hasNext = res.length > amount;
       if (hasNext) res.pop();
-      const poolsInfo: PoolInfo[] = res.map<PoolInfo>((pool) => {
+      const poolsInfo: ReelInfo[] = res.map<ReelInfo>((pool) => {
         return {
           ...pool,
           followInfo: {
@@ -268,19 +268,27 @@ export const poolRouter = router({
       };
     }),
 
-  getPoolHighlightsPaginated: publicProcedure
+  getReelHighlightsPaginated: publicProcedure
     .input(
       z.object({
-        poolId: z.number(),
+        reelId: z.number(),
         cursor: z.string().nullish(),
         initialCursor: z.number().nullish(),
         angles: z.array(z.number()).nullish(),
+        wristbands: z.array(z.string()).nullish(),
         amount: z.number(),
       })
     )
     .query(async ({ ctx, input }) => {
       const userId = ctx.auth?.userId;
-      const { poolId, cursor, amount, initialCursor, angles } = input;
+      const {
+        reelId: poolId,
+        cursor,
+        amount,
+        initialCursor,
+        angles,
+        wristbands,
+      } = input;
 
       const parsedCursor = cursor ? decodeCursor(cursor) : undefined;
 
@@ -289,15 +297,23 @@ export const poolRouter = router({
         columns: { name: true },
         with: {
           cameras: {
-            where: (fields) => {
-              if (!angles) return undefined;
-              return inArray(fields.id, angles);
-            },
+            where: angles
+              ? () => {
+                  return inArray(cameraAngle.id, angles);
+                }
+              : undefined,
             columns: {},
             with: {
               highlights: {
                 limit: amount + 1,
-                where: cursorWhereArgs(parsedCursor, initialCursor),
+                where: () => {
+                  if (wristbands)
+                    return and(
+                      cursorWhereArgs(parsedCursor, initialCursor),
+                      inArray(highlight.wristbandId, wristbands)
+                    );
+                  return cursorWhereArgs(parsedCursor, initialCursor);
+                },
                 orderBy: orderByArgs(parsedCursor),
                 with: {
                   userUpvotes: {
@@ -356,82 +372,19 @@ export const poolRouter = router({
       );
     }),
 
-  getHighlightBundle: publicProcedure
-    .input(
-      z.object({
-        poolId: z.number(),
-        cursor: z.number(),
-        amount: z.number(),
-      })
-    )
-    .query(async ({ ctx, input }) => {
-      const userId = ctx.auth?.userId;
-      const { poolId, cursor, amount } = input;
-      const bundle = await ctx.db.query.highlightPool.findFirst({
-        where: canViewPool(userId, poolId, ctx.db),
-        columns: { name: true },
-        with: {
-          cameras: {
-            columns: {},
-            with: {
-              highlights: {
-                where: and(lte(highlight.timestampUtc, cursor)),
-                orderBy: [desc(highlight.timestampUtc)],
-                limit: amount,
-                with: {
-                  userUpvotes: {
-                    columns: {
-                      userId: true,
-                    },
-                  },
-                  ...(userId
-                    ? {
-                        userBookmarks: {
-                          where: eq(bookmarkedHighlightToUser.userId, userId),
-                        },
-                      }
-                    : {}),
-                },
-              },
-            },
-          },
-        },
-      });
-
-      const completeHighlights =
-        bundle?.cameras.map((cam) =>
-          cam.highlights.map<HighlightReturn>((highlight) => ({
-            ...highlight,
-            upvotes: highlight.userUpvotes.length,
-            upvoted: highlight.userUpvotes.find(
-              (upvote) => upvote.userId === userId
-            )
-              ? true
-              : false,
-            bookmarked: highlight.userBookmarks
-              ? highlight.userBookmarks.length > 0
-              : false,
-          }))
-        ) ?? [];
-
-      const grouped = groupHighlights(completeHighlights, amount);
-      return {
-        name: bundle?.name,
-        highlights: await packageHighlightGroups(grouped, poolId),
-      };
-    }),
-
   getHighlightVideosPaginated: publicProcedure
     .input(
       z.object({
-        poolId: z.number(),
+        reelId: z.number(),
         initialCursor: z.number().nullish(),
         cursor: z.string().nullish(),
+        bands: z.array(z.string()).nullish(),
+        angles: z.array(z.number()).nullish(),
       })
     )
     .query(async ({ ctx, input }) => {
       const userId = ctx.auth?.userId;
-      const { poolId, cursor, initialCursor } = input;
+      const { reelId: poolId, cursor, initialCursor, bands, angles } = input;
 
       const amount = 1;
 
@@ -442,10 +395,18 @@ export const poolRouter = router({
         columns: { name: true },
         with: {
           cameras: {
+            where: angles ? inArray(cameraAngle.id, angles) : undefined,
             columns: {},
             with: {
               highlights: {
-                where: cursorWhereArgs(parsedCursor, initialCursor),
+                where: () => {
+                  if (bands)
+                    return and(
+                      cursorWhereArgs(parsedCursor, initialCursor),
+                      inArray(highlight.wristbandId, bands)
+                    );
+                  return cursorWhereArgs(parsedCursor, initialCursor);
+                },
                 orderBy: orderByArgs(parsedCursor),
                 limit: amount + 1,
                 with: {
@@ -504,6 +465,85 @@ export const poolRouter = router({
           hasNext,
           parsedCursor?.dir
         )),
+      };
+    }),
+
+  getHighlightBundle: publicProcedure
+    .input(
+      z.object({
+        reelId: z.number(),
+        cursor: z.number(),
+        amount: z.number(),
+        bands: z.array(z.string()).nullish(),
+        angles: z.array(z.number()).nullish(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.auth?.userId;
+      const { reelId: poolId, cursor, amount, angles, bands } = input;
+      const bundle = await ctx.db.query.highlightPool.findFirst({
+        where: canViewPool(userId, poolId, ctx.db),
+        columns: { name: true },
+        with: {
+          cameras: {
+            columns: {},
+            where: angles
+              ? () => {
+                  return inArray(cameraAngle.id, angles);
+                }
+              : undefined,
+            with: {
+              highlights: {
+                where: () => {
+                  if (bands)
+                    return and(
+                      lte(highlight.timestampUtc, cursor),
+                      inArray(highlight.wristbandId, bands)
+                    );
+                  return lte(highlight.timestampUtc, cursor);
+                },
+                orderBy: [desc(highlight.timestampUtc)],
+                limit: amount,
+                with: {
+                  userUpvotes: {
+                    columns: {
+                      userId: true,
+                    },
+                  },
+                  ...(userId
+                    ? {
+                        userBookmarks: {
+                          where: eq(bookmarkedHighlightToUser.userId, userId),
+                        },
+                      }
+                    : {}),
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const completeHighlights =
+        bundle?.cameras.map((cam) =>
+          cam.highlights.map<HighlightReturn>((highlight) => ({
+            ...highlight,
+            upvotes: highlight.userUpvotes.length,
+            upvoted: highlight.userUpvotes.find(
+              (upvote) => upvote.userId === userId
+            )
+              ? true
+              : false,
+            bookmarked: highlight.userBookmarks
+              ? highlight.userBookmarks.length > 0
+              : false,
+          }))
+        ) ?? [];
+
+      const grouped = groupHighlights(completeHighlights, amount);
+      return {
+        name: bundle?.name,
+        highlights: await packageHighlightGroups(grouped, poolId),
       };
     }),
 
@@ -528,252 +568,7 @@ export const poolRouter = router({
       return bandValues;
     }),
 
-  getWristbandHighlightsPaginated: publicProcedure
-    .input(
-      z.object({
-        poolId: z.number(),
-        wristbandId: z.string(),
-        initialCursor: z.number().nullish(),
-        cursor: z.string().nullish(),
-        amount: z.number(),
-      })
-    )
-    .query(async ({ ctx, input }) => {
-      const userId = ctx.auth?.userId;
-      const { poolId, wristbandId, cursor, amount, initialCursor } = input;
-
-      const parsedCursor = cursor ? decodeCursor(cursor) : undefined;
-
-      const pool = await ctx.db.query.highlightPool.findFirst({
-        where: canViewPool(userId, poolId, ctx.db),
-        columns: { name: true },
-        with: {
-          cameras: {
-            columns: {},
-            with: {
-              highlights: {
-                where: and(
-                  eq(highlight.wristbandId, wristbandId),
-                  cursorWhereArgs(parsedCursor, initialCursor)
-                ),
-                orderBy: orderByArgs(parsedCursor),
-                limit: amount + 1,
-                with: {
-                  userUpvotes: {
-                    columns: {
-                      userId: true,
-                    },
-                  },
-                  ...(userId
-                    ? {
-                        userBookmarks: {
-                          where: eq(bookmarkedHighlightToUser.userId, userId),
-                        },
-                      }
-                    : {}),
-                },
-              },
-            },
-          },
-        },
-      });
-
-      const completeHighlights =
-        pool?.cameras.map((cam) =>
-          cam.highlights.map<HighlightReturn>((highlight) => ({
-            ...highlight,
-            upvotes: highlight.userUpvotes.length,
-            upvoted: highlight.userUpvotes.find(
-              (upvote) => upvote.userId === userId
-            )
-              ? true
-              : false,
-            bookmarked: highlight.userBookmarks
-              ? highlight.userBookmarks.length > 0
-              : false,
-          }))
-        ) ?? [];
-
-      const longestSublist = completeHighlights
-        .sort((a, b) => b.length - a.length)
-        .at(0)?.length;
-
-      const hasNext = longestSublist ? longestSublist > amount : false;
-
-      const groups = groupHighlights(
-        completeHighlights,
-        amount,
-        parsedCursor?.dir
-      );
-
-      return packageThumbnailGroupsPaginated(
-        groups,
-        poolId,
-        hasNext,
-        parsedCursor?.dir
-      );
-    }),
-
-  getWristbandVideosPaginated: publicProcedure
-    .input(
-      z.object({
-        poolId: z.number(),
-        wristbandId: z.string(),
-        initialCursor: z.number().nullish(),
-        cursor: z.string().nullish(),
-      })
-    )
-    .query(async ({ ctx, input }) => {
-      const userId = ctx.auth?.userId;
-      const { poolId, wristbandId, cursor, initialCursor } = input;
-
-      const amount = 1;
-
-      const parsedCursor = cursor ? decodeCursor(cursor) : undefined;
-
-      const pool = await ctx.db.query.highlightPool.findFirst({
-        where: canViewPool(userId, poolId, ctx.db),
-        columns: { name: true },
-        with: {
-          cameras: {
-            columns: {},
-            with: {
-              highlights: {
-                where: and(
-                  eq(highlight.wristbandId, wristbandId),
-                  cursorWhereArgs(parsedCursor, initialCursor)
-                ),
-                orderBy: orderByArgs(parsedCursor),
-                limit: amount + 1,
-                with: {
-                  userUpvotes: {
-                    columns: {
-                      userId: true,
-                    },
-                  },
-                  ...(userId
-                    ? {
-                        userBookmarks: {
-                          where: eq(bookmarkedHighlightToUser.userId, userId),
-                        },
-                      }
-                    : {}),
-                },
-              },
-            },
-          },
-        },
-      });
-
-      const completeHighlights =
-        pool?.cameras.map((cam) =>
-          cam.highlights.map<HighlightReturn>((highlight) => ({
-            ...highlight,
-            upvotes: highlight.userUpvotes.length,
-            upvoted: highlight.userUpvotes.find(
-              (upvote) => upvote.userId === userId
-            )
-              ? true
-              : false,
-            bookmarked: highlight.userBookmarks
-              ? highlight.userBookmarks.length > 0
-              : false,
-          }))
-        ) ?? [];
-
-      const longestSublist = completeHighlights
-        .sort((a, b) => b.length - a.length)
-        .at(0)?.length;
-
-      const hasNext = longestSublist ? longestSublist > amount : false;
-
-      const groups = groupHighlights(
-        completeHighlights,
-        amount,
-        parsedCursor?.dir
-      );
-
-      return {
-        name: pool?.name,
-        ...(await packageHighlightGroupsPaginated(
-          groups,
-          poolId,
-          hasNext,
-          parsedCursor?.dir
-        )),
-      };
-    }),
-
-  getWristbandHighlightBundle: publicProcedure
-    .input(
-      z.object({
-        poolId: z.number(),
-        bandId: z.string(),
-        cursor: z.number(),
-        amount: z.number(),
-      })
-    )
-    .query(async ({ ctx, input }) => {
-      const userId = ctx.auth?.userId;
-      const { poolId, cursor, amount, bandId } = input;
-      const bundle = await ctx.db.query.highlightPool.findFirst({
-        where: canViewPool(userId, poolId, ctx.db),
-        columns: { name: true },
-        with: {
-          cameras: {
-            columns: {},
-            with: {
-              highlights: {
-                where: and(
-                  eq(highlight.wristbandId, bandId),
-                  lte(highlight.timestampUtc, cursor)
-                ),
-                orderBy: [desc(highlight.timestampUtc)],
-                limit: amount,
-                with: {
-                  userUpvotes: {
-                    columns: {
-                      userId: true,
-                    },
-                  },
-                  ...(userId
-                    ? {
-                        userBookmarks: {
-                          where: eq(bookmarkedHighlightToUser.userId, userId),
-                        },
-                      }
-                    : {}),
-                },
-              },
-            },
-          },
-        },
-      });
-      const completeHighlights =
-        bundle?.cameras.map((cam) =>
-          cam.highlights.map<HighlightReturn>((highlight) => ({
-            ...highlight,
-            upvotes: highlight.userUpvotes.length,
-            upvoted: highlight.userUpvotes.find(
-              (upvote) => upvote.userId === userId
-            )
-              ? true
-              : false,
-            bookmarked: highlight.userBookmarks
-              ? highlight.userBookmarks.length > 0
-              : false,
-          }))
-        ) ?? [];
-
-      const grouped = groupHighlights(completeHighlights, amount);
-
-      return {
-        name: bundle?.name,
-        highlights: await packageHighlightGroups(grouped, poolId),
-      };
-    }),
-
-  getPoolFollowers: publicProcedure
+  getReelFollowers: publicProcedure
     .input(z.number())
     .query(async ({ ctx, input }) => {
       const ref = ctx.auth?.userId;

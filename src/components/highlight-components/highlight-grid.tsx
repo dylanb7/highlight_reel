@@ -1,18 +1,16 @@
-import * as AspectRatio from "@radix-ui/react-aspect-ratio";
+import { useEffect, useMemo } from "react";
 
-import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import type { HighlightThumbnail } from "../../server/types/highlight-out";
 
-import type { HighlightThumbnail } from "../../types/highlight-out";
-import { ActionRowGrid } from "./action-row";
-import Link from "next/link";
 import { useGridContext } from "../contexts/highlight-grid-context";
 
 import dayjs from "dayjs";
 import * as utc from "dayjs/plugin/utc";
-import type { UrlObject } from "url";
+
 import { useInView } from "react-intersection-observer";
 import { Spinner } from "../misc/loading";
+import { ImageComponent } from "./highlight-thumbnail";
+import { GridLayout } from "./grouped-highlight-grid";
 
 dayjs.extend(utc.default);
 
@@ -161,7 +159,7 @@ const HighlightGrid: React.FC<{ group: HighlightGroup }> = ({ group }) => {
         {group.header}
       </h3>
       {!isEmpty && (
-        <div className="grid w-full grid-cols-2 justify-start gap-2 sm:grid-cols-3 lg:grid-cols-4">
+        <GridLayout>
           {group.highlights.map((highlight, index) => (
             <ImageComponent
               key={highlight.id}
@@ -172,7 +170,7 @@ const HighlightGrid: React.FC<{ group: HighlightGroup }> = ({ group }) => {
               index={index}
             />
           ))}
-        </div>
+        </GridLayout>
       )}
       {isEmpty && (
         <h3 className="py-3 text-xl font-semibold text-slate-900 dark:text-white">
@@ -180,74 +178,5 @@ const HighlightGrid: React.FC<{ group: HighlightGroup }> = ({ group }) => {
         </h3>
       )}
     </div>
-  );
-};
-
-export const ImageComponent: React.FC<{
-  start: number;
-  length: number;
-  index: number;
-  continuous: boolean;
-  highlight: HighlightThumbnail;
-}> = ({ highlight, start, length, index, continuous }) => {
-  const [loading, setLoading] = useState(true);
-
-  const gridContext = useGridContext();
-
-  const aspect =
-    highlight.aspectRatioNumerator && highlight.aspectRatioDenominator
-      ? highlight.aspectRatioDenominator / highlight.aspectRatioNumerator
-      : 9 / 16;
-
-  const href: UrlObject = useMemo(() => {
-    if (continuous)
-      return {
-        pathname: `/${gridContext.basePath}/${highlight.timestampUtc}`,
-      };
-    return {
-      pathname: `/${gridContext.basePath}/${encodeURIComponent(
-        start
-      )}/${encodeURIComponent(index + 1)}/${encodeURIComponent(length)}`,
-    };
-  }, [
-    continuous,
-    gridContext.basePath,
-    highlight.timestampUtc,
-    index,
-    length,
-    start,
-  ]);
-
-  return (
-    <AspectRatio.Root ratio={aspect}>
-      <div
-        key={highlight.id}
-        className="group relative h-full w-full overflow-clip rounded-md border border-gray-300 hover:border-slate-900 hover:shadow-xl dark:border-gray-500 dark:hover:border-white"
-      >
-        <div className={"absolute inset-0"}>
-          {highlight.thumbnailUrl && (
-            <Image
-              className="z-10 group-hover:opacity-50"
-              src={highlight.thumbnailUrl}
-              unoptimized
-              alt={"Highlight"}
-              onLoad={() => setLoading(false)}
-              width={highlight.aspectRatioNumerator ?? 500}
-              height={highlight.aspectRatioDenominator ?? 500}
-            />
-          )}
-          {(highlight.thumbnailUrl === undefined || loading) && (
-            <div className="absolute inset-0 z-20 animate-pulse bg-gray-100 dark:bg-slate-900" />
-          )}
-
-          <Link href={href}>
-            <div className="absolute inset-x-0 bottom-[30px] top-0 z-30" />
-          </Link>
-          <div className="absolute inset-x-0 bottom-0 z-30">
-            <ActionRowGrid highlight={highlight} />
-          </div>
-        </div>
-      </div>
-    </AspectRatio.Root>
   );
 };

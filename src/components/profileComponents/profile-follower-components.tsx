@@ -1,15 +1,20 @@
-import * as Dialog from "@radix-ui/react-dialog";
-import { Cross2Icon } from "@radix-ui/react-icons";
-import * as ScrollArea from "@radix-ui/react-scroll-area";
-import * as Separator from "@radix-ui/react-separator";
 import Link from "next/link";
 import { useState } from "react";
-import type { FetchInfo, UserInfo } from "../types/user-out";
-import { api } from "../utils/trpc";
-import type { ButtonContext } from "./contexts/button-types";
-import { ProfileButtonProvider } from "./contexts/follow-profile-context";
+import type { FetchInfo, UserInfo } from "../../server/types/user-out";
+import { api } from "../../utils/trpc";
+import type { ButtonContext } from "../contexts/button-types";
+import { ProfileButtonProvider } from "../contexts/follow-profile-context";
 import { ProfileFollowButton } from "./follow-profile";
-import { LoadingSpinner } from "./misc/loading";
+import { LoadingSpinner } from "../misc/loading";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTrigger,
+} from "@/shadcn/ui/dialog";
+
+import { ScrollArea } from "@/shadcn/ui/scroll-area";
+import { DialogTitle } from "@radix-ui/react-dialog";
 
 export const ProfileRow: React.FC<{
   profile: UserInfo;
@@ -66,20 +71,20 @@ const PoolRowFetch: React.FC<{ fetch: number; dismiss: () => void }> = ({
   fetch,
   dismiss,
 }) => {
-  const utils = api.useContext();
+  const utils = api.useUtils();
 
   const queryKey = fetch;
 
   const { data: users, isLoading } =
-    api.pool.getPoolFollowers.useQuery(queryKey);
+    api.reel.getReelFollowers.useQuery(queryKey);
 
   const userMap = usersToMap(users);
 
-  const { mutate: follow, isLoading: following } =
+  const { mutate: follow, isPending: following } =
     api.user.followUser.useMutation({
       async onMutate(variables) {
-        await utils.pool.getPoolFollowers.cancel(queryKey);
-        const prev = utils.pool.getPoolFollowers.getData(queryKey);
+        await utils.reel.getReelFollowers.cancel(queryKey);
+        const prev = utils.reel.getReelFollowers.getData(queryKey);
         const updated = userMap.get(variables.followId);
         if (prev && updated) {
           const isPublic = updated.isPublic;
@@ -92,23 +97,23 @@ const PoolRowFetch: React.FC<{ fetch: number; dismiss: () => void }> = ({
               requested: !isPublic,
             },
           };
-          utils.pool.getPoolFollowers.setData(queryKey, newValues);
+          utils.reel.getReelFollowers.setData(queryKey, newValues);
         }
         return { prev };
       },
       onError(_, __, context) {
-        utils.pool.getPoolFollowers.setData(queryKey, context?.prev);
+        utils.reel.getReelFollowers.setData(queryKey, context?.prev);
       },
       onSettled() {
-        void utils.pool.getPoolFollowers.invalidate(queryKey);
+        void utils.reel.getReelFollowers.invalidate(queryKey);
       },
     });
 
-  const { mutate: unfollow, isLoading: unfollowing } =
+  const { mutate: unfollow, isPending: unfollowing } =
     api.user.unfollowUser.useMutation({
       async onMutate(variables) {
-        await utils.pool.getPoolFollowers.cancel(queryKey);
-        const prev = utils.pool.getPoolFollowers.getData(queryKey);
+        await utils.reel.getReelFollowers.cancel(queryKey);
+        const prev = utils.reel.getReelFollowers.getData(queryKey);
         const updated = userMap.get(variables.followId);
         if (prev && updated) {
           const newValues = [...prev];
@@ -120,15 +125,15 @@ const PoolRowFetch: React.FC<{ fetch: number; dismiss: () => void }> = ({
               requested: false,
             },
           };
-          utils.pool.getPoolFollowers.setData(queryKey, newValues);
+          utils.reel.getReelFollowers.setData(queryKey, newValues);
         }
         return { prev };
       },
       onError(_, __, context) {
-        utils.pool.getPoolFollowers.setData(queryKey, context?.prev);
+        utils.reel.getReelFollowers.setData(queryKey, context?.prev);
       },
       onSettled() {
-        void utils.pool.getPoolFollowers.invalidate(queryKey);
+        void utils.reel.getReelFollowers.invalidate(queryKey);
       },
     });
 
@@ -176,7 +181,7 @@ const FollowersFetch: React.FC<{ fetch: string; dismiss: () => void }> = ({
   fetch,
   dismiss,
 }) => {
-  const utils = api.useContext();
+  const utils = api.useUtils();
 
   const queryKey = fetch;
 
@@ -184,7 +189,7 @@ const FollowersFetch: React.FC<{ fetch: string; dismiss: () => void }> = ({
 
   const userMap = usersToMap(users);
 
-  const { mutate: follow, isLoading: following } =
+  const { mutate: follow, isPending: following } =
     api.user.followUser.useMutation({
       async onMutate(variables) {
         await utils.user.getFollowers.cancel(queryKey);
@@ -213,7 +218,7 @@ const FollowersFetch: React.FC<{ fetch: string; dismiss: () => void }> = ({
       },
     });
 
-  const { mutate: unfollow, isLoading: unfollowing } =
+  const { mutate: unfollow, isPending: unfollowing } =
     api.user.unfollowUser.useMutation({
       async onMutate(variables) {
         await utils.user.getFollowers.cancel(queryKey);
@@ -285,7 +290,7 @@ const FollowingFetch: React.FC<{ fetch: string; dismiss: () => void }> = ({
   fetch,
   dismiss,
 }) => {
-  const utils = api.useContext();
+  const utils = api.useUtils();
 
   const queryKey = fetch;
 
@@ -293,7 +298,7 @@ const FollowingFetch: React.FC<{ fetch: string; dismiss: () => void }> = ({
 
   const userMap = usersToMap(users);
 
-  const { mutate: follow, isLoading: following } =
+  const { mutate: follow, isPending: following } =
     api.user.followUser.useMutation({
       async onMutate(variables) {
         await utils.user.getFollowing.cancel(queryKey);
@@ -322,7 +327,7 @@ const FollowingFetch: React.FC<{ fetch: string; dismiss: () => void }> = ({
       },
     });
 
-  const { mutate: unfollow, isLoading: unfollowing } =
+  const { mutate: unfollow, isPending: unfollowing } =
     api.user.unfollowUser.useMutation({
       async onMutate(variables) {
         await utils.user.getFollowing.cancel(queryKey);
@@ -402,57 +407,29 @@ export const ProfileList: React.FC<{
   };
 
   return (
-    <Dialog.Root onOpenChange={setOpen} open={open}>
-      <Dialog.Trigger className="cursor-pointer truncate text-xs font-semibold text-slate-500 hover:text-slate-900 hover:underline dark:text-gray-400 hover:dark:text-white">
+    <Dialog onOpenChange={setOpen} open={open}>
+      <DialogTrigger className="cursor-pointer truncate text-xs font-semibold text-slate-500 hover:text-slate-900 hover:underline dark:text-gray-400 hover:dark:text-white">
         {text}
-      </Dialog.Trigger>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black opacity-40" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2">
-          <div className="m-4 flex flex-col rounded-lg bg-white p-2 shadow-lg dark:bg-slate-700">
-            <div className="flex flex-row items-center justify-between px-2">
-              <p className="text-lg font-semibold text-slate-900 dark:text-white">
-                {header}
-              </p>
-              <Dialog.Close>
-                <Cross2Icon className="h-6 w-6 text-black hover:text-gray-700 dark:text-white dark:hover:text-gray-400" />
-              </Dialog.Close>
-            </div>
-            <Separator.Root
-              orientation="horizontal"
-              decorative
-              className="mx-2 my-1 h-px bg-slate-900 dark:bg-white"
-            />
-            <ScrollArea.Root className="overflow-hidden">
-              <ScrollArea.Viewport className="h-full max-h-80 w-full pr-3">
-                {open &&
-                  fetch.userFetch &&
-                  (fetch.userFetch.following ? (
-                    <FollowingFetch
-                      fetch={fetch.userFetch.id}
-                      dismiss={dismiss}
-                    />
-                  ) : (
-                    <FollowersFetch
-                      fetch={fetch.userFetch.id}
-                      dismiss={dismiss}
-                    />
-                  ))}
-                {open && fetch.poolFetch && (
-                  <PoolRowFetch fetch={fetch.poolFetch} dismiss={dismiss} />
-                )}
-              </ScrollArea.Viewport>
-              <ScrollArea.Scrollbar
-                orientation="vertical"
-                className="flex w-2 rounded-full bg-slate-300 hover:bg-slate-400 dark:bg-slate-700 dark:hover:bg-slate-800"
-              >
-                <ScrollArea.Thumb className="relative flex-1 rounded-full bg-slate-900 dark:bg-white" />
-              </ScrollArea.Scrollbar>
-              <ScrollArea.Corner />
-            </ScrollArea.Root>
-          </div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+      </DialogTrigger>
+
+      <DialogContent className="mx-auto max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="text-md">{header}</DialogTitle>
+        </DialogHeader>
+
+        <ScrollArea>
+          {open &&
+            fetch.userFetch &&
+            (fetch.userFetch.following ? (
+              <FollowingFetch fetch={fetch.userFetch.id} dismiss={dismiss} />
+            ) : (
+              <FollowersFetch fetch={fetch.userFetch.id} dismiss={dismiss} />
+            ))}
+          {open && fetch.poolFetch && (
+            <PoolRowFetch fetch={fetch.poolFetch} dismiss={dismiss} />
+          )}
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
   );
 };

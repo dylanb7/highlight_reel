@@ -1,27 +1,17 @@
-import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 
-import type {
-  HighlightThumbnail,
-  ThumbnailAngles,
-} from "../../types/highlight-out";
-import Link from "next/link";
+import type { ThumbnailAngles } from "../../server/types/highlight-out";
+
 import { useGridContext } from "../contexts/highlight-grid-context";
 
 import dayjs from "dayjs";
 import * as utc from "dayjs/plugin/utc";
-import type { UrlObject } from "url";
+
 import { useInView } from "react-intersection-observer";
 import { Spinner } from "../misc/loading";
-import { ImageComponent } from "./highlight-grid";
-import { AspectRatio } from "@/shadcn/ui/aspect-ratio";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/shadcn/ui/carousel";
+
+import { Skeleton } from "@/shadcn/ui/skeleton";
+import { CarouselRow, gridSizing } from "./highlight-thumbnail";
 
 dayjs.extend(utc.default);
 
@@ -70,7 +60,7 @@ export const dayGrouping: GroupingStrategy = (
     values.push({
       header: key,
       highlights: dayValues,
-      continuous: dayValues.length > 15,
+      continuous: true,
     });
   }
 
@@ -102,7 +92,7 @@ export const hourGrouping: GroupingStrategy = (angles) => {
     values.push({
       header: key,
       highlights: dayValues,
-      continuous: dayValues.length > 15,
+      continuous: true,
     });
   }
 
@@ -159,6 +149,26 @@ export const HighlightGridGroupsComponent: React.FC<{
   );
 };
 
+export const LoadingScaffold: React.FC<{ amount: number }> = ({ amount }) => {
+  return (
+    <GridLayout>
+      {Array(amount)
+        .fill(1)
+        .map((_, index) => {
+          return <Skeleton key={index} className={gridSizing} />;
+        })}
+    </GridLayout>
+  );
+};
+
+export const GridLayout: React.FC<React.PropsWithChildren> = ({ children }) => {
+  return (
+    <div className="xl:gap=4 grid w-full grid-cols-1 justify-start gap-2 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+      {children}
+    </div>
+  );
+};
+
 const HighlightGrid: React.FC<{ group: HighlightGroup }> = ({ group }) => {
   const length = group.highlights.length;
 
@@ -170,7 +180,7 @@ const HighlightGrid: React.FC<{ group: HighlightGroup }> = ({ group }) => {
         {group.header}
       </h3>
       {!isEmpty && (
-        <div className="grid w-full grid-cols-1 justify-start gap-4 md:grid-cols-2 ">
+        <GridLayout>
           {group.highlights.map((angles, index) => (
             <CarouselRow
               key={index}
@@ -181,7 +191,7 @@ const HighlightGrid: React.FC<{ group: HighlightGroup }> = ({ group }) => {
               index={index}
             />
           ))}
-        </div>
+        </GridLayout>
       )}
       {isEmpty && (
         <h3 className="py-3 text-xl font-semibold text-slate-900 dark:text-white">
@@ -192,71 +202,7 @@ const HighlightGrid: React.FC<{ group: HighlightGroup }> = ({ group }) => {
   );
 };
 
-const CarouselRow: React.FC<{
-  start: number;
-  length: number;
-  index: number;
-  continuous: boolean;
-  angles: ThumbnailAngles;
-}> = ({ start, length, index, continuous, angles }) => {
-  const highlights = angles.angles.length;
-
-  const first = angles.angles.at(0);
-
-  return (
-    <div className="relative flex max-w-md flex-row justify-between gap-4 rounded-lg border border-gray-300 bg-white p-2 shadow-sm dark:border-gray-500 dark:bg-slate-900">
-      {first && (
-        <div className="flex flex-col">
-          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
-            {dayjs
-              .unix(Number(first.timestampUtc))
-              .utc()
-              .local()
-              .format("h:mm A")}
-          </h2>
-          {highlights > 1 && (
-            <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
-              {highlights} angles
-            </h2>
-          )}
-        </div>
-      )}
-      <div className="w-full max-w-xs pr-9">
-        {highlights == 1 && first && (
-          <ImageComponent
-            start={start}
-            length={length}
-            index={index}
-            continuous={continuous}
-            highlight={first}
-          />
-        )}
-        {highlights > 1 && (
-          <Carousel orientation="horizontal" className="w-full" opts={{}}>
-            <CarouselContent>
-              {angles.angles.map((angle, index) => {
-                return (
-                  <CarouselItem key={index}>
-                    <ImageComponent
-                      start={start}
-                      length={length}
-                      index={index}
-                      continuous={continuous}
-                      highlight={angle}
-                    />
-                  </CarouselItem>
-                );
-              })}
-            </CarouselContent>
-            <CarouselPrevious />
-            <CarouselNext />
-          </Carousel>
-        )}
-      </div>
-    </div>
-  );
-};
-
+/*
 const AngleStack: React.FC<{
   start: number;
   length: number;
@@ -269,12 +215,15 @@ const AngleStack: React.FC<{
   const href: UrlObject = useMemo(() => {
     if (continuous)
       return {
-        pathname: `/${basePath}/${encodeURIComponent(angles.timestamp)}`,
+        pathname: `/${basePath.pathname ?? ""}/${encodeURIComponent(
+          angles.timestamp
+        )}`,
       };
+
     return {
-      pathname: `/${basePath}/${encodeURIComponent(start)}/${encodeURIComponent(
-        index + 1
-      )}/${encodeURIComponent(length)}`,
+      pathname: `/${basePath.pathname ?? ""}/${encodeURIComponent(
+        start
+      )}/${encodeURIComponent(index + 1)}/${encodeURIComponent(length)}`,
     };
   }, [angles.timestamp, basePath, continuous, index, length, start]);
 
@@ -352,3 +301,4 @@ const PlainImage: React.FC<{
     </AspectRatio>
   );
 };
+*/

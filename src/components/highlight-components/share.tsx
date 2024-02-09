@@ -18,13 +18,12 @@ import {
   WhatsappIcon,
   TwitterIcon,
 } from "react-share";
-import { type BaseHighlight } from "~/types/highlight-out";
+import { type BaseHighlight } from "~/server/types/highlight-out";
 import { IconButton, twIcons } from "../misc/icon-button";
 
-export const ShareButton: React.FC<{
+const ShareButton: React.FC<{
   highlight: BaseHighlight;
-  adaptive: boolean;
-}> = ({ highlight, adaptive }) => {
+}> = ({ highlight }) => {
   const router = useRouter();
 
   const url = `${router.basePath}/reels/${encodeURIComponent(
@@ -54,14 +53,10 @@ export const ShareButton: React.FC<{
   }
   return (
     <Dialog>
-      <DialogTrigger>
-        <Share2Icon
-          className={
-            adaptive
-              ? "h-5 w-5 text-slate-900 hover:text-slate-800 dark:text-white dark:hover:text-gray-100"
-              : twIcons()
-          }
-        />
+      <DialogTrigger asChild>
+        <IconButton>
+          <Share2Icon />
+        </IconButton>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

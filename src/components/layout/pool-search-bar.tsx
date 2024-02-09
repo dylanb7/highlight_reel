@@ -1,21 +1,23 @@
-"use client";
-
-import { useDeferredValue, useState } from "react";
-import * as PopoverPrimitive from "@radix-ui/react-popover";
-import { ScrollArea } from "@/shadcn/ui/scroll-area";
-import { api } from "../../utils/trpc";
 import { MagnifyingGlassIcon, Cross2Icon } from "@radix-ui/react-icons";
-import { LoadingSpinner } from "../misc/loading";
-import Link from "next/link";
+
+import { useState, useDeferredValue } from "react";
+
 import { useResizeDetector } from "react-resize-detector";
-import { type PoolFollowing } from "../../types/pool-out";
+import { type ReelFollowing } from "~/server/types/pool-out";
+import { api } from "~/utils/trpc";
+import * as PopoverPrimitive from "@radix-ui/react-popover";
+import { LoadingSpinner } from "../misc/loading";
+import { ScrollArea } from "@/shadcn/ui/scroll-area";
+import Link from "next/link";
+import { Button } from "@/shadcn/ui/button";
+import { Input } from "@/shadcn/ui/input";
 
 const FetchResults: React.FC<{
   searchTerm: string;
   setClosed: () => void;
   width: number;
 }> = ({ searchTerm, setClosed, width }) => {
-  const { data: results, isLoading } = api.pool.poolSearch.useQuery(searchTerm);
+  const { data: results, isLoading } = api.reel.reelSearch.useQuery(searchTerm);
 
   return (
     <ScrollArea className={"h-72 pb-2"} style={{ width: width }}>
@@ -42,12 +44,15 @@ const FetchResults: React.FC<{
 };
 
 const PoolRow: React.FC<{
-  pool: PoolFollowing;
+  pool: ReelFollowing;
   setClosed: () => void;
 }> = ({ pool, setClosed }) => {
   return (
     <Link
-      href={"/reels/" + encodeURIComponent(pool.id)}
+      href={{
+        pathname: "/reels/[id]",
+        query: { id: pool.id },
+      }}
       onClick={setClosed}
       className="w-full"
     >
@@ -72,6 +77,8 @@ const PoolSearchComponent: React.FC = () => {
 
   const [searching, setSearching] = useState(false);
 
+  const searchTerm = useDeferredValue(search);
+
   const setClosed = () => {
     setSearching(false);
     setSearch("");
@@ -86,8 +93,7 @@ const PoolSearchComponent: React.FC = () => {
     >
       <PopoverPrimitive.Root open={searching}>
         <PopoverPrimitive.Anchor className="w-full">
-          <input
-            className="w-full appearance-none rounded-lg border border-gray-300 bg-white p-2 leading-tight text-gray-700 focus:border-indigo-500 focus:outline-none dark:border-2 dark:border-white"
+          <Input
             placeholder="Reel Name..."
             value={search}
             disabled={searching}
@@ -100,13 +106,15 @@ const PoolSearchComponent: React.FC = () => {
           />
         </PopoverPrimitive.Anchor>
         {search.length > 0 && (
-          <button
-            className="h-10 w-10 items-center justify-center rounded-lg bg-indigo-500 p-2 font-semibold text-white no-underline transition hover:bg-indigo-700 disabled:opacity-75"
+          <Button
+            className="w-10"
+            size={"icon"}
+            variant={"outline"}
             disabled={searching}
             onClick={() => setSearching(true)}
           >
-            <MagnifyingGlassIcon className="h-6 w-6" />
-          </button>
+            <MagnifyingGlassIcon className="h-4 w-4" />
+          </Button>
         )}
 
         <PopoverPrimitive.Content
@@ -120,7 +128,7 @@ const PoolSearchComponent: React.FC = () => {
         >
           <PopoverPrimitive.Arrow className="fill-gray-500" />
           <div className="flex flex-row items-center justify-between">
-            <h3 className="pl-2 text-sm font-semibold text-slate-900 underline">
+            <h3 className="text-md pb-2 pl-2 font-semibold text-slate-900 underline">
               Search Results
             </h3>
             <PopoverPrimitive.Close

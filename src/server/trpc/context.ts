@@ -1,12 +1,9 @@
-import { type inferAsyncReturnType } from "@trpc/server";
 import { type CreateNextContextOptions } from "@trpc/server/adapters/next";
 
-import {
-  getAuth
-} from "@clerk/nextjs/server";
+import { getAuth } from "@clerk/nextjs/server";
 import type {
   SignedInAuthObject,
-  SignedOutAuthObject
+  SignedOutAuthObject,
 } from "@clerk/nextjs/server";
 import { db } from "../db";
 import type { NextRequest } from "next/server";
@@ -17,7 +14,6 @@ export interface CreateContextOptions {
   req: NextRequest | GetServerSidePropsContext["req"] | null;
 }
 
-
 export const createContextInner = (opts: CreateContextOptions) => {
   return {
     auth: opts.auth,
@@ -25,7 +21,6 @@ export const createContextInner = (opts: CreateContextOptions) => {
     db,
   };
 };
-
 
 export const createContext = (opts: CreateNextContextOptions) => {
   const { req } = opts;
@@ -38,4 +33,4 @@ export const createContext = (opts: CreateNextContextOptions) => {
   });
 };
 
-export type Context = inferAsyncReturnType<typeof createContext>;
+export type Context = Awaited<ReturnType<typeof createContext>>;

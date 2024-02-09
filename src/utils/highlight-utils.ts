@@ -7,7 +7,7 @@ import type {
   ThumbnailAngles,
   URLFetch,
   VideoAngles,
-} from "../types/highlight-out";
+} from "../server/types/highlight-out";
 import { z } from "zod";
 import { Buffer } from "buffer";
 
