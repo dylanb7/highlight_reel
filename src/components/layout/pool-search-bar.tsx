@@ -73,8 +73,6 @@ const PoolRow: React.FC<{
 const PoolSearchComponent: React.FC = () => {
   const [search, setSearch] = useState("");
 
-  const searchTerm = useDeferredValue(search);
-
   const [searching, setSearching] = useState(false);
 
   const searchTerm = useDeferredValue(search);
