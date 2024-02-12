@@ -12,6 +12,7 @@ import { Spinner } from "../misc/loading";
 
 import { Skeleton } from "@/shadcn/ui/skeleton";
 import { CarouselRow, gridSizing } from "./highlight-thumbnail";
+import { Label } from "@/shadcn/ui/label";
 
 dayjs.extend(utc.default);
 
@@ -77,6 +78,7 @@ export const hourGrouping: GroupingStrategy = (angles) => {
       .unix(Number(angle.timestamp))
       .utc()
       .local()
+      .add(1, "hour")
       .format("MMM DD @ h a");
     const current = dayMap.get(key);
     if (current) {
@@ -176,9 +178,7 @@ const HighlightGrid: React.FC<{ group: HighlightGroup }> = ({ group }) => {
 
   return (
     <div className="flex flex-col items-start justify-start">
-      <h3 className="pb-1 text-lg font-semibold text-slate-900 dark:text-white">
-        {group.header}
-      </h3>
+      <Label className="text-md pb-1">{group.header}</Label>
       {!isEmpty && (
         <GridLayout>
           {group.highlights.map((angles, index) => (

@@ -136,129 +136,7 @@ export const userRouter = router({
       const amount = input.amount ?? 6;
       const owns = userId === ref;
       if (type !== "followed" && !owns) return undefined;
-      const tableName: "followedPools" | "moddedPools" | "ownedPools" =
-        type === "followed"
-          ? "followedPools"
-          : type === "modded"
-          ? "moddedPools"
-          : "ownedPools";
 
-      const pools = await ctx.db.query.users.findFirst({
-        where: eq(users.id, userId),
-        columns: {},
-        with: {
-          [tableName]: {
-            columns: {},
-            where: () => {
-              if (!cursor) return gte(poolsToFollowers.poolId, 0);
-              return lt(poolsToFollowers.updatedAt, cursor);
-            },
-            limit: amount + 1,
-            with: {
-              pool: {
-                with: {
-                  poolFollowers: {},
-                  cameras: {
-                    columns: {},
-                    with: {
-                      highlights: {
-                        columns: { id: true },
-                      },
-                    },
-                  },
-
-                  ...(!owns &&
-                    ref && {
-                      poolRequests: {
-                        limit: 1,
-                        where: eq(poolsToRequested.userId, ref),
-                        columns: {
-                          userId: true,
-                        },
-                      },
-                    }),
-                },
-              },
-            },
-            orderBy: desc(poolsToFollowers.updatedAt),
-          },
-        },
-      });
-
-      if (!pools || pools[tableName]) return [];
-
-      type ReturnType = (
-        | {
-            pool: {
-              id: number;
-              name: string | null;
-              ownerId: string;
-              public: number;
-              createdAt: Date;
-              bio: string | null;
-              icon: string | null;
-              cameras: {
-                highlights: { id: string }[];
-              }[];
-              poolFollowers: Record<string, never>[];
-              poolRequests: { userId: number }[] | undefined;
-            };
-          }
-        | Record<string, never>
-      )[];
-
-      const reels = pools[tableName] as ReturnType;
-      const nonEmpty: ReelInfo[] = [];
-      for (const reel of reels) {
-        if (Object.keys(reel).length) return;
-        const pool = reel.pool;
-        nonEmpty.push({
-          ...pool,
-          highlightCount: 0,
-          followerCount: pool.poolFollowers.length,
-          followInfo: {
-            follows: pool.poolFollowers.find((user) => user.userId === ref)
-              ? true
-              : false,
-            requested: pool.poolRequests?.length ?? 0 > 0 ?? false,
-          },
-          isPublic: publicToBool(pool.public),
-        } as ReelInfo);
-      }
-
-      const hasNext = nonEmpty.length === amount + 1;
-      if (hasNext) nonEmpty.pop();
-
-      return {
-        poolsInfo: nonEmpty,
-        nextCursor: hasNext ? nonEmpty[-1]?.createdAt : undefined,
-      };
-      /*
-      const poolsInfo = reels.map<ReelInfo>((holder) => {
-        return {
-          ...pool,
-
-          highlightCount:
-            pool.cameras
-              ?.map((cam) => cam.highlights.length)
-              .reduce((a, b) => a + b, 0) ?? 0,
-          followerCount: pool.poolFollowers.length,
-          followInfo: {
-            follows: pool.poolFollowers.find((user) => user.userId === ref)
-              ? true
-              : false,
-            requested: pool.poolRequests?.length > 0 ?? false,
-          },
-          isPublic: publicToBool(pool.public),
-        } as ReelInfo;
-      });
-      return {
-        poolsInfo,
-        nextCursor: hasNext
-          ? pools?.moddedPools[amount - 1]?.updatedAt
-          : undefined,
-      };
-      
       const innerPoolSelect = {
         where: () => {
           if (!cursor) return gte(poolsToFollowers.poolId, 0);
@@ -436,7 +314,6 @@ export const userRouter = router({
           ? pools?.ownedPools[amount - 1]?.createdAt
           : undefined,
       };
-      */
     }),
 
   toggleHighlight: protectedProcedure
@@ -801,16 +678,15 @@ export const userRouter = router({
             bookmarkId: bookmarkedHighlightToUser.userId,
           })
           .from(upvotedHighlightToUser)
-          .where(inArray(upvotedHighlightToUser.highlightId, highlightIds))
+          .where(
+            and(
+              inArray(upvotedHighlightToUser.highlightId, highlightIds),
+              eq(upvotedHighlightToUser.userId, currentId)
+            )
+          )
           .leftJoin(
             bookmarkedHighlightToUser,
-            and(
-              eq(
-                upvotedHighlightToUser.highlightId,
-                bookmarkedHighlightToUser.highlightId
-              ),
-              eq(bookmarkedHighlightToUser.userId, currentId)
-            )
+            eq(bookmarkedHighlightToUser.userId, upvotedHighlightToUser.userId)
           );
 
         const cleaned = highlightAdditions.reduce<
@@ -833,17 +709,16 @@ export const userRouter = router({
           return acc;
         }, {});
 
-        const fullHighlights = highlightSelect.map<HighlightReturn>(
-          (highlight) => {
-            const additions = cleaned[highlight.highlight.id];
-            return {
-              ...highlight.highlight,
-              upvotes: additions?.upvotes ?? 0,
-              bookmarked: additions?.added ?? false,
-              upvoted: additions?.upvoted ?? false,
-            };
-          }
-        );
+        const fullHighlights = highlightSelect.map<HighlightReturn>((val) => {
+          const highlight = val.highlight;
+          const additions = cleaned[highlight.id];
+          return {
+            ...highlight,
+            upvotes: additions?.upvotes ?? 0,
+            bookmarked: additions?.added ?? false,
+            upvoted: additions?.upvoted ?? false,
+          };
+        });
         return packageThumbnailsPaginated(
           fullHighlights,
           hasNext,
@@ -854,7 +729,7 @@ export const userRouter = router({
       const highlightAdditions = await ctx.db
         .select({
           id: upvotedHighlightToUser.highlightId,
-          upvotes: sql<number>`count(${upvotedHighlightToUser.userId})`,
+          upvotes: count(upvotedHighlightToUser.userId),
         })
         .from(upvotedHighlightToUser)
         .where(inArray(upvotedHighlightToUser.highlightId, highlightIds));

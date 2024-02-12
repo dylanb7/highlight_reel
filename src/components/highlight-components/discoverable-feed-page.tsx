@@ -1,9 +1,15 @@
 import { useRouter } from "next/router";
 import { api } from "~/utils/trpc";
-import { ContinuousFeed, IndexedFeed } from "./highlight-feed";
+import {
+  ContinuousFeed,
+  ContinuousNonrouterFeed,
+  IndexedFeed,
+} from "./highlight-feed";
 import { FeedContextProvider } from "../contexts/feed-context";
 import { useMemo } from "react";
 import { type UrlObject } from "url";
+import { ShareButtonProvider } from "../contexts/share-context";
+import { type BaseHighlight } from "~/server/types/highlight-out";
 
 const DiscoverableFeedPage: React.FC<{ backPath: UrlObject }> = ({
   backPath,
@@ -19,25 +25,37 @@ const DiscoverableFeedPage: React.FC<{ backPath: UrlObject }> = ({
   const reelId = typeof id === "string" ? Number(id) : 0;
 
   const band = typeof bandId === "string" ? bandId : undefined;
-
-  if (length && initialCursor) {
-    return (
-      <Grouped
-        id={reelId}
-        bandId={band}
-        initialCursor={initialCursor}
-        length={length}
-        backPath={backPath}
-      />
-    );
-  }
   return (
-    <Continuous
-      id={reelId}
-      initialCursor={initialCursor}
-      bandId={band}
-      backPath={backPath}
-    />
+    <ShareButtonProvider
+      value={(highlight: BaseHighlight): string => {
+        if (band)
+          return `/reels/${encodeURIComponent(
+            reelId
+          )}/band/${encodeURIComponent(band)}/feed/${encodeURIComponent(
+            highlight.timestampUtc ?? ""
+          )}`;
+        return `/reels/${encodeURIComponent(reelId)}/feed/${encodeURIComponent(
+          highlight.timestampUtc ?? ""
+        )}`;
+      }}
+    >
+      {length && initialCursor ? (
+        <Grouped
+          id={reelId}
+          bandId={band}
+          initialCursor={initialCursor}
+          length={length}
+          backPath={backPath}
+        />
+      ) : (
+        <Continuous
+          id={reelId}
+          initialCursor={initialCursor}
+          bandId={band}
+          backPath={backPath}
+        />
+      )}
+    </ShareButtonProvider>
   );
 };
 
@@ -65,6 +83,7 @@ const Continuous: React.FC<{
   } = api.reel.getHighlightVideosPaginated.useInfiniteQuery(queryKey, {
     refetchOnWindowFocus: false,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
+    getPreviousPageParam: (lastPage) => lastPage.prevCursor,
   });
 
   const highlights = useMemo(() => {
@@ -110,12 +129,12 @@ const Continuous: React.FC<{
         disabled: bookmarking || upvoting,
       }}
     >
-      <ContinuousFeed
+      <ContinuousNonrouterFeed
         highlights={highlights ?? []}
         fetching={isFetching}
         backPath={backPath}
-        hasNext={hasNextPage ?? false}
-        hasPrev={hasPreviousPage ?? false}
+        hasNext={hasNextPage}
+        hasPrev={hasPreviousPage}
         next={next}
         prev={prev}
         from={""}

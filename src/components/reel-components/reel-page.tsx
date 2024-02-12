@@ -18,12 +18,16 @@ import {
   type HighlightGridActions,
   HighlightGridContextProvider,
 } from "../contexts/highlight-grid-context";
-import { type HighlightThumbnail } from "~/server/types/highlight-out";
+import {
+  type BaseHighlight,
+  type HighlightThumbnail,
+} from "~/server/types/highlight-out";
 import PageWrap from "../layout/page-wrap";
 import { ReelPageInfo } from "./reel-page-info";
 import { type UrlObject } from "url";
 import { ReelButtonProvider } from "../contexts/follow-reel-context";
 import { type ButtonContext } from "../contexts/button-types";
+import { ShareButtonProvider } from "../contexts/share-context";
 
 const LoadFilters: React.FC<{ reelId: number }> = ({ reelId }) => {
   const { push, query } = useRouter();
@@ -62,7 +66,7 @@ const LoadFeed: React.FC<{
   reelId: number;
   basePath: UrlObject;
 }> = ({ reelId, basePath }) => {
-  const loadAmount = 12;
+  const loadAmount = 6;
 
   const { query } = useRouter();
 
@@ -210,13 +214,27 @@ const ReelPage: React.FC<{ basePath: UrlObject }> = ({ basePath }) => {
           bandId ? ` • ${bandId as "string"}` : ""
         }`}</title>
       </Head>
-      <div className="flex h-full w-full flex-col items-start justify-start px-4 sm:px-8">
-        <div className="mt-8 self-center pb-4">
-          <LoadReelData reelId={reelId} />
+      <ShareButtonProvider
+        value={(highlight: BaseHighlight) => {
+          if (bandId)
+            return `/reels/${encodeURIComponent(
+              id as "string"
+            )}/band/${encodeURIComponent(
+              bandId as "string"
+            )}/feed/${encodeURIComponent(highlight.timestampUtc ?? "")}`;
+          return `/reels/${encodeURIComponent(
+            id as "string"
+          )}/feed/${encodeURIComponent(highlight.timestampUtc ?? "")}`;
+        }}
+      >
+        <div className="flex h-full w-full flex-col items-start justify-start px-4 sm:px-8">
+          <div className="mt-8 self-center pb-4">
+            <LoadReelData reelId={reelId} />
+          </div>
+          <LoadFilters reelId={reelId} />
+          <LoadFeed reelId={reelId} basePath={basePath} />
         </div>
-        <LoadFilters reelId={reelId} />
-        <LoadFeed reelId={reelId} basePath={basePath} />
-      </div>
+      </ShareButtonProvider>
     </PageWrap>
   );
 };

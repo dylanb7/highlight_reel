@@ -412,9 +412,9 @@ export const ProfileList: React.FC<{
         {text}
       </DialogTrigger>
 
-      <DialogContent className="mx-auto max-w-sm">
+      <DialogContent className="mx-auto h-fit max-h-[calc(100%-2rem)] max-w-sm lg:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-md">{header}</DialogTitle>
+          <DialogTitle>{header}</DialogTitle>
         </DialogHeader>
 
         <ScrollArea>

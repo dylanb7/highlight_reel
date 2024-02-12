@@ -9,7 +9,6 @@ import {
   DialogTrigger,
 } from "@/shadcn/ui/dialog";
 import { Share2Icon } from "@radix-ui/react-icons";
-import { useRouter } from "next/router";
 import {
   EmailShareButton,
   EmailIcon,
@@ -20,18 +19,20 @@ import {
 } from "react-share";
 import { type BaseHighlight } from "~/server/types/highlight-out";
 import { IconButton, twIcons } from "../misc/icon-button";
+import { useShareContext } from "../contexts/share-context";
+import { getBaseUrl } from "~/utils/trpc";
+import { buttonVariants } from "@/shadcn/ui/button";
+import { cn } from "@/cnutils";
 
 const ShareButton: React.FC<{
   highlight: BaseHighlight;
 }> = ({ highlight }) => {
-  const router = useRouter();
+  const share = useShareContext();
 
-  const url = `${router.basePath}/reels/${encodeURIComponent(
-    ""
-  )}/feed/${encodeURIComponent(highlight.timestampUtc ?? "")}`;
+  const relative = share(highlight);
 
   const shareData: ShareData = {
-    url,
+    url: `${getBaseUrl()}${relative}`,
     title: "Share Highlight",
   };
 
@@ -53,12 +54,15 @@ const ShareButton: React.FC<{
   }
   return (
     <Dialog>
-      <DialogTrigger asChild>
-        <IconButton>
-          <Share2Icon />
-        </IconButton>
+      <DialogTrigger
+        className={cn(
+          buttonVariants({ variant: "default", size: "icon" }),
+          "bg-transparent text-white hover:bg-foreground/40"
+        )}
+      >
+        <Share2Icon />
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="mx-auto h-fit max-h-[calc(100%-2rem)] max-w-sm lg:max-w-md">
         <DialogHeader>
           <DialogTitle>Share Highlight</DialogTitle>
           <DialogDescription></DialogDescription>

@@ -171,11 +171,12 @@ export const packageHighlightGroupsPaginated = async (
   highlightsRecieved: HighlightReturn[][] | undefined,
   poolId: number,
   hasNext: boolean,
-  dir: "prev" | "next" = "next"
+  dir: "prev" | "next" = "next",
+  hasPrev?: boolean
 ) => {
   const rawHighlights = highlightsRecieved ?? [];
 
-  const cursors = getCursors(rawHighlights.flat(), hasNext, dir);
+  const cursors = getCursors(rawHighlights.flat(), hasNext, dir, hasPrev);
 
   if (dir === "prev") rawHighlights.reverse();
 
@@ -184,8 +185,8 @@ export const packageHighlightGroupsPaginated = async (
   for (const sublist of rawHighlights) {
     const toAdd = [];
     for (const rawHighlight of sublist) {
-      const thumbnail = await toVideo(rawHighlight);
-      toAdd.push(thumbnail);
+      const vid = await toVideo(rawHighlight);
+      toAdd.push(vid);
     }
     highlights.push({
       angles: toAdd,
@@ -288,7 +289,8 @@ export const addExt = (id: string) => id + ".mp4";
 const getCursors = (
   highlights: HighlightReturn[],
   hasNext: boolean,
-  dir: "prev" | "next" = "next"
+  dir: "prev" | "next" = "next",
+  hasPrev?: boolean
 ) => {
   let nextCursor = undefined;
 
@@ -301,7 +303,8 @@ const getCursors = (
   const first = highlights[0];
   const last = highlights[highlights.length - 1];
 
-  if (!first || !last) return { nextCursor, prevCursor };
+  if (!first || !last || (!hasNext && hasPrev === false))
+    return { nextCursor, prevCursor };
 
   const firstRes = cursorSchema.safeParse({
     highlight_id: first.id,

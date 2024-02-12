@@ -15,6 +15,7 @@ import { useFeedContext } from "../contexts/feed-context";
 import { useAuth } from "@clerk/nextjs";
 import dynamic from "next/dynamic";
 import { Separator } from "@/shadcn/ui/separator";
+import { Label } from "@/shadcn/ui/label";
 
 const ShareButton = dynamic(() => import("./share"), { ssr: false });
 
@@ -29,9 +30,9 @@ export const ActionRow: React.FC<{ highlight: HighlightVideo }> = ({
 
   return (
     <div className="flex h-12 w-full flex-row items-center justify-between px-3 shadow-sm shadow-gray-300 transition-opacity dark:shadow-slate-900">
-      <p className="grow truncate text-sm text-slate-900 dark:text-white">
+      <Label>
         {highlight.upvotes + (highlight.upvotes == 1 ? " upvote" : " upvotes")}
-      </p>
+      </Label>
       <div className="flex flex-row items-center justify-end gap-3">
         <IconButton
           onClick={() => {
@@ -132,7 +133,7 @@ export const ActionRowGrid: React.FC<{
   const { like, bookmark, disabled } = useGridContext();
 
   return (
-    <div className="flex w-full flex-row items-center justify-end gap-2 overflow-x-scroll rounded-sm bg-gradient-to-t from-slate-900 px-3 pb-1 pt-2">
+    <div className="flex w-full flex-row items-center justify-end gap-2 overflow-x-scroll rounded-sm bg-gradient-to-t from-slate-900  px-3 pb-1 pt-2">
       <div className="flex flex-row items-center gap-1 rounded-lg border  border-white pl-2">
         <h1 className="px-2 text-white">{highlight.upvotes}</h1>
         <Separator

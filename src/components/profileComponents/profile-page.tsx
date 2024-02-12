@@ -18,10 +18,15 @@ import {
   type HighlightGridActions,
   HighlightGridContextProvider,
 } from "../contexts/highlight-grid-context";
-import { HighlightGridsComponent } from "../highlight-components/highlight-grid";
+import {
+  HighlightGridsComponent,
+  dayGrouping,
+} from "../highlight-components/highlight-grid";
 import { Label } from "@/shadcn/ui/label";
 import { useRouter } from "next/router";
 import { LoadingScaffold } from "../highlight-components/grouped-highlight-grid";
+import { ShareButtonProvider } from "../contexts/share-context";
+import { type BaseHighlight } from "~/server/types/highlight-out";
 
 const LoadReelScroll: React.FC<{
   profileId: string;
@@ -238,7 +243,7 @@ const LoadProfileBookmarks: React.FC<{
   id: string;
 }> = ({ id }) => {
   const user = useAuth();
-  const isOwner = id === user.userId;
+  const isOwner = id === undefined || id === user.userId;
   const loadAmount = 6;
 
   const queryKey = {
@@ -318,7 +323,7 @@ const LoadProfileBookmarks: React.FC<{
     },
     hasMore: () => hasNextPage,
     bookmark: (highlight) => {
-      bookmark({ highlightId: highlight.id, add: highlight.bookmarked });
+      bookmark({ highlightId: highlight.id, add: !highlight.bookmarked });
     },
     like: (highlight) => {
       upvote({ highlightId: highlight.id, like: !highlight.upvoted });
@@ -328,8 +333,12 @@ const LoadProfileBookmarks: React.FC<{
 
   return (
     <HighlightGridContextProvider value={actions}>
-      <div className="mx-4 sm:mx-8">
-        <HighlightGridsComponent highlights={highlights} />
+      <div className="mx-4 flex-col justify-start sm:mx-8">
+        <Label className="text-xl">Bookmarks</Label>
+        <HighlightGridsComponent
+          highlights={highlights}
+          grouping={dayGrouping}
+        />
       </div>
     </HighlightGridContextProvider>
   );
@@ -349,18 +358,35 @@ export const ProfilePage: React.FC = () => {
       </div>
     );
 
-  const isOwner = id === undefined || id === user.userId;
-
   return (
-    <div className="flex flex-col justify-start gap-1 pt-10">
-      <LoadProfileData id={userId} />
-      <LoadReelScroll
-        type={"followed"}
-        title={"Followed Reels"}
-        profileId={userId}
-      />
+    <ShareButtonProvider
+      value={(highlight: BaseHighlight) =>
+        `/profiles/${encodeURIComponent(
+          userId ?? ""
+        )}/feed/${encodeURIComponent(highlight.timestampUtc ?? "")}`
+      }
+    >
+      <div className="flex flex-col justify-start gap-1 pt-10">
+        <LoadProfileData id={userId} />
+        <LoadReelScroll
+          type={"followed"}
+          title={"Followed Reels"}
+          profileId={userId}
+        />
+        <LoadReelScroll
+          type={"modded"}
+          title={"Modded Reels"}
+          profileId={userId}
+        />
 
-      <LoadProfileBookmarks id={userId} />
-    </div>
+        <LoadReelScroll
+          type={"owned"}
+          title={"Owned Reels"}
+          profileId={userId}
+        />
+
+        <LoadProfileBookmarks id={userId} />
+      </div>
+    </ShareButtonProvider>
   );
 };

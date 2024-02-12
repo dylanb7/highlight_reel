@@ -1,4 +1,4 @@
-import { Suspense, useMemo } from "react";
+import { useMemo } from "react";
 
 import { type UrlObject } from "url";
 
@@ -25,8 +25,8 @@ import {
 import { AspectRatio } from "@/shadcn/ui/aspect-ratio";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { Card, CardContent, CardTitle } from "@/shadcn/ui/card";
-import { cn } from "@/cnutils";
+
+import { Label } from "@/shadcn/ui/label";
 
 dayjs.extend(utc.default);
 dayjs.extend(localizedFormat.default);
@@ -45,22 +45,8 @@ export const CarouselRow: React.FC<{
   const first = angles.angles.at(0);
 
   return (
-    <Card className={cn("flex flex-col gap-1 p-1 sm:flex-row", gridSizing)}>
-      <CardTitle className="text-sm">
-        {first && (
-          <div className="flex flex-row gap-2 sm:w-20 sm:flex-col">
-            <p>
-              {dayjs
-                .unix(Number(first.timestampUtc))
-                .utc()
-                .local()
-                .format("LT")}
-            </p>
-            {highlights > 1 && <p>{`${highlights} angles`}</p>}
-          </div>
-        )}
-      </CardTitle>
-      <CardContent className="h-full w-full p-0">
+    <div className="relative h-full w-full ">
+      <div className="insets-0 p-0">
         {highlights == 1 && first && (
           <ImageComponent
             start={start}
@@ -82,6 +68,7 @@ export const CarouselRow: React.FC<{
                       index={index}
                       continuous={continuous}
                       highlight={angle}
+                      angles={angles.angles.length}
                     />
                   </CarouselItem>
                 );
@@ -91,8 +78,8 @@ export const CarouselRow: React.FC<{
             <CarouselNext className="mr-14 h-10 w-10" />
           </Carousel>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
 
@@ -102,7 +89,8 @@ export const ImageComponent: React.FC<{
   index: number;
   continuous: boolean;
   highlight: HighlightThumbnail;
-}> = ({ highlight, start, length, index, continuous }) => {
+  angles?: number;
+}> = ({ highlight, start, length, index, continuous, angles }) => {
   const { query, pathname } = useRouter();
 
   const aspect =
@@ -143,18 +131,24 @@ export const ImageComponent: React.FC<{
       className="group flex h-full w-full overflow-clip rounded-md border border-gray-300 hover:border-slate-900 hover:shadow-xl dark:border-gray-500 dark:hover:border-white"
       key={highlight.id}
     >
-      <div className={"absolute inset-0"}>
+      <div className={"absolute inset-0 bg-black"}>
+        <Label className="text-md absolute inset-x-0 top-0 z-30 bg-gradient-to-b from-slate-900 to-slate-900/10 px-3 pb-1 pt-1 text-white">
+          {dayjs
+            .unix(Number(highlight.timestampUtc))
+            .utc()
+            .local()
+            .format("LT")}
+          {angles && ` • ${angles} angles`}
+        </Label>
         {highlight.thumbnailUrl && (
-          <Suspense fallback={<Skeleton />}>
-            <Image
-              className="z-10 group-hover:opacity-50"
-              src={highlight.thumbnailUrl}
-              unoptimized
-              alt={"Highlight"}
-              width={highlight.aspectRatioNumerator ?? 500}
-              height={highlight.aspectRatioDenominator ?? 500}
-            />
-          </Suspense>
+          <Image
+            className="z-10 group-hover:opacity-50"
+            src={highlight.thumbnailUrl}
+            unoptimized
+            alt={"Highlight"}
+            width={highlight.aspectRatioNumerator ?? 500}
+            height={highlight.aspectRatioDenominator ?? 500}
+          />
         )}
         {highlight.thumbnailUrl === undefined && <Skeleton />}
 

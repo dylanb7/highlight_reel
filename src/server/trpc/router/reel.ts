@@ -21,7 +21,18 @@ import {
   poolsToFollowers,
   poolsToRequested,
 } from "../../db/schema";
-import { and, desc, eq, like, lt, lte, notInArray, inArray } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  like,
+  lt,
+  lte,
+  notInArray,
+  inArray,
+  gt,
+  asc,
+} from "drizzle-orm";
 import {
   canViewPool,
   cursorWhereArgs,
@@ -390,6 +401,37 @@ export const reelRouter = router({
 
       const parsedCursor = cursor ? decodeCursor(cursor) : undefined;
 
+      let hasPrev: boolean | undefined = undefined;
+
+      if (parsedCursor === undefined && initialCursor) {
+        const prev = await ctx.db.query.highlightPool.findFirst({
+          where: canViewPool(userId, poolId, ctx.db),
+          columns: {},
+          with: {
+            cameras: {
+              where: angles ? inArray(cameraAngle.id, angles) : undefined,
+              columns: {},
+              with: {
+                highlights: {
+                  columns: { id: true },
+                  where: () => {
+                    if (bands)
+                      return and(
+                        gt(highlight.timestampUtc, initialCursor),
+                        inArray(highlight.wristbandId, bands)
+                      );
+                    return gt(highlight.timestampUtc, initialCursor);
+                  },
+                  orderBy: [asc(highlight.timestampUtc), asc(highlight.id)],
+                  limit: 1,
+                },
+              },
+            },
+          },
+        });
+        hasPrev = (prev?.cameras.length ?? 0) > 0;
+      }
+
       const pool = await ctx.db.query.highlightPool.findFirst({
         where: canViewPool(userId, poolId, ctx.db),
         columns: { name: true },
@@ -463,7 +505,8 @@ export const reelRouter = router({
           groups,
           poolId,
           hasNext,
-          parsedCursor?.dir
+          parsedCursor?.dir,
+          hasPrev
         )),
       };
     }),

@@ -39,6 +39,9 @@ import {
 } from "@/shadcn/ui/sheet";
 import { AspectRatio } from "@/shadcn/ui/aspect-ratio";
 import { type UrlObject } from "url";
+import { Label } from "@/shadcn/ui/label";
+import { buttonVariants } from "@/shadcn/ui/button";
+import { cn } from "@/cnutils";
 
 dayjs.extend(reltiveTime.default);
 dayjs.extend(utc.default);
@@ -52,6 +55,126 @@ interface NavProps {
   next: () => void;
   prev: () => void;
 }
+
+const getCurrentTimeStamp = (slug: string | string[] | undefined) => {
+  const timestampSlug = !slug || typeof slug === "string" ? undefined : slug[0];
+
+  const currentTimestamp =
+    timestampSlug === undefined
+      ? undefined
+      : Number.isSafeInteger(parseInt(timestampSlug))
+      ? Number(timestampSlug)
+      : undefined;
+  return currentTimestamp;
+};
+
+export const ContinuousNonrouterFeed: React.FC<{
+  highlights: HighlightVideo[] | VideoAngles[];
+  backPath: UrlObject;
+  fetching?: boolean;
+  from: string;
+  hasNext: boolean;
+  hasPrev: boolean;
+  next: () => Promise<number | undefined>;
+  prev: () => Promise<number | undefined>;
+}> = ({
+  highlights,
+  backPath,
+  fetching,
+  from,
+  hasNext,
+  hasPrev,
+  next,
+  prev,
+}) => {
+  const { query } = useRouter();
+
+  const { slug, angle } = query;
+
+  const [currentStamp, setStamp] = useState(getCurrentTimeStamp(slug));
+
+  const [currentHighlight, setHighlight] = useState<number | undefined>(
+    undefined
+  );
+
+  useEffect(() => {
+    const index = highlights.findIndex((highlight) => {
+      return getTimestamp(highlight) === currentStamp;
+    });
+    setHighlight(index);
+  }, [currentStamp, highlights]);
+
+  const length = highlights.length;
+
+  const value =
+    currentHighlight !== undefined
+      ? highlights.at(currentHighlight)
+      : undefined;
+
+  const highlight = getHighlight(value, angle);
+
+  const hasCachedNext =
+    currentHighlight !== undefined && currentHighlight < length - 1;
+
+  const hasCachedPrev = currentHighlight !== undefined && currentHighlight > 0;
+
+  const goNext = async () => {
+    const nextHighlight =
+      currentHighlight !== undefined
+        ? highlights.at(currentHighlight + 1)
+        : undefined;
+    if (nextHighlight) {
+      setStamp(getTimestamp(nextHighlight));
+    }
+    const stamp = await next();
+    if (!stamp) return;
+    setStamp(stamp);
+  };
+
+  const goPrev = async () => {
+    const prevHighlight =
+      currentHighlight !== undefined
+        ? highlights.at(currentHighlight - 1)
+        : undefined;
+    if (prevHighlight) {
+      setStamp(getTimestamp(prevHighlight));
+    }
+    const stamp = await prev();
+    if (!stamp) return;
+    setStamp(stamp);
+  };
+
+  if (length == 0)
+    return (
+      <div className="flex justify-center">
+        <h3 className="py-3 text-2xl font-semibold text-slate-900 dark:text-white">
+          Empty Feed
+        </h3>
+      </div>
+    );
+
+  return (
+    <BaseCompontent
+      hasNext={hasCachedNext || hasNext}
+      hasPrev={hasCachedPrev || hasPrev}
+      next={() => {
+        void goNext();
+      }}
+      prev={() => {
+        void goPrev();
+      }}
+      highlight={highlight}
+      fetching={fetching ?? false}
+      angles={
+        value && "angles" in value && value.angles.length > 1
+          ? value
+          : undefined
+      }
+      backPath={backPath}
+      from={from}
+    />
+  );
+};
 
 export const ContinuousFeed: React.FC<{
   highlights: HighlightVideo[] | VideoAngles[];
@@ -76,11 +199,7 @@ export const ContinuousFeed: React.FC<{
 
   const { slug, angle } = query;
 
-  console.log(slug);
-
   const timestampSlug = !slug || typeof slug === "string" ? undefined : slug[0];
-
-  console.log(timestampSlug);
 
   const currentTimestamp =
     timestampSlug === undefined
@@ -88,8 +207,6 @@ export const ContinuousFeed: React.FC<{
       : Number.isSafeInteger(parseInt(timestampSlug))
       ? Number(timestampSlug)
       : undefined;
-
-  console.log(`parsed time ${currentTimestamp}`);
 
   const length = highlights.length;
 
@@ -113,14 +230,12 @@ export const ContinuousFeed: React.FC<{
 
   const current = useMemo(() => {
     if (currentTimestamp === undefined) return undefined;
-    console.log(currentTimestamp);
+
     const index = highlights.findIndex((highlight) => {
-      console.log(getTimestamp(highlight));
       return getTimestamp(highlight) === currentTimestamp;
     });
     return index == -1 ? 0 : index;
   }, [currentTimestamp, highlights]);
-  console.log(`curr ${current}`);
 
   const value = current !== undefined ? highlights.at(current) : undefined;
 
@@ -201,8 +316,6 @@ export const ContinuousFeed: React.FC<{
         </h3>
       </div>
     );
-
-  console.log(highlights);
 
   return (
     <BaseCompontent
@@ -556,7 +669,7 @@ const AnglesGrid: React.FC<{ vid: VideoAngles }> = ({ vid }) => {
     typeof angle === "string" ? parseInt(angle) : vid.angles.at(0)?.cameraId;
 
   return (
-    <div className="flex w-full flex-col">
+    <div className="flex h-32 w-96 flex-col">
       <div className="text-lg font-bold text-slate-900 dark:text-white">
         Angles
       </div>
@@ -649,10 +762,10 @@ const BackNav: React.FC<{
         />
       </IconStyleLink>
 
-      <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
+      <Label className="text-lg">
         {from ? `${from} - ` : ""}
         {relativeTime && <span>{relativeTime}</span>}
-      </h3>
+      </Label>
     </div>
   );
 };
@@ -841,20 +954,19 @@ const MobilePlayer: React.FC<
     () => false
   );
 
-  const hasGutter = true;
-
   return (
     <div className="relative flex h-full w-full flex-col items-start justify-start">
-      <div className="flex w-full flex-row items-center justify-between bg-white px-2 shadow-md dark:bg-slate-900">
+      <div className="flex w-full flex-row items-center justify-between border-b border-foreground px-2 py-1">
         <BackNav backPath={backPath} from={from} relativeTime={relativeTime} />
         {landscape && (
           <Sheet>
-            <SheetTrigger>
-              <InfoCircledIcon
-                className={
-                  "h-6 w-6 text-slate-900 hover:text-slate-800 dark:text-white dark:hover:text-gray-100"
-                }
-              />
+            <SheetTrigger
+              className={cn(
+                buttonVariants({ variant: "outline", size: "icon" }),
+                "border-0"
+              )}
+            >
+              <InfoCircledIcon className="h-6 w-6" />
             </SheetTrigger>
 
             <SheetContent>
@@ -879,7 +991,7 @@ const MobilePlayer: React.FC<
       <div className="relative h-full w-full overflow-clip">
         <div
           style={{
-            maxHeight: hasGutter ? "calc(100vh - 2.5rem)" : "100vh",
+            maxHeight: "calc(100vh - 12.8rem)",
             maxWidth: "100%",
             objectFit: "contain",
             aspectRatio: aspect,
@@ -891,7 +1003,7 @@ const MobilePlayer: React.FC<
       </div>
 
       <div className="flex h-full w-full flex-col gap-4 pb-4">
-        <div className="bg-white dark:bg-slate-900">
+        <div className="border-y border-foreground">
           <ActionRow highlight={highlight} />
         </div>
         <div className="flex flex-row items-start justify-between px-4">

@@ -16,14 +16,16 @@ export const ProfileFollowButton: React.FC<{
   if (user?.userId) {
     if (user?.userId === profileId) {
       return (
-        <div className={buttonVariants({ variant: "secondary" })}>You</div>
+        <div className={buttonVariants({ variant: "secondary", size: "sm" })}>
+          You
+        </div>
       );
     }
     return (
       <Button
         disabled={buttonState.disabled}
         variant={buttonState.pending ? "ghost" : "secondary"}
-        className=""
+        size={"sm"}
         onClick={() => action(profileId)}
       >
         {buttonState.follows

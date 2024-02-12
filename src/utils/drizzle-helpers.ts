@@ -1,4 +1,17 @@
-import { and, eq, or, exists, asc, desc, gt, isNotNull, lt } from "drizzle-orm";
+import {
+  and,
+  eq,
+  or,
+  exists,
+  asc,
+  desc,
+  gt,
+  isNotNull,
+  lt,
+  count,
+  lte,
+  gte,
+} from "drizzle-orm";
 import {
   users,
   follows,
@@ -23,7 +36,7 @@ export const userWhereArgs = (
   if (!currentId) return and(eq(users.id, userId), eq(users.public, 1));
   if (currentId === userId) return eq(users.id, userId);
   const followedBy = db
-    .select()
+    .select({ followed: count(follows.followedId) })
     .from(follows)
     .where(
       and(eq(follows.followerId, currentId), eq(follows.followedId, userId))
@@ -43,7 +56,7 @@ export const cursorWhereArgs = (
 ) => {
   const timestamp = parsedCursor?.timestamp ?? initialCursor;
   if (!timestamp) return isNotNull(highlight.id);
-  if (!parsedCursor) return lt(highlight.timestampUtc, timestamp);
+  if (!parsedCursor) return lte(highlight.timestampUtc, timestamp);
   if (parsedCursor.dir === "next")
     return or(
       lt(highlight.timestampUtc, parsedCursor.timestamp),

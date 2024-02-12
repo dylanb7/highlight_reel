@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import SignInComponent from "../misc/sign-in";
-import PoolSearchComponent from "./pool-search-bar";
+import ReelSearchComponent from "./reel-search-bar";
 import { ModeToggle } from "../misc/dark-mode-toggle";
 import {
   Sheet,
@@ -31,7 +31,7 @@ const MobileNav = ({ open }: { open: boolean }) => {
 export const NavBar = () => {
   const [open, setOpen] = useState(false);
   return (
-    <nav className="fixed inset-x-0 top-0 z-50 flex h-16 items-center border-b border-gray-300  p-4 shadow-sm ">
+    <nav className="fixed inset-x-0 top-0 z-50 flex h-16 items-center border-b border-gray-300 bg-background  p-4 shadow-sm ">
       <MobileNav open={open} />
       <Link href={"/"}>
         <p className="hidden justify-start text-2xl font-bold text-slate-900 dark:text-white sm:flex">
@@ -43,7 +43,7 @@ export const NavBar = () => {
           H<span className="text-indigo-500">R</span>
         </p>
       </Link>
-      <PoolSearchComponent />
+      <ReelSearchComponent />
 
       <div className="flex grow items-center justify-end">
         <div className="md:hidden">
