@@ -326,7 +326,6 @@ export const reelRouter = router({
         },
       });
 
-      console.log(pool);
       const completeHighlights =
         pool?.cameras.map((cam) =>
           cam.highlights.map<HighlightReturn>((highlight) => ({
