@@ -329,6 +329,12 @@ const LoadProfileBookmarks: React.FC<{
       upvote({ highlightId: highlight.id, like: !highlight.upvoted });
     },
     disabled: bookmarking || upvoting,
+    overrideClickPath(highlight) {
+      return {
+        pathname: `profiles/[id]/feed/[...slug]`,
+        query: { id, slug: encodeURIComponent(highlight.timestampUtc!) },
+      };
+    },
   };
 
   return (

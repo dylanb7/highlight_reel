@@ -27,6 +27,7 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 
 import { Label } from "@/shadcn/ui/label";
+import { useGridContext } from "../contexts/highlight-grid-context";
 
 dayjs.extend(utc.default);
 dayjs.extend(localizedFormat.default);
@@ -93,12 +94,15 @@ export const ImageComponent: React.FC<{
 }> = ({ highlight, start, length, index, continuous, angles }) => {
   const { query, pathname } = useRouter();
 
+  const { overrideClickPath } = useGridContext();
+
   const aspect =
     highlight.aspectRatioNumerator && highlight.aspectRatioDenominator
       ? highlight.aspectRatioDenominator / highlight.aspectRatioNumerator
       : 9 / 16;
 
   const href: UrlObject = useMemo(() => {
+    if (overrideClickPath) return overrideClickPath(highlight);
     if (continuous)
       return {
         pathname: `${pathname}/feed/[...slug]`,
@@ -116,10 +120,11 @@ export const ImageComponent: React.FC<{
       },
     };
   }, [
+    overrideClickPath,
+    highlight,
     continuous,
     pathname,
     query,
-    highlight.timestampUtc,
     start,
     index,
     length,

@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shadcn/ui/select";
+import { X, ChevronsUpDown, ChevronsDownUp } from "lucide-react";
 import { CalendarIcon } from "@radix-ui/react-icons";
 import {
   Dialog,
@@ -21,26 +22,46 @@ import {
   DialogTrigger,
 } from "@/shadcn/ui/dialog";
 import { cn } from "@/cnutils";
+import { Label } from "@/shadcn/ui/label";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/shadcn/ui/collapsible";
+
+import { Separator } from "@/shadcn/ui/separator";
+import { useRouter } from "next/router";
+import { fromUnix, parseFrom } from "~/utils/date-helpers";
 
 interface DateFilterProps {
   onDate: (date: Date) => void;
-  initial?: Date;
 }
 
-export const DateFilter: React.FC<DateFilterProps> = ({ onDate, initial }) => {
-  const value = useMemo(() => getEnd(initial), [initial]);
+export const DateFilter: React.FC<DateFilterProps> = ({ onDate }) => {
+  const { query } = useRouter();
 
-  const [startDate, setStartDate] = useState<Date>(value);
+  const { from } = query;
+
+  const value = useMemo(() => {
+    const unix = parseFrom(from);
+
+    const initial = unix ? fromUnix(unix) : undefined;
+
+    return initial ? dayjs(initial).endOf("day").toDate() : undefined;
+  }, [from]);
+
+  const [startDate, setStartDate] = useState<Date | undefined>(value);
 
   const onSelect = (value: Date) => {
-    setStartDate(dayjs(value).endOf("day").toDate());
-    onDate(startDate);
+    const newDate = dayjs(value).endOf("day").toDate();
+    setStartDate(newDate);
+    onDate(newDate);
   };
 
   return (
     <div className="flex flex-col items-start justify-start pb-3">
-      <h3 className="pb-3 text-lg font-semibold text-slate-900 dark:text-white">
-        Jump to
+      <h3 className="text-md pb-1 font-semibold text-slate-900 dark:text-white">
+        Start From
       </h3>
 
       <Dialog>
@@ -112,7 +133,7 @@ export const WristBands: React.FC<BandProps> = ({
 }) => {
   return (
     <div className="flex w-full flex-col pb-3">
-      <h3 className="pb-3 text-lg font-semibold text-slate-900 dark:text-white">
+      <h3 className="text-md pb-1 font-semibold text-slate-900 dark:text-white">
         Wristband
       </h3>
 
@@ -141,8 +162,8 @@ const WristbandChip: React.FC<{
       size={"sm"}
       className={cn(
         !active
-          ? buttonVariants({ variant: "link" })
-          : "h-10 px-4 py-2 hover:bg-indigo-500",
+          ? buttonVariants({ variant: "link", size: "sm" })
+          : "h-9 px-3 hover:bg-indigo-500",
         "text-sm font-semibold no-underline shadow-sm ",
         active
           ? "bg-indigo-500 text-white "
@@ -162,19 +183,82 @@ const WristbandChip: React.FC<{
   );
 };
 
-const getEnd = (date?: Date) => {
-  const end = date ?? new Date();
-  return dayjs(end).endOf("day").toDate();
-};
-
 export const Filters: React.FC<{
+  reelId: number;
   bandProps: BandProps;
   dateProps: DateFilterProps;
-}> = ({ bandProps, dateProps }) => {
+}> = ({ reelId, bandProps, dateProps }) => {
+  const [isOpen, setOpen] = useState(false);
+
+  const { push, query } = useRouter();
+
+  const { from } = query;
+
+  const parsedFrom = parseFrom(from);
+
   return (
-    <div className="flex flex-col">
-      <WristBands {...bandProps} />
-      <DateFilter {...dateProps} />
-    </div>
+    <Collapsible
+      onOpenChange={(open) => {
+        setOpen(open);
+      }}
+      className="flex w-full flex-col"
+    >
+      <div className="flex flex-wrap gap-2">
+        <CollapsibleTrigger>
+          <Label
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+          >
+            <>
+              {isOpen ? (
+                <ChevronsDownUp className="h-5 w-5" />
+              ) : (
+                <ChevronsUpDown className="h-5 w-5" />
+              )}
+            </>
+            &nbsp;Filters
+          </Label>
+        </CollapsibleTrigger>
+        {bandProps.selected && (
+          <Button
+            size={"sm"}
+            variant={"outline"}
+            onClick={() => {
+              delete query.bandId;
+              void push({
+                pathname: "/reels/[id]",
+                query: { ...query, id: reelId },
+              });
+            }}
+          >
+            <X className="h-5 w-5" />
+            &nbsp;{`Wristband: ${bandProps.selected}`}
+          </Button>
+        )}
+        {parsedFrom && (
+          <Button
+            size={"sm"}
+            variant={"outline"}
+            onClick={() => {
+              delete query.from;
+              void push({
+                query: query,
+              });
+            }}
+          >
+            <X className="h-5 w-5" />
+            &nbsp;
+            {`From: ${dayjs(fromUnix(parsedFrom)).format("MMM DD, YYYY")}`}
+          </Button>
+        )}
+      </div>
+      <CollapsibleContent>
+        <Separator className="mt-2" />
+        <div className="flex flex-wrap">
+          <WristBands {...bandProps} />
+          <DateFilter {...dateProps} />
+        </div>
+        <Separator />
+      </CollapsibleContent>
+    </Collapsible>
   );
 };

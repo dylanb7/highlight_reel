@@ -5,11 +5,14 @@ import { ContinuousFeed } from "../../../../components/highlight-components/high
 
 import { api } from "../../../../utils/trpc";
 import { useRouter } from "next/router";
+import { useAuth } from "@clerk/nextjs";
 
 const ProfileBookmarksFeed: NextPage = () => {
   const { id, slug } = useRouter().query;
 
   const profileId = id as "string";
+
+  const currentId = useAuth();
 
   const startTime =
     slug && Number.isInteger(slug[0]) ? Number(slug[0]) : undefined;
@@ -84,7 +87,11 @@ const ProfileBookmarksFeed: NextPage = () => {
       <ContinuousFeed
         highlights={highlights ?? []}
         fetching={isFetching}
-        backPath={{ pathname: "/profiles/[id]", query: { id } }}
+        backPath={
+          currentId.userId === id
+            ? { pathname: "profile" }
+            : { pathname: "/profiles/[id]", query: { id } }
+        }
         hasNext={hasNextPage ?? false}
         hasPrev={hasPreviousPage ?? false}
         next={next}

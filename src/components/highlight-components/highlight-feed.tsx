@@ -870,6 +870,7 @@ const Source: React.FC<{ poolId: number; wristbandId?: string | null }> = ({
 const IconStyleLink: React.FC<
   React.PropsWithChildren<{ url: string | UrlObject }>
 > = ({ url, children }) => {
+  console.log(url);
   return (
     <Link
       href={url}

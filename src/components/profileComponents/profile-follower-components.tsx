@@ -21,7 +21,7 @@ export const ProfileRow: React.FC<{
   dismiss: () => void;
 }> = ({ profile, dismiss }) => {
   return (
-    <div className="flex flex-row items-center justify-between rounded-lg bg-gray-200 p-2 shadow-sm dark:bg-slate-900">
+    <div className="flex flex-row items-center justify-between rounded-lg bg-gray-200 px-2 py-1 shadow-sm dark:bg-slate-900">
       <Link
         href={"/profiles/" + encodeURIComponent(profile.id)}
         onClick={() => {

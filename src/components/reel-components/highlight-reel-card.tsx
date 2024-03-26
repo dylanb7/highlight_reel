@@ -24,7 +24,7 @@ export const ReelComponent: React.FC<
 > = ({ reel: pool, hasLink, children }) => {
   return (
     <Card className="w-full max-w-md">
-      <CardHeader className="py-4">
+      <CardHeader className="py-2">
         <div className="flex flex-row justify-between">
           <div className="flex flex-row items-center gap-2">
             {pool.icon && (
@@ -56,7 +56,7 @@ export const ReelComponent: React.FC<
           <Separator orientation="vertical" className="mx-1 w-px" />
           <ProfileList
             text={"Followers: " + pool.followerCount}
-            header={"Pool Followers"}
+            header={"Reel Followers"}
             fetch={{
               poolFetch: pool.id,
             }}

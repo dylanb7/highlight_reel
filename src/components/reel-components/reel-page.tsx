@@ -11,7 +11,7 @@ import {
 } from "~/components/highlight-components/grouped-highlight-grid";
 import { useRouter } from "next/router";
 import { Skeleton } from "@/shadcn/ui/skeleton";
-import { toUnix, useInitialDate } from "~/utils/date-helpers";
+import { parseFrom, toUnix } from "~/utils/date-helpers";
 import { api } from "~/utils/trpc";
 
 import {
@@ -38,15 +38,20 @@ const LoadFilters: React.FC<{ reelId: number }> = ({ reelId }) => {
 
   return (
     <Filters
+      reelId={reelId}
       bandProps={{
         wristbands: bands ?? [],
         onSelect: (band) => {
           if (band === "All") {
-            void push({ pathname: "/reels/[id]", query: { id: reelId } });
+            delete query.bandId;
+            void push({
+              pathname: "/reels/[id]",
+              query: { ...query, id: reelId },
+            });
           } else {
             void push({
               pathname: "/reels/[id]/band/[bandId]",
-              query: { id: reelId, bandId: band },
+              query: { ...query, id: reelId, bandId: band },
             });
           }
         },
@@ -54,7 +59,6 @@ const LoadFilters: React.FC<{ reelId: number }> = ({ reelId }) => {
       }}
       dateProps={{
         onDate: (date) => {
-          console.log(date);
           void push({ query: { ...query, from: toUnix(date) } });
         },
       }}
@@ -70,14 +74,12 @@ const LoadFeed: React.FC<{
 
   const { query } = useRouter();
 
-  const { bandId } = query;
-
-  const initialCursor = useInitialDate();
+  const { bandId, from } = query;
 
   const queryKey = {
     amount: loadAmount,
     reelId,
-    initialCursor,
+    initialCursor: parseFrom(from),
     wristbands: typeof bandId === "string" ? [bandId] : bandId,
   };
 
@@ -228,10 +230,12 @@ const ReelPage: React.FC<{ basePath: UrlObject }> = ({ basePath }) => {
         }}
       >
         <div className="flex h-full w-full flex-col items-start justify-start px-4 sm:px-8">
-          <div className="mt-8 self-center pb-4">
+          <div className="mt-8 self-center pb-2">
             <LoadReelData reelId={reelId} />
           </div>
-          <LoadFilters reelId={reelId} />
+          <div className="pb-4">
+            <LoadFilters reelId={reelId} />
+          </div>
           <LoadFeed reelId={reelId} basePath={basePath} />
         </div>
       </ShareButtonProvider>

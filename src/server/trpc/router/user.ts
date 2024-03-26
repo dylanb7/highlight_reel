@@ -718,7 +718,7 @@ export const userRouter = router({
   getBookmarkVideosPaginated: publicProcedure
     .input(
       z.object({
-        profileId: z.string().cuid(),
+        profileId: z.string(),
         initialCursor: z.number().nullish(),
         cursor: z.string().nullish(),
       })

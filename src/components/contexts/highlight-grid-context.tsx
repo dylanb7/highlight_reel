@@ -7,6 +7,7 @@ export type HighlightGridActions = {
   basePath: UrlObject;
   fetchMore: () => void;
   hasMore: () => boolean;
+  overrideClickPath?: (highlight: HighlightThumbnail) => UrlObject;
 } & VideoActions<HighlightThumbnail>;
 
 const noPlay: HighlightGridActions = {

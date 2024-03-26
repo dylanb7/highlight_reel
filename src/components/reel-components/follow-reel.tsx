@@ -21,6 +21,7 @@ export const ReelFollowButton: React.FC<{
     return (
       <Button
         disabled={buttonState.disabled}
+        size={"sm"}
         variant={buttonState.pending ? "secondary" : "default"}
         className={`${!buttonState.pending && "bg-indigo-500"}`}
         onClick={() => action(poolId)}

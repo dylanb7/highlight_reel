@@ -48,7 +48,7 @@ export const ReelScroll: React.FC<{
       <CollapsibleTrigger asChild>
         {hasReels && (
           <div className="ml-4 flex w-fit cursor-pointer flex-row items-center gap-1 sm:ml-8">
-            <p className="text-2xl font-semibold text-slate-900 dark:text-white">
+            <p className="text-xl font-semibold text-slate-900 dark:text-white">
               {title}
             </p>
             {open ? (
