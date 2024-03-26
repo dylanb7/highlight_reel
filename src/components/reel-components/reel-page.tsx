@@ -85,7 +85,7 @@ const LoadFeed: React.FC<{
 
   const { data, isLoading, hasNextPage, fetchNextPage, error } =
     api.reel.getReelHighlightsPaginated.useInfiniteQuery(queryKey, {
-      getNextPageParam: (lastPage) => lastPage.nextCursor,
+      getNextPageParam: (lastPage) => lastPage?.nextCursor,
     });
 
   const highlights = useMemo(() => {

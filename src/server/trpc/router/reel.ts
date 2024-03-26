@@ -20,6 +20,7 @@ import {
   highlightPool,
   poolsToFollowers,
   poolsToRequested,
+  upvotedHighlightToUser,
 } from "../../db/schema";
 import {
   and,
@@ -37,7 +38,6 @@ import {
   canViewPool,
   cursorWhereArgs,
   orderByArgs,
-  publicToBool,
 } from "../../../utils/drizzle-helpers";
 
 export const reelRouter = router({
@@ -50,9 +50,8 @@ export const reelRouter = router({
           where: eq(highlightPool.id, input),
           with: {
             poolFollowers: {
-              columns: {
-                userId: true,
-              },
+              where: eq(poolsToFollowers.userId, userId),
+              limit: 1,
             },
 
             poolRequests: {
@@ -60,13 +59,8 @@ export const reelRouter = router({
               limit: 1,
             },
             cameras: {
-              columns: {},
-              with: {
-                highlights: {
-                  columns: {
-                    id: true,
-                  },
-                },
+              columns: {
+                highlightsCount: true,
               },
             },
           },
@@ -75,38 +69,22 @@ export const reelRouter = router({
           ? ({
               ...poolInfo,
               followInfo: {
-                follows: poolInfo.poolFollowers.find(
-                  (val) => val.userId === userId
-                )
-                  ? true
-                  : false,
+                follows: poolInfo.poolFollowers.length > 0,
                 requested: poolInfo.poolRequests.length > 0,
               },
               highlightCount: poolInfo.cameras
-                .map((cam) => cam.highlights.length)
-                .reduce((a, b) => a + b, 0),
-              followerCount: poolInfo.poolFollowers.length,
-              isPublic: publicToBool(poolInfo.public),
+                .map((cam) => cam.highlightsCount ?? 0)
+                .reduce((a, b) => a + b),
+              followerCount: poolInfo.followersCount,
+              isPublic: poolInfo.public,
             } as ReelInfo)
           : undefined;
       }
       const poolInfo = await ctx.db.query.highlightPool.findFirst({
         where: eq(highlightPool.id, input),
         with: {
-          poolFollowers: {
-            columns: {
-              userId: true,
-            },
-          },
           cameras: {
-            columns: {},
-            with: {
-              highlights: {
-                columns: {
-                  id: true,
-                },
-              },
-            },
+            columns: { highlightsCount: true },
           },
         },
       });
@@ -117,11 +95,11 @@ export const reelRouter = router({
               follows: false,
               requested: false,
             },
-            isPublic: publicToBool(poolInfo.public),
+            isPublic: poolInfo.public,
             highlightCount: poolInfo.cameras
-              .map((cam) => cam.highlights.length)
-              .reduce((a, b) => a + b, 0),
-            followerCount: poolInfo.poolFollowers.length,
+              .map((cam) => cam.highlightsCount ?? 0)
+              .reduce((a, b) => a + b),
+            followerCount: poolInfo.followersCount,
           } as ReelInfo)
         : undefined;
     }),
@@ -137,7 +115,7 @@ export const reelRouter = router({
     .mutation(({ ctx, input }) => {
       const newPool: NewHighlightPool = {
         name: input.reelName,
-        public: input.public ? 1 : 0,
+        public: input.public,
         ownerId: input.ownerId,
       };
 
@@ -198,10 +176,10 @@ export const reelRouter = router({
       const { cursor, amount } = input;
       const res = await ctx.db.query.highlightPool.findMany({
         where: () => {
-          if (!userId && !cursor) return eq(highlightPool.public, 1);
+          if (!userId && !cursor) return eq(highlightPool.public, true);
           if (!userId) {
             return and(
-              eq(highlightPool.public, 1),
+              eq(highlightPool.public, true),
               lt(highlightPool.createdAt, cursor!)
             );
           }
@@ -213,32 +191,25 @@ export const reelRouter = router({
 
           if (cursor) {
             return and(
-              eq(highlightPool.public, 1),
+              eq(highlightPool.public, true),
               lt(highlightPool.createdAt, cursor),
               notInArray(highlight.id, userFollows)
             );
           }
           return and(
-            eq(highlightPool.public, 1),
+            eq(highlightPool.public, true),
             notInArray(highlight.id, userFollows)
           );
         },
         with: {
-          cameras: {
-            columns: {},
-            with: {
-              highlights: {
-                columns: {
-                  id: true,
+          ...(userId
+            ? {
+                poolFollowers: {
+                  where: eq(poolsToFollowers.userId, userId),
+                  limit: 1,
                 },
-              },
-            },
-          },
-          poolFollowers: {
-            columns: {
-              userId: true,
-            },
-          },
+              }
+            : {}),
           ...(userId
             ? {
                 poolRequests: {
@@ -247,6 +218,11 @@ export const reelRouter = router({
                 },
               }
             : {}),
+          cameras: {
+            columns: {
+              highlightsCount: true,
+            },
+          },
         },
         orderBy: [desc(highlightPool.createdAt)],
         limit: amount + 1,
@@ -258,16 +234,15 @@ export const reelRouter = router({
         return {
           ...pool,
           followInfo: {
-            follows: pool.poolFollowers.find((val) => val.userId === userId)
-              ? true
-              : false,
+            follows: pool.poolFollowers ? pool.poolFollowers.length > 0 : false,
             requested: pool.poolRequests ? pool.poolRequests.length > 0 : false,
           },
-          isPublic: publicToBool(pool.public),
-          followerCount: pool.poolFollowers.length,
-          highlightCount: pool.cameras
-            .map((cam) => cam.highlights.length)
-            .reduce((a, b) => a + b, 0),
+          isPublic: pool.public,
+          followerCount: pool.followersCount ?? 0,
+          highlightCount:
+            pool.cameras
+              .map((cam) => cam.highlightsCount ?? 0)
+              .reduce((total, curr) => total + curr) ?? 0,
         };
       });
       const nextCursor = hasNext
@@ -327,15 +302,20 @@ export const reelRouter = router({
                 },
                 orderBy: orderByArgs(parsedCursor),
                 with: {
-                  userUpvotes: {
-                    columns: {
-                      userId: true,
-                    },
-                  },
+                  ...(userId
+                    ? {
+                        userUpvotes: {
+                          where: eq(upvotedHighlightToUser.userId, userId),
+                          limit: 1,
+                        },
+                      }
+                    : {}),
+
                   ...(userId
                     ? {
                         userBookmarks: {
                           where: eq(bookmarkedHighlightToUser.userId, userId),
+                          limit: 1,
                         },
                       }
                     : {}),
@@ -346,16 +326,15 @@ export const reelRouter = router({
         },
       });
 
+      console.log(pool);
       const completeHighlights =
         pool?.cameras.map((cam) =>
           cam.highlights.map<HighlightReturn>((highlight) => ({
             ...highlight,
             poolId: poolId,
-            upvotes: highlight.userUpvotes.length,
-            upvoted: highlight.userUpvotes.find(
-              (upvote) => upvote.userId === userId
-            )
-              ? true
+            upvotes: highlight.upvotesCount ?? 0,
+            upvoted: highlight.userUpvotes
+              ? highlight.userUpvotes.length > 0
               : false,
             bookmarked: highlight.userBookmarks
               ? highlight.userBookmarks.length > 0
@@ -452,15 +431,19 @@ export const reelRouter = router({
                 orderBy: orderByArgs(parsedCursor),
                 limit: amount + 1,
                 with: {
-                  userUpvotes: {
-                    columns: {
-                      userId: true,
-                    },
-                  },
+                  ...(userId
+                    ? {
+                        userUpvotes: {
+                          where: eq(upvotedHighlightToUser.userId, userId),
+                          limit: 1,
+                        },
+                      }
+                    : {}),
                   ...(userId
                     ? {
                         userBookmarks: {
                           where: eq(bookmarkedHighlightToUser.userId, userId),
+                          limit: 1,
                         },
                       }
                     : {}),
@@ -475,11 +458,9 @@ export const reelRouter = router({
         pool?.cameras.map((cam) =>
           cam.highlights.map<HighlightReturn>((highlight) => ({
             ...highlight,
-            upvotes: highlight.userUpvotes.length,
-            upvoted: highlight.userUpvotes.find(
-              (upvote) => upvote.userId === userId
-            )
-              ? true
+            upvotes: highlight.upvotesCount ?? 0,
+            upvoted: highlight.userUpvotes
+              ? highlight.userUpvotes.length > 0
               : false,
             bookmarked: highlight.userBookmarks
               ? highlight.userBookmarks.length > 0
@@ -548,15 +529,19 @@ export const reelRouter = router({
                 orderBy: [desc(highlight.timestampUtc)],
                 limit: amount,
                 with: {
-                  userUpvotes: {
-                    columns: {
-                      userId: true,
-                    },
-                  },
+                  ...(userId
+                    ? {
+                        userUpvotes: {
+                          where: eq(upvotedHighlightToUser.userId, userId),
+                          limit: 1,
+                        },
+                      }
+                    : {}),
                   ...(userId
                     ? {
                         userBookmarks: {
                           where: eq(bookmarkedHighlightToUser.userId, userId),
+                          limit: 1,
                         },
                       }
                     : {}),
@@ -571,11 +556,9 @@ export const reelRouter = router({
         bundle?.cameras.map((cam) =>
           cam.highlights.map<HighlightReturn>((highlight) => ({
             ...highlight,
-            upvotes: highlight.userUpvotes.length,
-            upvoted: highlight.userUpvotes.find(
-              (upvote) => upvote.userId === userId
-            )
-              ? true
+            upvotes: highlight.upvotesCount ?? 0,
+            upvoted: highlight.userUpvotes
+              ? highlight.userUpvotes.length > 0
               : false,
             bookmarked: highlight.userBookmarks
               ? highlight.userBookmarks.length > 0
@@ -647,7 +630,7 @@ export const reelRouter = router({
           follows: val.user.followers?.length > 0 ?? false,
           requested: val.user.pending?.length > 0 ?? false,
         },
-        isPublic: publicToBool(val.user.public),
+        isPublic: val.user.public ?? false,
       }));
     }),
 });

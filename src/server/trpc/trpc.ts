@@ -2,20 +2,9 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import { transformer } from "../../utils/transformer";
 
 import { type Context } from "./context";
-import { ZodError } from "zod";
 
 const t = initTRPC.context<Context>().create({
   transformer,
-  errorFormatter({ shape, error }) {
-    return {
-      ...shape,
-      data: {
-        ...shape.data,
-        zodError:
-          error.cause instanceof ZodError ? error.cause.flatten() : null,
-      },
-    };
-  },
 });
 
 const isAuthed = t.middleware(({ ctx, next }) => {

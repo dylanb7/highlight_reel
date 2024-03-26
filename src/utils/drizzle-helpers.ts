@@ -10,7 +10,6 @@ import {
   lt,
   count,
   lte,
-  gte,
 } from "drizzle-orm";
 import {
   users,
@@ -33,7 +32,7 @@ export const userWhereArgs = (
   userId: string,
   db: dbType
 ) => {
-  if (!currentId) return and(eq(users.id, userId), eq(users.public, 1));
+  if (!currentId) return and(eq(users.id, userId), eq(users.public, true));
   if (currentId === userId) return eq(users.id, userId);
   const followedBy = db
     .select({ followed: count(follows.followedId) })
@@ -41,7 +40,10 @@ export const userWhereArgs = (
     .where(
       and(eq(follows.followerId, currentId), eq(follows.followedId, userId))
     );
-  return and(eq(users.id, userId), or(eq(users.public, 1), exists(followedBy)));
+  return and(
+    eq(users.id, userId),
+    or(eq(users.public, true), exists(followedBy))
+  );
 };
 
 export const orderByArgs = (parsedCursor: highlightCursor | undefined) => {
@@ -80,7 +82,7 @@ export const canViewPool = (
   db: dbType
 ) => {
   if (!userId)
-    return and(eq(highlightPool.id, poolId), eq(highlightPool.public, 1));
+    return and(eq(highlightPool.id, poolId), eq(highlightPool.public, true));
   const userFollowsQuery = db
     .select()
     .from(poolsToFollowers)
@@ -92,7 +94,7 @@ export const canViewPool = (
     );
   return and(
     eq(highlightPool.id, poolId),
-    or(eq(highlightPool.public, 1), exists(userFollowsQuery))
+    or(eq(highlightPool.public, true), exists(userFollowsQuery))
   );
 };
 

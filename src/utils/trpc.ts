@@ -57,8 +57,11 @@ export const api = createTRPCNext<AppRouter>({
     const { clientErrors } = opts;
     if (clientErrors.length) {
       // propagate http first error from API calls
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const errorCode: number | undefined =
+        clientErrors.at(0)?.data?.httpStatus;
       return {
-        status: clientErrors[0]?.data?.httpStatus ?? 500,
+        status: errorCode ?? 500,
       };
     }
     // cache request for 1 day + revalidate once every second
