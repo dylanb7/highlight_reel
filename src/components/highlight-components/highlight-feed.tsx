@@ -2,19 +2,12 @@ import {
   ChevronLeftIcon,
   ChevronDownIcon,
   ChevronUpIcon,
-  InfoCircledIcon,
 } from "@radix-ui/react-icons";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/router";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   HighlightVideo,
   VideoAngles,
@@ -30,21 +23,11 @@ import * as reltiveTime from "dayjs/plugin/relativeTime";
 import * as utc from "dayjs/plugin/utc";
 import LocalizedFormat from "dayjs/plugin/localizedFormat";
 
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/shadcn/ui/sheet";
-import { AspectRatio } from "@/shadcn/ui/aspect-ratio";
 import { type UrlObject } from "url";
 import { Label } from "@/shadcn/ui/label";
-import { buttonVariants } from "@/shadcn/ui/button";
-import { cn } from "@/cnutils";
-import { LoadingScaffold } from "./grouped-highlight-grid";
+
 import { Skeleton } from "@/shadcn/ui/skeleton";
-import { LoadingSpinner } from "../misc/loading";
+import { ScrollArea, ScrollBar } from "@/shadcn/ui/scroll-area";
 
 dayjs.extend(reltiveTime.default);
 dayjs.extend(utc.default);
@@ -505,7 +488,66 @@ const BaseCompontent: React.FC<
   }, [highlight]);
 
   if (fetching) {
-    return <LoadingSpinner loadingType={"Fetching Highlight"} />;
+    return (
+      <div className="relative flex h-full w-full flex-col items-start justify-start">
+        <div className="flex w-full flex-row items-center justify-between border-b border-foreground px-2 py-1">
+          <BackNav
+            backPath={backPath}
+            from={from}
+            relativeTime={relativeTime}
+          />
+        </div>
+
+        <div className="relative h-full w-full overflow-clip">
+          <div
+            style={{
+              maxHeight: "calc(100vh - 12.8rem)",
+              maxWidth: "100%",
+              objectFit: "contain",
+              aspectRatio: aspect,
+            }}
+            className="items-center justify-center"
+          >
+            <Skeleton />
+          </div>
+        </div>
+
+        <div className="flex h-full w-full flex-col gap-4 pb-4">
+          <div className="border-y border-foreground">
+            <Skeleton className="flex h-12 w-full  px-3 shadow-sm shadow-gray-300 transition-opacity dark:shadow-slate-900" />
+          </div>
+          <div className="flex flex-row items-start justify-between px-4">
+            <div className="flex w-full flex-col">
+              <div className="flex flex-row items-start justify-start gap-8 ">
+                <Skeleton className="h-8 w-12" />
+                <Skeleton className="h-8 w-12" />
+              </div>
+
+              {angles && <AnglesGrid vid={angles} />}
+              {/*highlight.poolId && (
+            <Source
+              poolId={highlight.poolId}
+              wristbandId={highlight.wristbandId}
+            />
+          )*/}
+            </div>
+            <div className="flex flex-row items-start justify-start gap-2 text-xl">
+              {progress && (
+                <h2 className="self-center font-semibold text-slate-900 dark:text-white ">
+                  {progress}
+                </h2>
+              )}
+              <ArrowNav
+                hasNext={hasNext}
+                hasPrev={hasPrev}
+                next={next}
+                prev={prev}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
   if (!highlight)
     return (
@@ -677,15 +719,14 @@ const AnglesGrid: React.FC<{ vid: VideoAngles }> = ({ vid }) => {
     typeof angle === "string" ? parseInt(angle) : vid.angles.at(0)?.cameraId;
 
   return (
-    <div className="flex h-32 w-96 flex-col">
-      <div className="text-lg font-bold text-slate-900 dark:text-white">
-        Angles
-      </div>
-      <div className="flex w-full flex-row gap-1">
+    <div className="flex flex-col gap-2">
+      <Label className="text-lg font-bold">Angles</Label>
+
+      <div className="flex flex-row gap-1  md:h-32">
         {angles.map((angle) => {
           if (current && current === angle.cameraId)
             return (
-              <div className="flex h-full w-full flex-col" key={angle.id}>
+              <div className="flex flex-col" key={angle.id}>
                 <AngleThumb highlight={angle} selected={true} />
                 <h2 className="text-center text-sm font-semibold text-slate-900 dark:text-white">
                   Selected
@@ -701,7 +742,10 @@ const AnglesGrid: React.FC<{ vid: VideoAngles }> = ({ vid }) => {
               className="h-full w-full"
               key={angle.id}
               href={{
-                query: { ...query, angle: encodeURIComponent(angle.cameraId) },
+                query: {
+                  ...query,
+                  angle: encodeURIComponent(angle.cameraId),
+                },
               }}
             >
               <AngleThumb highlight={angle} selected={false} />
@@ -725,32 +769,28 @@ const AngleThumb: React.FC<{
       : 9 / 16;
 
   return (
-    <div className="h-full w-full">
-      <AspectRatio ratio={aspect}>
-        <div
-          key={highlight.id}
-          className={`group relative h-full w-full overflow-clip rounded-md ${
-            selected
-              ? "border-2 border-slate-900 dark:border-white"
-              : "border border-gray-300 hover:border-slate-900 hover:shadow-xl dark:border-gray-500 dark:hover:border-white"
-          } `}
-        >
-          {highlight.thumbnailUrl && (
-            <Image
-              className={`z-10 ${!selected && "group-hover:opacity-50"}`}
-              src={highlight.thumbnailUrl}
-              unoptimized
-              alt={"Highlight"}
-              onLoad={() => setLoading(false)}
-              width={highlight.aspectRatioNumerator ?? 500}
-              height={highlight.aspectRatioDenominator ?? 500}
-            />
-          )}
-          {(highlight.thumbnailUrl === undefined || loading) && (
-            <div className="absolute inset-0 z-20 animate-pulse bg-gray-100 dark:bg-slate-900" />
-          )}
-        </div>
-      </AspectRatio>
+    <div
+      key={highlight.id}
+      className={`group w-32 overflow-clip rounded-md md:w-44 xl:w-60 ${
+        selected
+          ? "border-2 border-slate-900 dark:border-white"
+          : "border border-gray-300 hover:border-slate-900 hover:shadow-xl dark:border-gray-500 dark:hover:border-white"
+      } `}
+    >
+      {highlight.thumbnailUrl && (
+        <Image
+          className={`z-10 ${!selected && "group-hover:opacity-50"}`}
+          src={highlight.thumbnailUrl}
+          unoptimized
+          alt={"Highlight"}
+          onLoad={() => setLoading(false)}
+          width={highlight.aspectRatioNumerator ?? 500}
+          height={highlight.aspectRatioDenominator ?? 500}
+        />
+      )}
+      {(highlight.thumbnailUrl === undefined || loading) && (
+        <div className="absolute inset-0 z-20 animate-pulse bg-gray-100 dark:bg-slate-900" />
+      )}
     </div>
   );
 };
@@ -950,51 +990,10 @@ const MobilePlayer: React.FC<
   progress,
   highlight,
 }) => {
-  const landscape = useSyncExternalStore(
-    (callback) => {
-      window.addEventListener("resize", callback);
-      return () => {
-        window.removeEventListener("resize", callback);
-      };
-    },
-    () => {
-      return window.innerWidth > window.innerHeight ? true : false;
-    },
-    () => false
-  );
-
   return (
-    <div className="relative flex h-full w-full flex-col items-start justify-start">
+    <div className="relative flex h-full w-full flex-col items-start justify-start pb-32">
       <div className="flex w-full flex-row items-center justify-between border-b border-foreground px-2 py-1">
         <BackNav backPath={backPath} from={from} relativeTime={relativeTime} />
-        {landscape && (
-          <Sheet>
-            <SheetTrigger
-              className={cn(
-                buttonVariants({ variant: "outline", size: "icon" }),
-                "border-0"
-              )}
-            >
-              <InfoCircledIcon className="h-6 w-6" />
-            </SheetTrigger>
-
-            <SheetContent>
-              <SheetHeader>
-                <SheetTitle>Highlight Info</SheetTitle>
-              </SheetHeader>
-              <div className="flex h-full w-full flex-col items-start justify-start">
-                {highlight && <Time highlight={highlight} />}
-                {angles && <AnglesGrid vid={angles} />}
-                {/*highlight && highlight.poolId && (
-                  <Source
-                    poolId={highlight.poolId}
-                    wristbandId={highlight.wristbandId}
-                  />
-                )*/}
-              </div>
-            </SheetContent>
-          </Sheet>
-        )}
       </div>
 
       <div className="relative h-full w-full overflow-clip">

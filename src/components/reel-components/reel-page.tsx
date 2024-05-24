@@ -230,14 +230,14 @@ const ReelPage: React.FC<{ basePath: UrlObject }> = ({ basePath }) => {
           )}/feed/${encodeURIComponent(highlight.timestampUtc ?? "")}`;
         }}
       >
-        <div className="flex h-full w-full flex-col items-start justify-start px-4 sm:px-8">
-          <div className="mt-8 self-center pb-2">
+        <div className="flex h-full w-full flex-col items-start justify-start">
+          <div className="mt-8 self-center px-4 pb-2 sm:px-8">
             <LoadReelData reelId={reelId} />
           </div>
           <div className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 p-4  backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <LoadFilters reelId={reelId} />
           </div>
-          <div className="h-full w-full pt-4 ">
+          <div className="h-full w-full px-4 pt-4 sm:px-8">
             <LoadFeed reelId={reelId} basePath={basePath} />
           </div>
         </div>
