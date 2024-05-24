@@ -42,6 +42,8 @@ export const DateFilter: React.FC<DateFilterProps> = ({ onDate }) => {
 
   const { from } = query;
 
+  const [open, setOpen] = useState(false);
+
   const value = useMemo(() => {
     const unix = parseFrom(from);
 
@@ -56,6 +58,7 @@ export const DateFilter: React.FC<DateFilterProps> = ({ onDate }) => {
     const newDate = dayjs(value).endOf("day").toDate();
     setStartDate(newDate);
     onDate(newDate);
+    setOpen(false);
   };
 
   return (
@@ -64,7 +67,7 @@ export const DateFilter: React.FC<DateFilterProps> = ({ onDate }) => {
         Start From
       </h3>
 
-      <Dialog>
+      <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger
           className={cn(
             buttonVariants({ variant: "outline" }),
