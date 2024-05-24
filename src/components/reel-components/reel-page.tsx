@@ -28,6 +28,7 @@ import { type UrlObject } from "url";
 import { ReelButtonProvider } from "../contexts/follow-reel-context";
 import { type ButtonContext } from "../contexts/button-types";
 import { ShareButtonProvider } from "../contexts/share-context";
+import { ScrollToTop } from "../misc/scroll-to-top";
 
 const LoadFilters: React.FC<{ reelId: number }> = ({ reelId }) => {
   const { push, query } = useRouter();
@@ -233,12 +234,15 @@ const ReelPage: React.FC<{ basePath: UrlObject }> = ({ basePath }) => {
           <div className="mt-8 self-center pb-2">
             <LoadReelData reelId={reelId} />
           </div>
-          <div className="pb-4">
+          <div className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 p-4  backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <LoadFilters reelId={reelId} />
           </div>
-          <LoadFeed reelId={reelId} basePath={basePath} />
+          <div className="h-full w-full pt-4 ">
+            <LoadFeed reelId={reelId} basePath={basePath} />
+          </div>
         </div>
       </ShareButtonProvider>
+      <ScrollToTop />
     </PageWrap>
   );
 };

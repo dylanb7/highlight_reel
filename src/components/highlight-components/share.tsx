@@ -9,13 +9,11 @@ import {
   DialogTrigger,
 } from "@/shadcn/ui/dialog";
 import { Share2Icon } from "@radix-ui/react-icons";
+import { TwitterIcon, Mail } from "lucide-react";
 import {
   EmailShareButton,
-  EmailIcon,
   TwitterShareButton,
   WhatsappShareButton,
-  WhatsappIcon,
-  TwitterIcon,
 } from "react-share";
 import { type BaseHighlight } from "~/server/types/highlight-out";
 import { IconButton, twIcons } from "../misc/icon-button";
@@ -23,6 +21,9 @@ import { useShareContext } from "../contexts/share-context";
 import { getBaseUrl } from "~/utils/trpc";
 import { buttonVariants } from "@/shadcn/ui/button";
 import { cn } from "@/cnutils";
+import { useEffect, useState } from "react";
+import { CopyButton } from "../misc/copy-button";
+import { Whatsapp } from "~/icons";
 
 const ShareButton: React.FC<{
   highlight: BaseHighlight;
@@ -31,10 +32,14 @@ const ShareButton: React.FC<{
 
   const relative = share(highlight);
 
-  const shareData: ShareData = {
-    url: `${getBaseUrl()}${relative}`,
-    title: "Share Highlight",
-  };
+  const [shareData, setShareData] = useState<ShareData | undefined>(undefined);
+
+  useEffect(() => {
+    setShareData({
+      url: `${getBaseUrl()}${relative}`,
+      title: "Share Highlight",
+    });
+  }, [relative]);
 
   if (
     // eslint-disable-next-line @typescript-eslint/prefer-optional-chain
@@ -67,29 +72,24 @@ const ShareButton: React.FC<{
           <DialogTitle>Share Highlight</DialogTitle>
           <DialogDescription></DialogDescription>
         </DialogHeader>
-        <div className="flex-grid flex gap-2">
-          <EmailShareButton url={shareData.url!} title={shareData.title}>
-            <EmailIcon />
-          </EmailShareButton>
-          <TwitterShareButton url={shareData.url!} title={shareData.title}>
-            <TwitterIcon />
-          </TwitterShareButton>
-          <WhatsappShareButton url={shareData.url!} title={shareData.title}>
-            <WhatsappIcon />
-          </WhatsappShareButton>
-          <button
-            onClick={() => {
-              if (typeof navigator !== undefined) {
-                void navigator.clipboard.writeText(shareData.url!);
-              }
-            }}
-            className="rws-icon"
-            style={{ background: "#718096" }}
-          >
-            <svg fill="white" viewBox={"0 0 24 24"} width={64} height={64}>
-              <path d="M16 1H4a2 2 0 00-2 2v14h2V3h12V1zm3 4H8a2 2 0 00-2 2v14c0 1.1.9 2 2 2h11a2 2 0 002-2V7a2 2 0 00-2-2zm0 16H8V7h11v14z" />
-            </svg>
-          </button>
+        <div className="flex-grid flex gap-5">
+          {shareData && (
+            <>
+              <EmailShareButton url={shareData.url!} title={shareData.title}>
+                <Mail className="[&_svg]:size-3 fill-text-primary-foreground relative z-10 h-6 w-6" />
+              </EmailShareButton>
+              <TwitterShareButton url={shareData.url!} title={shareData.title}>
+                <TwitterIcon className="[&_svg]:size-3 fill-text-primary-foreground relative z-10 h-6 w-6" />
+              </TwitterShareButton>
+              <WhatsappShareButton url={shareData.url!} title={shareData.title}>
+                <Whatsapp className="[&_svg]:size-3 fill-text-primary-foreground relative z-10 h-6 w-6" />
+              </WhatsappShareButton>
+              <CopyButton
+                value={shareData.url!}
+                copyMessage="Copied highlight to clipboard"
+              />
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>

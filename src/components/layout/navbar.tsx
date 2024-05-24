@@ -1,61 +1,26 @@
-import React, { useState } from "react";
-import Link from "next/link";
-import SignInComponent from "../misc/sign-in";
+import React from "react";
 import ReelSearchComponent from "./reel-search-bar";
 import { ModeToggle } from "../misc/dark-mode-toggle";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/shadcn/ui/sheet";
-import { HamburgerMenuIcon } from "@radix-ui/react-icons";
-
-const MobileNav = ({ open }: { open: boolean }) => {
-  return (
-    <div
-      className={`absolute left-0 top-0 z-10 h-screen w-screen transform bg-gray-200 dark:bg-slate-800 ${
-        open ? "-translate-x-0" : "-translate-x-full"
-      } drop-shadow-md filter transition-transform duration-300 ease-in-out`}
-    >
-      <div className="relative mx-4 mt-4 flex flex-col gap-3">
-        <SignInComponent />
-        <ModeToggle />
-      </div>
-    </div>
-  );
-};
+import { MobileNav } from "./mobile-nav";
+import { MainNav } from "./main-nav";
 
 export const NavBar = () => {
-  const [open, setOpen] = useState(false);
   return (
-    <nav className="fixed inset-x-0 top-0 z-50 flex h-16 items-center border-b border-gray-300 bg-background  p-4 shadow-sm ">
-      <MobileNav open={open} />
-      <Link href={"/"}>
-        <p className="hidden justify-start text-2xl font-bold text-slate-900 dark:text-white sm:flex">
-          Highlight<span className="text-indigo-500">Reel</span>
-        </p>
-      </Link>
-      <Link href={"/"}>
-        <p className="flex justify-start text-2xl font-bold text-slate-900 dark:text-white sm:hidden">
-          H<span className="text-indigo-500">R</span>
-        </p>
-      </Link>
-      <ReelSearchComponent />
+    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-14 max-w-screen-2xl items-center">
+        <MobileNav />
+        <MainNav />
+        <div className="flex flex-1 items-center justify-between space-x-4 md:justify-end">
+          <div className="w-full flex-1 md:w-auto md:flex-none md:pr-10">
+            <ReelSearchComponent />
+          </div>
 
-      <div className="flex grow items-center justify-end">
-        <div className="md:hidden">
-          <SignInComponent />
-        </div>
-
-        <div className="hidden justify-end md:flex md:flex-row md:items-center md:gap-3">
-          <ModeToggle />
-          <SignInComponent />
+          <div className="flex items-center pl-2">
+            <ModeToggle />
+          </div>
         </div>
       </div>
-    </nav>
+    </header>
   );
 };
 

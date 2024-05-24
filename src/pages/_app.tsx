@@ -7,8 +7,9 @@ import "../styles/globals.css";
 import Head from "next/head";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "~/components/misc/theme-provider";
-import { Toaster } from "@/shadcn/ui/sonner";
+
 import { Analytics } from "@vercel/analytics/react";
+import { Toaster } from "@/shadcn/ui/sonner";
 
 const MyApp: AppType = ({ Component, pageProps: { ...pageProps } }) => {
   return (

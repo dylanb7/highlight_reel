@@ -137,12 +137,36 @@ export const HighlightGridGroupsComponent: React.FC<{
   return (
     <div className="flex w-full flex-col pb-32">
       {highlightGroups.map((group, index) => {
+        const length = group.highlights.length;
+
+        const isEmpty = length == 0;
         return (
           <div
             key={group.highlights.at(0)?.timestamp ?? group.header}
             className={index == 0 ? "" : "pt-3"}
           >
-            <HighlightGrid group={group} />
+            <div className="flex flex-col items-start justify-start">
+              <Label className="text-md pb-1">{group.header}</Label>
+              {!isEmpty && (
+                <GridLayout>
+                  {group.highlights.map((angles, index) => (
+                    <CarouselRow
+                      key={index}
+                      angles={angles}
+                      length={length}
+                      continuous={group.continuous}
+                      start={group.highlights.at(0)?.timestamp ?? 0}
+                      index={index}
+                    />
+                  ))}
+                </GridLayout>
+              )}
+              {isEmpty && (
+                <h3 className="py-3 text-xl font-semibold text-slate-900 dark:text-white">
+                  No Highlights
+                </h3>
+              )}
+            </div>
           </div>
         );
       })}
@@ -167,37 +191,6 @@ export const GridLayout: React.FC<React.PropsWithChildren> = ({ children }) => {
   return (
     <div className="xl:gap=4 grid w-full grid-cols-1 justify-start gap-2 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
       {children}
-    </div>
-  );
-};
-
-const HighlightGrid: React.FC<{ group: HighlightGroup }> = ({ group }) => {
-  const length = group.highlights.length;
-
-  const isEmpty = length == 0;
-
-  return (
-    <div className="flex flex-col items-start justify-start">
-      <Label className="text-md pb-1">{group.header}</Label>
-      {!isEmpty && (
-        <GridLayout>
-          {group.highlights.map((angles, index) => (
-            <CarouselRow
-              key={index}
-              angles={angles}
-              length={length}
-              continuous={group.continuous}
-              start={group.highlights.at(0)?.timestamp ?? 0}
-              index={index}
-            />
-          ))}
-        </GridLayout>
-      )}
-      {isEmpty && (
-        <h3 className="py-3 text-xl font-semibold text-slate-900 dark:text-white">
-          No Highlights
-        </h3>
-      )}
     </div>
   );
 };

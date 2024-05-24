@@ -252,12 +252,11 @@ export const Filters: React.FC<{
         )}
       </div>
       <CollapsibleContent>
-        <Separator className="mt-2" />
+        <Separator className="my-2" />
         <div className="flex flex-wrap">
           <WristBands {...bandProps} />
           <DateFilter {...dateProps} />
         </div>
-        <Separator />
       </CollapsibleContent>
     </Collapsible>
   );
