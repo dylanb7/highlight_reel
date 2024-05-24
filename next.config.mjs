@@ -5,6 +5,7 @@
 const config = {
   reactStrictMode: true,
   experimental: {
+    esmExternals: 'loose',
     bundlePagesExternals: true
   },
 
