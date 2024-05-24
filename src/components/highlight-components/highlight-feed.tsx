@@ -42,6 +42,9 @@ import { type UrlObject } from "url";
 import { Label } from "@/shadcn/ui/label";
 import { buttonVariants } from "@/shadcn/ui/button";
 import { cn } from "@/cnutils";
+import { LoadingScaffold } from "./grouped-highlight-grid";
+import { Skeleton } from "@/shadcn/ui/skeleton";
+import { LoadingSpinner } from "../misc/loading";
 
 dayjs.extend(reltiveTime.default);
 dayjs.extend(utc.default);
@@ -84,6 +87,7 @@ export const ContinuousNonrouterFeed: React.FC<{
   from,
   hasNext,
   hasPrev,
+
   next,
   prev,
 }) => {
@@ -144,7 +148,7 @@ export const ContinuousNonrouterFeed: React.FC<{
     setStamp(stamp);
   };
 
-  if (length == 0)
+  if (!fetching && length == 0)
     return (
       <div className="flex justify-center">
         <h3 className="py-3 text-2xl font-semibold text-slate-900 dark:text-white">
@@ -402,7 +406,7 @@ export const IndexedFeed: React.FC<{
 
   const highlight = getHighlight(value, angle);
 
-  if (length == 0)
+  if (!fetching && length == 0)
     return (
       <div className="flex justify-center">
         <h3 className="py-3 text-2xl font-semibold text-slate-900 dark:text-white">
@@ -479,6 +483,7 @@ const BaseCompontent: React.FC<
   next,
   prev,
   highlight,
+  fetching,
   backPath,
   from,
   progress,
@@ -499,6 +504,9 @@ const BaseCompontent: React.FC<
     return highlight.aspectRatioDenominator / highlight.aspectRatioNumerator;
   }, [highlight]);
 
+  if (fetching) {
+    return <LoadingSpinner loadingType={"Fetching Highlight"} />;
+  }
   if (!highlight)
     return (
       <div className="flex justify-center">
@@ -1050,7 +1058,7 @@ const Player: React.FC<{
         loop={true}
         style={{ objectFit: "cover" }}
         controls={true}
-        playsinline={true}
+        playsinline
         onPause={() => setPlaying(false)}
         onPlay={() => setPlaying(true)}
         playing={playing}

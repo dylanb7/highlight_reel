@@ -1,10 +1,6 @@
 import { useRouter } from "next/router";
 import { api } from "~/utils/trpc";
-import {
-  ContinuousFeed,
-  ContinuousNonrouterFeed,
-  IndexedFeed,
-} from "./highlight-feed";
+import { ContinuousNonrouterFeed, IndexedFeed } from "./highlight-feed";
 import { FeedContextProvider } from "../contexts/feed-context";
 import { useMemo } from "react";
 import { type UrlObject } from "url";
@@ -78,6 +74,7 @@ const Continuous: React.FC<{
     hasNextPage,
     fetchNextPage,
     isFetching,
+    isLoading,
     hasPreviousPage,
     fetchPreviousPage,
   } = api.reel.getHighlightVideosPaginated.useInfiniteQuery(queryKey, {
@@ -131,7 +128,7 @@ const Continuous: React.FC<{
     >
       <ContinuousNonrouterFeed
         highlights={highlights ?? []}
-        fetching={isFetching}
+        fetching={isFetching || isLoading}
         backPath={backPath}
         hasNext={hasNextPage}
         hasPrev={hasPreviousPage}
